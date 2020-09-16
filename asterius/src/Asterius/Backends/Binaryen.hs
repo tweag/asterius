@@ -247,10 +247,10 @@ data MarshalEnv = MarshalEnv
     envIsVerboseErrOn :: Bool,
     -- | Whether the tail call extension is on.
     envAreTailCallsOn :: Bool,
-    -- | The symbol map for the current module (statics).
-    envStaticsSymbolMap :: SM.SymbolMap Int64,
-    -- | The symbol map for the current module (functions).
-    envFunctionsSymbolMap :: SM.SymbolMap Int64,
+    -- | The offset map for the current module (statics).
+    envStaticsOffsetMap :: SM.SymbolMap Word32,
+    -- | The offset map for the current module (functions).
+    envFunctionsOffsetMap :: SM.SymbolMap Word32,
     -- | The current module reference.
     envModuleRef :: Binaryen.Module
   }
@@ -269,13 +269,13 @@ isVerboseErrOn = reader envIsVerboseErrOn
 areTailCallsOn :: CodeGen Bool
 areTailCallsOn = reader envAreTailCallsOn
 
--- | Retrieve the symbol map from the local environment (statics).
-askStaticsSymbolMap :: CodeGen (SM.SymbolMap Int64)
-askStaticsSymbolMap = reader envStaticsSymbolMap
+-- | Retrieve the offset map from the local environment (statics).
+askStaticsOffsetMap :: CodeGen (SM.SymbolMap Word32)
+askStaticsOffsetMap = reader envStaticsOffsetMap
 
--- | Retrieve the symbol map from the local environment (functions).
-askFunctionsSymbolMap :: CodeGen (SM.SymbolMap Int64)
-askFunctionsSymbolMap = reader envFunctionsSymbolMap
+-- | Retrieve the offset map from the local environment (functions).
+askFunctionsOffsetMap :: CodeGen (SM.SymbolMap Word32)
+askFunctionsOffsetMap = reader envFunctionsOffsetMap
 
 -- | Retrieve the reference to the current module.
 askModuleRef :: CodeGen Binaryen.Module
@@ -323,8 +323,8 @@ marshalExpression e = case e of
       Binaryen.switch m nsp (fromIntegral nl) dn c (coerce nullPtr)
   Call {..} -> do
     verbose_err <- isVerboseErrOn
-    func_sym_map <- askFunctionsSymbolMap
-    if  | target `SM.member` func_sym_map -> do
+    fn_off_map <- askFunctionsOffsetMap
+    if  | target `SM.member` fn_off_map -> do
           os <-
             mapM
               marshalExpression
@@ -443,14 +443,14 @@ marshalExpression e = case e of
         Binaryen.returnCall m dst nullPtr 0 Binaryen.none
     -- Case 2: Tail calls are off
     False -> do
-      func_sym_map <- askFunctionsSymbolMap
-      case SM.lookup returnCallTarget64 func_sym_map of
+      fn_off_map <- askFunctionsOffsetMap
+      case SM.lookup returnCallTarget64 fn_off_map of
         Just t -> do
           s <-
             marshalExpression
               SetGlobal
                 { globalSymbol = "__asterius_pc",
-                  value = ConstI64 t
+                  value = ConstI64 $ mkFunctionAddress t
                 }
           m <- askModuleRef
           a <- askArena
@@ -500,13 +500,13 @@ marshalExpression e = case e of
   CFG {..} -> relooperRun graph
   Symbol {..} -> do
     verbose_err <- isVerboseErrOn
-    ss_sym_map <- askStaticsSymbolMap
-    func_sym_map <- askFunctionsSymbolMap
+    ss_off_map <- askStaticsOffsetMap
+    fn_off_map <- askFunctionsOffsetMap
     m <- askModuleRef
-    if  | Just x <- SM.lookup unresolvedSymbol ss_sym_map ->
-          lift $ Binaryen.constInt64 m $ x + fromIntegral symbolOffset
-        | Just x <- SM.lookup unresolvedSymbol func_sym_map ->
-          lift $ Binaryen.constInt64 m $ x + fromIntegral symbolOffset
+    if  | Just x <- SM.lookup unresolvedSymbol ss_off_map ->
+          lift $ Binaryen.constInt64 m $ mkDataAddress $ x + fromIntegral symbolOffset
+        | Just x <- SM.lookup unresolvedSymbol fn_off_map ->
+          lift $ Binaryen.constInt64 m $ mkFunctionAddress $ x + fromIntegral symbolOffset
         | verbose_err ->
           marshalExpression $ barf (entityName unresolvedSymbol) [I64]
         | otherwise ->
@@ -658,11 +658,11 @@ marshalGlobal k Global {..} = do
 marshalModule ::
   Bool ->
   Bool ->
-  SM.SymbolMap Int64 ->
-  SM.SymbolMap Int64 ->
+  SM.SymbolMap Word32 ->
+  SM.SymbolMap Word32 ->
   Module ->
   IO Binaryen.Module
-marshalModule verbose_err tail_calls ss_sym_map func_sym_map hs_mod@Module {..} = do
+marshalModule verbose_err tail_calls ss_off_map fn_off_map hs_mod@Module {..} = do
   m <- Binaryen.Module.create
   Binaryen.setFeatures m
     $ foldl1' (.|.)
@@ -674,8 +674,8 @@ marshalModule verbose_err tail_calls ss_sym_map func_sym_map hs_mod@Module {..} 
             { envArena = a,
               envIsVerboseErrOn = verbose_err,
               envAreTailCallsOn = tail_calls,
-              envStaticsSymbolMap = ss_sym_map,
-              envFunctionsSymbolMap = func_sym_map,
+              envStaticsOffsetMap = ss_off_map,
+              envFunctionsOffsetMap = fn_off_map,
               envModuleRef = m
             }
         fts = generateWasmFunctionTypeSet hs_mod

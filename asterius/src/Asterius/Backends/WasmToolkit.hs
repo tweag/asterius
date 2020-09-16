@@ -38,7 +38,6 @@ import Control.Monad.Reader
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Short as SBS
 import Data.Coerce
-import Data.Int
 import Data.List
 import qualified Data.Map.Strict as Map
 import qualified Data.Set as Set
@@ -464,10 +463,10 @@ data MarshalEnv
         envIsVerboseErrOn :: Bool,
         -- | Whether the tail call extension is on.
         envAreTailCallsOn :: Bool,
-        -- | The symbol map for the current module (statics).
-        envStaticsSymbolMap :: SM.SymbolMap Int64,
-        -- | The symbol map for the current module (functions).
-        envFunctionsSymbolMap :: SM.SymbolMap Int64,
+        -- | The offset map for the current module (statics).
+        envStaticsOffsetMap :: SM.SymbolMap Word32,
+        -- | The offset map for the current module (functions).
+        envFunctionsOffsetMap :: SM.SymbolMap Word32,
         -- | The symbol table for the current module.
         envModuleSymbolTable :: ModuleSymbolTable,
         -- | The de Bruijn context. Used for label access.
@@ -484,13 +483,13 @@ isVerboseErrOn = reader envIsVerboseErrOn
 areTailCallsOn :: MonadReader MarshalEnv m => m Bool
 areTailCallsOn = reader envAreTailCallsOn
 
--- | Retrieve the symbol map from the local environment (statics).
-askStaticsSymbolMap :: MonadReader MarshalEnv m => m (SM.SymbolMap Int64)
-askStaticsSymbolMap = reader envStaticsSymbolMap
+-- | Retrieve the offset map from the local environment (statics).
+askStaticsOffsetMap :: MonadReader MarshalEnv m => m (SM.SymbolMap Word32)
+askStaticsOffsetMap = reader envStaticsOffsetMap
 
--- | Retrieve the symbol map from the local environment (functions).
-askFunctionsSymbolMap :: MonadReader MarshalEnv m => m (SM.SymbolMap Int64)
-askFunctionsSymbolMap = reader envFunctionsSymbolMap
+-- | Retrieve the offset map from the local environment (functions).
+askFunctionsOffsetMap :: MonadReader MarshalEnv m => m (SM.SymbolMap Word32)
+askFunctionsOffsetMap = reader envFunctionsOffsetMap
 
 -- | Retrieve the module symbol table from the local environment.
 askModuleSymbolTable :: MonadReader MarshalEnv m => m ModuleSymbolTable
@@ -698,7 +697,7 @@ makeInstructions expr =
       x <- makeInstructions dropValue
       pure $ x `snocBag` Wasm.Drop
     ReturnCall {..} -> do
-      func_sym_map <- askFunctionsSymbolMap
+      fn_off_map <- askFunctionsOffsetMap
       ModuleSymbolTable {..} <- askModuleSymbolTable
       verbose_err <- isVerboseErrOn
       tail_calls <- areTailCallsOn
@@ -713,11 +712,11 @@ makeInstructions expr =
             | otherwise ->
               pure $ unitBag Wasm.Unreachable
         -- Case 2: Tail calls are off
-        else case SM.lookup returnCallTarget64 func_sym_map of
+        else case SM.lookup returnCallTarget64 fn_off_map of
           Just t -> makeInstructions
             SetGlobal
               { globalSymbol = "__asterius_pc",
-                value = ConstI64 t
+                value = ConstI64 $ mkFunctionAddress $ t
               }
           _
             | verbose_err ->
@@ -751,15 +750,15 @@ makeInstructions expr =
     CFG {..} -> makeInstructions $ relooper graph
     Symbol {..} -> do
       verbose_err <- isVerboseErrOn
-      ss_sym_map <- askStaticsSymbolMap
-      func_sym_map <- askFunctionsSymbolMap
-      if  | Just x <- SM.lookup unresolvedSymbol ss_sym_map ->
+      ss_off_map <- askStaticsOffsetMap
+      fn_off_map <- askFunctionsOffsetMap
+      if  | Just x <- SM.lookup unresolvedSymbol ss_off_map ->
             pure $ unitBag Wasm.I64Const
-              { i64ConstValue = x + fromIntegral symbolOffset
+              { i64ConstValue = mkDataAddress $ x + fromIntegral symbolOffset
               }
-          | Just x <- SM.lookup unresolvedSymbol func_sym_map ->
+          | Just x <- SM.lookup unresolvedSymbol fn_off_map ->
             pure $ unitBag Wasm.I64Const
-              { i64ConstValue = x + fromIntegral symbolOffset
+              { i64ConstValue = mkFunctionAddress $ x + fromIntegral symbolOffset
               }
           | verbose_err ->
             makeInstructions $ barf (entityName unresolvedSymbol) [I64]
@@ -830,18 +829,18 @@ makeModule ::
   MonadError MarshalError m =>
   Bool ->
   Bool ->
-  SM.SymbolMap Int64 ->
-  SM.SymbolMap Int64 ->
+  SM.SymbolMap Word32 ->
+  SM.SymbolMap Word32 ->
   Module ->
   m Wasm.Module
-makeModule verbose_err tail_calls ss_sym_map func_sym_map m = do
+makeModule verbose_err tail_calls ss_off_map fn_off_map m = do
   _module_symtable <- makeModuleSymbolTable m
   let env =
         MarshalEnv
           { envIsVerboseErrOn = verbose_err,
             envAreTailCallsOn = tail_calls,
-            envStaticsSymbolMap = ss_sym_map,
-            envFunctionsSymbolMap = func_sym_map,
+            envStaticsOffsetMap = ss_off_map,
+            envFunctionsOffsetMap = fn_off_map,
             envModuleSymbolTable = _module_symtable,
             envDeBruijnContext = emptyDeBruijnContext,
             envLclContext = emptyLocalContext

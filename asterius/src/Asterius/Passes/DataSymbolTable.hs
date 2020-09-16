@@ -3,7 +3,7 @@
 {-# LANGUAGE RecordWildCards #-}
 
 module Asterius.Passes.DataSymbolTable
-  ( makeDataSymbolTable,
+  ( makeDataOffsetTable,
     makeMemory,
   )
 where
@@ -21,28 +21,23 @@ import Foreign
 import Language.Haskell.GHC.Toolkit.Constants
 
 {-# INLINEABLE sizeofStatic #-}
-sizeofStatic :: AsteriusStatic -> Int
+sizeofStatic :: AsteriusStatic -> Word32
 sizeofStatic = \case
   SymbolStatic {} -> 8
-  Uninitialized x -> x
-  Serialized buf -> BS.length buf
+  Uninitialized x -> fromIntegral x
+  Serialized buf -> fromIntegral $ BS.length buf
 
-sizeofStatics :: AsteriusStatics -> Int64
-sizeofStatics =
-  fromIntegral
-    . getSum
-    . foldMap (Sum . sizeofStatic)
-    . asteriusStatics
+sizeofStatics :: AsteriusStatics -> Word32
+sizeofStatics = getSum . foldMap (Sum . sizeofStatic) . asteriusStatics
 
-{-# INLINEABLE makeDataSymbolTable #-}
-makeDataSymbolTable ::
-  AsteriusModule -> Int64 -> (SM.SymbolMap Int64, Int64)
-makeDataSymbolTable AsteriusModule {..} l =
+{-# INLINEABLE makeDataOffsetTable #-}
+makeDataOffsetTable :: AsteriusModule -> (SM.SymbolMap Word32, Word32)
+makeDataOffsetTable AsteriusModule {..} =
   swap $
     SM.mapAccum
       ( \a ss -> (a + fromIntegral (fromIntegral (sizeofStatics ss) `roundup` 16), a)
       )
-      l
+      0
       staticsMap
 
 -- | Given the offset of a static and the static itself, compute the
@@ -50,22 +45,41 @@ makeDataSymbolTable AsteriusModule {..} l =
 -- do not generate data segments for uninitialized statics; we do not have to
 -- specify each segment and the linear memory is zero-initialized anyway.
 {-# INLINEABLE makeSegment #-}
-makeSegment :: SM.SymbolMap Int64 -> Int32 -> AsteriusStatic -> (Int32, Maybe DataSegment)
-makeSegment sym_map off static =
-  ( off + fromIntegral (sizeofStatic static),
+makeSegment :: SM.SymbolMap Word32 -> SM.SymbolMap Word32 -> Word32 -> AsteriusStatic -> (Word32, Maybe DataSegment)
+makeSegment fn_off_map ss_off_map current_off static =
+  ( current_off + sizeofStatic static,
     case static of
-      SymbolStatic sym o ->
-        let address = case SM.lookup sym sym_map of
-              Just addr -> addr + fromIntegral o
-              _ -> invalidAddress
-         in Just DataSegment {content = encodeStorable address, offset = ConstI32 off}
+      SymbolStatic sym o
+        | Just off <- SM.lookup sym fn_off_map ->
+          Just
+            DataSegment
+              { content = encodeStorable $ mkFunctionAddress (off + fromIntegral o),
+                offset = ConstI32 $ fromIntegral $ memoryBase + current_off
+              }
+        | Just off <- SM.lookup sym ss_off_map ->
+          Just
+            DataSegment
+              { content = encodeStorable $ mkDataAddress (off + fromIntegral o),
+                offset = ConstI32 $ fromIntegral $ memoryBase + current_off
+              }
+        | otherwise ->
+          Just
+            DataSegment
+              { content = encodeStorable invalidAddress,
+                offset = ConstI32 $ fromIntegral $ memoryBase + current_off
+              }
       Uninitialized {} -> Nothing
-      Serialized buf -> Just DataSegment {content = buf, offset = ConstI32 off}
+      Serialized buf ->
+        Just
+          DataSegment
+            { content = buf,
+              offset = ConstI32 $ fromIntegral $ memoryBase + current_off
+            }
   )
 
 {-# INLINEABLE makeMemory #-}
-makeMemory :: AsteriusModule -> SM.SymbolMap Int64 -> [DataSegment]
-makeMemory AsteriusModule {..} sym_map =
+makeMemory :: AsteriusModule -> SM.SymbolMap Word32 -> SM.SymbolMap Word32 -> [DataSegment]
+makeMemory AsteriusModule {..} fn_off_map ss_off_map =
   concat $ SM.elems $ flip SM.mapWithKey staticsMap $ \statics_sym ss ->
-    let initial_offset = fromIntegral $ unTag $ sym_map SM.! statics_sym
-     in catMaybes $ snd $ mapAccumL (makeSegment sym_map) initial_offset $ asteriusStatics ss
+    let initial_offset = ss_off_map SM.! statics_sym
+     in catMaybes $ snd $ mapAccumL (makeSegment fn_off_map ss_off_map) initial_offset $ asteriusStatics ss

@@ -2,12 +2,14 @@
 {-# LANGUAGE RecordWildCards #-}
 
 module Asterius.Foreign.ExportStatic
-  ( genExportStaticObj,
+  ( genFunctionsExportStaticObj,
+    genStaticsExportStaticObj,
     encodeTys,
   )
 where
 
 import Asterius.Foreign.SupportedTypes
+import Asterius.Internals.MagicNumber
 import Asterius.Types
 import qualified Asterius.Types.SymbolMap as SM
 import Data.Bits
@@ -16,32 +18,67 @@ import Data.Foldable
 import Data.Int
 import Data.List
 import Data.Maybe
+import Data.Word
 
-genExportStaticObj :: FFIMarshalState -> SM.SymbolMap Int64 -> Builder
-genExportStaticObj FFIMarshalState {..} sym_map =
+-- TODO: Aren't these supposed to be only functions?
+
+genFunctionsExportStaticObj :: FFIMarshalState -> SM.SymbolMap Word32 -> Builder
+genFunctionsExportStaticObj FFIMarshalState {..} fn_off_map =
   "["
     <> mconcat
       ( intersperse
           ","
           $ catMaybes
-            [ genExportStaticFunc k export_decl sym_map
+            [ genFunctionsExportStaticFunc k export_decl fn_off_map
               | (k, export_decl) <- SM.toList ffiExportDecls
             ]
       )
     <> "]"
 
-genExportStaticFunc ::
+genStaticsExportStaticObj :: FFIMarshalState -> SM.SymbolMap Word32 -> Builder
+genStaticsExportStaticObj FFIMarshalState {..} ss_off_map =
+  "["
+    <> mconcat
+      ( intersperse
+          ","
+          $ catMaybes
+            [ genStaticsExportStaticFunc k export_decl ss_off_map
+              | (k, export_decl) <- SM.toList ffiExportDecls
+            ]
+      )
+    <> "]"
+
+genFunctionsExportStaticFunc ::
   EntitySymbol ->
   FFIExportDecl ->
-  SM.SymbolMap Int64 ->
+  SM.SymbolMap Word32 ->
   Maybe Builder
-genExportStaticFunc k FFIExportDecl {ffiFunctionType = FFIFunctionType {..}, ..} sym_map = do
-  address <- SM.lookup ffiExportClosure sym_map
+genFunctionsExportStaticFunc k FFIExportDecl {ffiFunctionType = FFIFunctionType {..}, ..} fn_off_map = do
+  off <- SM.lookup ffiExportClosure fn_off_map
   pure $
     "[\""
       <> byteString (entityName k)
       <> "\",0x"
-      <> int64HexFixed address
+      <> int64HexFixed (mkFunctionAddress off)
+      <> ",0x"
+      <> int64HexFixed (encodeTys ffiParamTypes)
+      <> ",0x"
+      <> int64HexFixed (encodeTys ffiResultTypes)
+      <> ","
+      <> if ffiInIO then "true]" else "false]"
+
+genStaticsExportStaticFunc ::
+  EntitySymbol ->
+  FFIExportDecl ->
+  SM.SymbolMap Word32 ->
+  Maybe Builder
+genStaticsExportStaticFunc k FFIExportDecl {ffiFunctionType = FFIFunctionType {..}, ..} ss_off_map = do
+  off <- SM.lookup ffiExportClosure ss_off_map
+  pure $
+    "[\""
+      <> byteString (entityName k)
+      <> "\",0x"
+      <> int64HexFixed (mkDataAddress off)
       <> ",0x"
       <> int64HexFixed (encodeTys ffiParamTypes)
       <> ",0x"
