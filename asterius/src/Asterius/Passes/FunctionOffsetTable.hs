@@ -1,6 +1,6 @@
 {-# LANGUAGE RecordWildCards #-}
 
-module Asterius.Passes.FunctionSymbolTable
+module Asterius.Passes.FunctionOffsetTable
   ( makeFunctionOffsetTable,
     makeFunctionTable,
   )

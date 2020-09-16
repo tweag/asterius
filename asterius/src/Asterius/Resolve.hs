@@ -16,8 +16,8 @@ import Asterius.Builtins
 import Asterius.Internals.MagicNumber
 import Asterius.JSFFI
 import Asterius.MemoryTrap
-import Asterius.Passes.DataSymbolTable
-import Asterius.Passes.FunctionSymbolTable
+import Asterius.Passes.DataOffsetTable
+import Asterius.Passes.FunctionOffsetTable
 import Asterius.Passes.GCSections
 import Asterius.Types
 import qualified Asterius.Types.SymbolMap as SM

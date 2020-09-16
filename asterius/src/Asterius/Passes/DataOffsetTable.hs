@@ -2,7 +2,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
 
-module Asterius.Passes.DataSymbolTable
+module Asterius.Passes.DataOffsetTable
   ( makeDataOffsetTable,
     makeMemory,
   )
