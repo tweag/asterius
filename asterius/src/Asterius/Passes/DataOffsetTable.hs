@@ -1,6 +1,7 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 
 module Asterius.Passes.DataOffsetTable
   ( makeDataOffsetTable,
@@ -62,16 +63,10 @@ makeWasmApplyRelocs fn_offsets ss_offsets = runEDSL "__wasm_apply_relocs" $ do
           valueType = I32
         }
   for_ fn_offsets $ \off ->
-    let loc =
-          memory_base
-            `addInt64` constI64 (fromIntegral off)
-            `addInt64` constI64 (fromIntegral $ dataTag `shiftL` 32) -- TODO: compute this more intuitively
+    let loc = mkDynamicDataAddress off
      in storeI64 loc 0 $ table_base `addInt64` loadI64 loc 0 `addInt64` constI64 (fromIntegral $ functionTag `shiftL` 32)
   for_ ss_offsets $ \off ->
-    let loc =
-          memory_base
-            `addInt64` constI64 (fromIntegral off)
-            `addInt64` constI64 (fromIntegral $ dataTag `shiftL` 32) -- TODO: compute this more intuitively
+    let loc = mkDynamicDataAddress off
      in storeI64 loc 0 $ memory_base `addInt64` loadI64 loc 0 `addInt64` constI64 (fromIntegral $ dataTag `shiftL` 32)
 
 -- NOTE: It is done unintuitively so that it is faster (we don't want to
@@ -93,20 +88,20 @@ makeSegment ::
 makeSegment fn_off_map ss_off_map (current_off, fn_meta, ss_meta) static = case static of
   SymbolStatic sym o
     | Just off <- SM.lookup sym fn_off_map ->
-      let off_to_store = off + fromIntegral o
+      let off_to_store :: Int64 = fromIntegral $ off + fromIntegral o
        in ( (next_off, current_off `Set.insert` fn_meta, ss_meta),
             unitBag
               DataSegment
-                { content = encodeStorable (fromIntegral off_to_store :: Int64), -- TODO: this looks wrong.
+                { content = encodeStorable off_to_store, -- To be fixed at runtime; see makeWasmApplyRelocs
                   offset = ConstI32 $ fromIntegral $ staticMemoryBase + current_off
                 }
           )
     | Just off <- SM.lookup sym ss_off_map ->
-      let off_to_store = off + fromIntegral o
+      let off_to_store :: Int64 = fromIntegral $ off + fromIntegral o
        in ( (next_off, fn_meta, current_off `Set.insert` ss_meta),
             unitBag
               DataSegment
-                { content = encodeStorable (fromIntegral off_to_store :: Int64), -- TODO: this looks wrong.
+                { content = encodeStorable off_to_store, -- To be fixed at runtime; see makeWasmApplyRelocs
                   offset = ConstI32 $ fromIntegral $ staticMemoryBase + current_off
                 }
           )
