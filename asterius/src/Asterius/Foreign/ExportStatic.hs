@@ -2,8 +2,7 @@
 {-# LANGUAGE RecordWildCards #-}
 
 module Asterius.Foreign.ExportStatic
-  ( genFunctionsExportStaticObj,
-    genStaticsExportStaticObj,
+  ( genExportStaticObj,
     encodeTys,
   )
 where
@@ -20,59 +19,25 @@ import Data.List
 import Data.Maybe
 import Data.Word
 
--- TODO: Aren't these supposed to be only functions?
-
-genFunctionsExportStaticObj :: FFIMarshalState -> SM.SymbolMap Word32 -> Builder
-genFunctionsExportStaticObj FFIMarshalState {..} fn_off_map =
+genExportStaticObj :: FFIMarshalState -> SM.SymbolMap Word32 -> Builder
+genExportStaticObj FFIMarshalState {..} ss_off_map =
   "["
     <> mconcat
       ( intersperse
           ","
           $ catMaybes
-            [ genFunctionsExportStaticFunc k export_decl fn_off_map
+            [ genExportStaticFunc k export_decl ss_off_map
               | (k, export_decl) <- SM.toList ffiExportDecls
             ]
       )
     <> "]"
 
-genStaticsExportStaticObj :: FFIMarshalState -> SM.SymbolMap Word32 -> Builder
-genStaticsExportStaticObj FFIMarshalState {..} ss_off_map =
-  "["
-    <> mconcat
-      ( intersperse
-          ","
-          $ catMaybes
-            [ genStaticsExportStaticFunc k export_decl ss_off_map
-              | (k, export_decl) <- SM.toList ffiExportDecls
-            ]
-      )
-    <> "]"
-
-genFunctionsExportStaticFunc ::
+genExportStaticFunc ::
   EntitySymbol ->
   FFIExportDecl ->
   SM.SymbolMap Word32 ->
   Maybe Builder
-genFunctionsExportStaticFunc k FFIExportDecl {ffiFunctionType = FFIFunctionType {..}, ..} fn_off_map = do
-  off <- SM.lookup ffiExportClosure fn_off_map
-  pure $
-    "[\""
-      <> byteString (entityName k)
-      <> "\",0x"
-      <> int64HexFixed (mkFunctionAddress off)
-      <> ",0x"
-      <> int64HexFixed (encodeTys ffiParamTypes)
-      <> ",0x"
-      <> int64HexFixed (encodeTys ffiResultTypes)
-      <> ","
-      <> if ffiInIO then "true]" else "false]"
-
-genStaticsExportStaticFunc ::
-  EntitySymbol ->
-  FFIExportDecl ->
-  SM.SymbolMap Word32 ->
-  Maybe Builder
-genStaticsExportStaticFunc k FFIExportDecl {ffiFunctionType = FFIFunctionType {..}, ..} ss_off_map = do
+genExportStaticFunc k FFIExportDecl {ffiFunctionType = FFIFunctionType {..}, ..} ss_off_map = do
   off <- SM.lookup ffiExportClosure ss_off_map
   pure $
     "[\""
