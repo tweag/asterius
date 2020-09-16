@@ -31,11 +31,11 @@ export async function newAsteriusInstance(req) {
       : {},
     __asterius_table_base = new WebAssembly.Global(
       { value: "i32", mutable: false },
-      0 // TODO: Should change to 1, eventually.
+      1 // Reserve 0 for the null function pointer.
     ),
     __asterius_memory_base = new WebAssembly.Global(
       { value: "i32", mutable: false },
-      0 // TODO: Should change to 1024, eventually.
+      1024 // Leave 1KB empty for the --low-memory-unused optimization to work.
     ),
     __asterius_symbol_table = new SymbolTable(
       req.functionsSymbolTable,
@@ -199,6 +199,7 @@ export async function newAsteriusInstance(req) {
   );
 
   return WebAssembly.instantiate(req.module, importObject).then(i => {
+    i.exports.__wasm_apply_relocs(); // TODO: I hope this is early enough.
     __asterius_wasm_instance = i;
     __asterius_memory.init(__asterius_wasm_memory, req.staticMBlocks);
     __asterius_heapalloc.init();
@@ -209,7 +210,9 @@ export async function newAsteriusInstance(req) {
       __asterius_exports[
         f
       ] = __asterius_exports.newHaskellCallback(
-        __asterius_stableptr_manager.newStablePtr(__asterius_memory_base.value + off), // TODO: TAGGING IS REQUIRED.
+        __asterius_stableptr_manager.newStablePtr(
+          Memory.tagData(__asterius_memory_base.value + off)
+        ),
         a,
         r,
         i,

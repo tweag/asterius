@@ -23,7 +23,7 @@ module Asterius.Backends.Binaryen
 where
 
 import Asterius.Builtins
-import Asterius.EDSL (addInt64, constI64, extendUInt32)
+import Asterius.EDSL (tagFunction, tagData, addInt32, constI32)
 import qualified Asterius.Internals.Arena as A
 import Asterius.Internals.Barf
 import Asterius.Internals.MagicNumber
@@ -446,12 +446,19 @@ marshalExpression e = case e of
     False -> do
       fn_off_map <- askFunctionsOffsetMap
       case SM.lookup returnCallTarget64 fn_off_map of
-        Just t -> do
+        Just off -> do
           s <-
             marshalExpression
               SetGlobal
                 { globalSymbol = "__asterius_pc",
-                  value = ConstI64 $ mkFunctionAddress t
+                  value =
+                    let table_base =
+                          GetGlobal
+                            { globalSymbol = "__asterius_table_base",
+                              valueType = I32
+                            }
+                     in tagFunction $
+                          table_base `addInt32` constI32 (fromIntegral off)
                 }
           m <- askModuleRef
           a <- askArena
@@ -504,18 +511,24 @@ marshalExpression e = case e of
     ss_off_map <- askStaticsOffsetMap
     fn_off_map <- askFunctionsOffsetMap
     m <- askModuleRef
-    if  | Just x <- SM.lookup unresolvedSymbol ss_off_map ->
-          lift $ Binaryen.constInt64 m $ mkDataAddress $ x + fromIntegral symbolOffset
-        | Just x <- SM.lookup unresolvedSymbol fn_off_map ->
-          let base =
+    if  | Just off <- SM.lookup unresolvedSymbol ss_off_map ->
+          let memory_base =
+                GetGlobal
+                  { globalSymbol = "__asterius_memory_base",
+                    valueType = I32
+                  }
+           in marshalExpression $
+                tagData $
+                  memory_base `addInt32` constI32 (fromIntegral off + symbolOffset)
+        | Just off <- SM.lookup unresolvedSymbol fn_off_map ->
+          let table_base =
                 GetGlobal
                   { globalSymbol = "__asterius_table_base",
                     valueType = I32
                   }
            in marshalExpression $
-                addInt64
-                  (extendUInt32 base)
-                  (constI64 $ fromIntegral x + symbolOffset)
+                tagFunction $
+                  table_base `addInt32` constI32 (fromIntegral off + symbolOffset)
         | verbose_err ->
           marshalExpression $ barf (entityName unresolvedSymbol) [I64]
         | otherwise ->

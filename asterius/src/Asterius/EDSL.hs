@@ -52,6 +52,8 @@ module Asterius.EDSL
     storeF64,
     storeF32,
     unTagClosure,
+    tagFunction,
+    tagData,
     call,
     call',
     callImport,
@@ -86,12 +88,14 @@ where
 import Asterius.EDSL.BinaryOp
 import Asterius.EDSL.UnaryOp
 import Asterius.Internals
+import Asterius.Internals.MagicNumber
 import Asterius.Passes.All
 import Asterius.Passes.GlobalRegs
 import Asterius.Types
 import qualified Asterius.Types.SymbolMap as SM
 import Bag
 import Control.Monad.State.Strict
+import Data.Bits
 import qualified Data.ByteString as BS
 import Data.Traversable
 import Language.Haskell.GHC.Toolkit.Constants
@@ -326,6 +330,22 @@ nandInt64 e1 e2 = notInt64 $ andInt64 e1 e2
 
 unTagClosure :: Expression -> Expression
 unTagClosure p = p `andInt64` constI64 0xFFFFFFFFFFFFFFF8
+
+-- | TODO: Document @(UInt32 -> UInt64)@.
+{-# INLINEABLE tagFunction #-}
+tagFunction :: Expression -> Expression
+tagFunction e =
+  andInt64
+    (extendUInt32 e)
+    (constI64 (fromIntegral $ functionTag `shiftL` 32))
+
+-- | TODO: Document @(UInt32 -> UInt64)@.
+{-# INLINEABLE tagData #-}
+tagData :: Expression -> Expression
+tagData e =
+  andInt64
+    (extendUInt32 e)
+    (constI64 (fromIntegral $ dataTag `shiftL` 32))
 
 call :: EntitySymbol -> [Expression] -> EDSL ()
 call f xs = emit Call {target = f, operands = xs, callReturnTypes = []}

@@ -45,25 +45,33 @@ resolveAsteriusModule ::
   Bool ->
   AsteriusModule ->
   ( Module,
+    AsteriusModule,
     SM.SymbolMap Word32,
     SM.SymbolMap Word32,
     Int,
     Int
   )
 resolveAsteriusModule debug m_globals_resolved =
-  (new_mod, ss_off_map, fn_off_map, table_slots, initial_mblocks)
+  (new_mod, final_m, ss_off_map, fn_off_map, table_slots, initial_mblocks)
   where
+    -- Create the offset tables first. A dummy relocation function already
+    -- exists in the input module so the maps will be created correctly.
     (fn_off_map, last_func_offset) = makeFunctionOffsetTable m_globals_resolved
     (ss_off_map, last_data_offset) = makeDataOffsetTable m_globals_resolved
-    segs = makeMemory m_globals_resolved fn_off_map ss_off_map
+    -- Create the data segments and the new relocation function second.
+    -- We need to update the module with the real relocation function
+    -- before we proceed.
+    (segs, reloc_function) = makeMemory m_globals_resolved fn_off_map ss_off_map
+    final_m = reloc_function <> m_globals_resolved
+    -- Continue with the rest using the "real" module.
     func_table = makeFunctionTable fn_off_map
-    table_slots = fromIntegral $ tableBase + last_func_offset
+    table_slots = fromIntegral $ tableBase + last_func_offset -- TODO: WRONG (need to (dynamically) add 1).
     func_imports =
-      rtsFunctionImports debug <> generateFFIFunctionImports (ffiMarshalState m_globals_resolved)
+      rtsFunctionImports debug <> generateFFIFunctionImports (ffiMarshalState final_m)
     new_function_map =
-      LM.mapKeys entityName $ SM.toMap $ functionMap m_globals_resolved
+      LM.mapKeys entityName $ SM.toMap $ functionMap final_m
     initial_pages =
-      (fromIntegral (memoryBase + last_data_offset) `roundup` mblock_size)
+      (fromIntegral (memoryBase + last_data_offset) `roundup` mblock_size) -- TODO: WRONG (need to (dynamically) add 1024).
         `quot` wasmPageSize
     initial_mblocks =
       initial_pages `quot` (mblock_size `quot` wasmPageSize)
@@ -90,7 +98,7 @@ resolveAsteriusModule debug m_globals_resolved =
         tableSlots = table_slots,
         globalImports = rtsGlobalImports,
         globalExports = rtsGlobalExports,
-        globalMap = globalsMap m_globals_resolved, -- Copy as-is.
+        globalMap = globalsMap final_m, -- Copy as-is.
         memorySegments = segs,
         memoryImport = MemoryImport
           { externalModuleName = "WasmMemory",
@@ -124,8 +132,8 @@ linkStart debug gc_sections store root_syms export_funcs =
       | gc_sections = gcSections store root_syms export_funcs
       | otherwise = fromCachedModule store
     !merged_m0_evaluated = force merged_m0
-    !merged_m
+    !merged_m1
       | debug = addMemoryTrap merged_m0_evaluated
       | otherwise = merged_m0_evaluated
-    (!result_m, !ss_off_map, !fn_off_map, !tbl_slots, !static_mbs) =
-      resolveAsteriusModule debug merged_m
+    (!result_m, !merged_m, !ss_off_map, !fn_off_map, !tbl_slots, !static_mbs) =
+      resolveAsteriusModule debug merged_m1

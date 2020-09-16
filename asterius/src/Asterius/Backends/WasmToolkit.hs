@@ -24,7 +24,7 @@ module Asterius.Backends.WasmToolkit
 where
 
 import Asterius.Builtins
-import Asterius.EDSL (addInt64, constI64, extendUInt32)
+import Asterius.EDSL (tagFunction, tagData, addInt32, constI32)
 import Asterius.Internals.Barf
 import Asterius.Internals.MagicNumber
 import Asterius.Passes.Relooper
@@ -714,10 +714,17 @@ makeInstructions expr =
               pure $ unitBag Wasm.Unreachable
         -- Case 2: Tail calls are off
         else case SM.lookup returnCallTarget64 fn_off_map of
-          Just t -> makeInstructions
+          Just off -> makeInstructions
             SetGlobal
               { globalSymbol = "__asterius_pc",
-                value = ConstI64 $ mkFunctionAddress $ t
+                value =
+                  let table_base =
+                        GetGlobal
+                          { globalSymbol = "__asterius_table_base",
+                            valueType = I32
+                          }
+                   in tagFunction $
+                        table_base `addInt32` constI32 (fromIntegral off)
               }
           _
             | verbose_err ->
@@ -753,21 +760,24 @@ makeInstructions expr =
       verbose_err <- isVerboseErrOn
       ss_off_map <- askStaticsOffsetMap
       fn_off_map <- askFunctionsOffsetMap
-      if  | Just x <- SM.lookup unresolvedSymbol ss_off_map ->
-            pure $ unitBag Wasm.I64Const
-              { i64ConstValue = mkDataAddress $ x + fromIntegral symbolOffset
-              }
-          | Just x <- SM.lookup unresolvedSymbol fn_off_map ->
-            let base =
+      if  | Just off <- SM.lookup unresolvedSymbol ss_off_map ->
+            let memory_base =
+                  GetGlobal
+                    { globalSymbol = "__asterius_memory_base",
+                      valueType = I32
+                    }
+             in makeInstructions $
+                  tagData $
+                    memory_base `addInt32` constI32 (fromIntegral off + symbolOffset)
+          | Just off <- SM.lookup unresolvedSymbol fn_off_map ->
+            let table_base =
                   GetGlobal
                     { globalSymbol = "__asterius_table_base",
                       valueType = I32
                     }
              in makeInstructions $
-                  addInt64
-                    (extendUInt32 base)
-                    (constI64 $ fromIntegral x + symbolOffset)
-
+                  tagFunction $
+                    table_base `addInt32` constI32 (fromIntegral off + symbolOffset)
           | verbose_err ->
             makeInstructions $ barf (entityName unresolvedSymbol) [I64]
           | otherwise ->

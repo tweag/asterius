@@ -1,3 +1,5 @@
+import { Memory } from "./rts.memory.mjs";
+
 export class SymbolTable {
   constructor(
     fn_offset_table,
@@ -7,10 +9,10 @@ export class SymbolTable {
   ) {
     this.symbolTable = new Map();
     for (const [k, v] of Object.entries(fn_offset_table)) {
-      this.symbolTable.set(k, table_base + v); // TODO: TAGGING IS REQUIRED.
+      this.symbolTable.set(k, Memory.tagFunction(table_base + v));
     }
     for (const [k, v] of Object.entries(ss_offset_table)) {
-      this.symbolTable.set(k, memory_base + v); // TODO: TAGGING IS REQUIRED.
+      this.symbolTable.set(k, Memory.tagData(memory_base + v));
     }
     Object.freeze(this);
   }
