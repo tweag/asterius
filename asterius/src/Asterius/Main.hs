@@ -122,6 +122,7 @@ parseTask args = case err_msgs of
           bool_opt "output-ir" $ \t -> t {outputIR = True},
           bool_opt "run" $ \t -> t {run = True},
           bool_opt "verbose-err" $ \t -> t {backend = Binaryen, verboseErr = True},
+          bool_opt "pic" $ \t -> t {pic = True},
           bool_opt "yolo" $ \t -> t {yolo = True},
           bool_opt "console-history" $ \t -> t {consoleHistory = True},
           str_opt "ghc-option" $
@@ -315,6 +316,7 @@ ahcDistMain logger task (final_m, report) = do
       Binaryen.setLowMemoryUnused 1
       m_ref <-
         Binaryen.marshalModule
+          (pic task)
           (verboseErr task)
           (tailCalls task)
           (staticsOffsetMap report)
@@ -354,6 +356,7 @@ ahcDistMain logger task (final_m, report) = do
       let conv_result =
             runExcept $
               WasmToolkit.makeModule
+                (pic task)
                 (verboseErr task)
                 (tailCalls task)
                 (staticsOffsetMap report)

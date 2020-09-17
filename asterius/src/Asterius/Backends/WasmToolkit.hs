@@ -460,7 +460,9 @@ marshalBinaryOp op = case op of
 -- | Environment used during the elaboration of Asterius' types to WebAssembly.
 data MarshalEnv
   = MarshalEnv
-      { -- | Whether the @verbose_err@ extension is on.
+      { -- | Whether the @pic@ extension is on.
+        envIsPicOn :: Bool,
+        -- | Whether the @verbose_err@ extension is on.
         envIsVerboseErrOn :: Bool,
         -- | Whether the tail call extension is on.
         envAreTailCallsOn :: Bool,
@@ -475,6 +477,10 @@ data MarshalEnv
         -- | The local context. Used for local variable access.
         envLclContext :: LocalContext
       }
+
+-- | Check whether the @pic@ extension is on.
+isPicOn :: MonadReader MarshalEnv m => m Bool
+isPicOn = reader envIsVerboseErrOn
 
 -- | Check whether the @verbose_err@ extension is on.
 isVerboseErrOn :: MonadReader MarshalEnv m => m Bool
@@ -750,12 +756,15 @@ makeInstructions expr =
     Unreachable -> pure $ unitBag Wasm.Unreachable
     CFG {..} -> makeInstructions $ relooper graph
     Symbol {..} -> do
+      pic_is_on <- isPicOn
       verbose_err <- isVerboseErrOn
       ss_off_map <- askStaticsOffsetMap
       fn_off_map <- askFunctionsOffsetMap
       if  | Just off <- SM.lookup unresolvedSymbol ss_off_map ->
+            -- TODO: choice point
             makeInstructions $ mkDynamicDataAddress $ off + fromIntegral symbolOffset
           | Just off <- SM.lookup unresolvedSymbol fn_off_map ->
+            -- TODO: choice point
             makeInstructions $ mkDynamicFunctionAddress $ off + fromIntegral symbolOffset
           | verbose_err ->
             makeInstructions $ barf (entityName unresolvedSymbol) [I64]
@@ -826,15 +835,17 @@ makeModule ::
   MonadError MarshalError m =>
   Bool ->
   Bool ->
+  Bool ->
   SM.SymbolMap Word32 ->
   SM.SymbolMap Word32 ->
   Module ->
   m Wasm.Module
-makeModule verbose_err tail_calls ss_off_map fn_off_map m = do
+makeModule pic_on verbose_err tail_calls ss_off_map fn_off_map m = do
   _module_symtable <- makeModuleSymbolTable m
   let env =
         MarshalEnv
-          { envIsVerboseErrOn = verbose_err,
+          { envIsPicOn = pic_on,
+            envIsVerboseErrOn = verbose_err,
             envAreTailCallsOn = tail_calls,
             envStaticsOffsetMap = ss_off_map,
             envFunctionsOffsetMap = fn_off_map,
