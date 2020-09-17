@@ -5,6 +5,7 @@ ARG USERNAME=asterius
 ARG UID=1000
 
 ENV \
+  BROWSER=echo \
   LANG=C.UTF-8 \
   LC_ALL=C.UTF-8 \
   LC_CTYPE=C.UTF-8 \
@@ -29,6 +30,7 @@ RUN \
     ripgrep \
     sudo \
     wabt \
+    xdg-utils \
     zlib1g-dev \
     zstd && \
   apt autoremove --purge -y && \
