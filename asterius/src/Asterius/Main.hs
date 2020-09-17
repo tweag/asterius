@@ -21,7 +21,6 @@ import Asterius.Foreign.ExportStatic
 import Asterius.Internals
 import qualified Asterius.Internals.Arena as A
 import Asterius.Internals.ByteString
-import Asterius.Internals.MagicNumber
 import Asterius.Internals.Marshal
 import Asterius.Internals.Temp
 import Asterius.JSFFI
@@ -139,25 +138,25 @@ parseTask args = case err_msgs of
 getTask :: IO Task
 getTask = parseTask <$> getArgs
 
-genStaticsSymbolTableDict :: SM.SymbolMap Word32 -> Builder
-genStaticsSymbolTableDict ss_off_map =
+genStaticsOffsetTableDict :: SM.SymbolMap Word32 -> Builder
+genStaticsOffsetTableDict ss_off_map =
   "Object.freeze({"
     <> mconcat
       ( intersperse
           ","
-          [ "\"" <> byteString (entityName sym) <> "\":" <> intHex (mkStaticDataAddress sym_off)
+          [ "\"" <> byteString (entityName sym) <> "\":" <> intHex (fromIntegral sym_off :: Int64)
             | (sym, sym_off) <- SM.toList ss_off_map
           ]
       )
     <> "})"
 
-genFunctionsSymbolTableDict :: SM.SymbolMap Word32 -> Builder
-genFunctionsSymbolTableDict fn_off_map =
+genFunctionsOffsetTableDict :: SM.SymbolMap Word32 -> Builder
+genFunctionsOffsetTableDict fn_off_map =
   "Object.freeze({"
     <> mconcat
       ( intersperse
           ","
-          [ "\"" <> byteString (entityName sym) <> "\":" <> intHex (mkStaticFunctionAddress sym_off)
+          [ "\"" <> byteString (entityName sym) <> "\":" <> intHex (fromIntegral sym_off :: Int64)
             | (sym, sym_off) <- SM.toList fn_off_map
           ]
       )
@@ -178,10 +177,10 @@ genReq task LinkReport {..} =
       generateFFIImportObjectFactory bundledFFIMarshalState,
       ", exportsStatic: ",
       genExportStaticObj bundledFFIMarshalState staticsOffsetMap,
-      ", functionsSymbolTable: ",
-      genFunctionsSymbolTableDict fn_off_map,
-      ", staticsSymbolTable: ",
-      genStaticsSymbolTableDict ss_off_map,
+      ", functionsOffsetTable: ",
+      genFunctionsOffsetTableDict fn_off_map,
+      ", staticsOffsetTable: ",
+      genStaticsOffsetTableDict ss_off_map,
       if debug task
         then mconcat [", infoTables: ", genInfoTables infoTableSet]
         else mempty,

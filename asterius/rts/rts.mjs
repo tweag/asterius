@@ -38,8 +38,8 @@ export async function newAsteriusInstance(req) {
       1024 // Leave 1KB empty for the --low-memory-unused optimization to work.
     ),
     __asterius_symbol_table = new SymbolTable(
-      req.functionsSymbolTable,
-      req.staticsSymbolTable,
+      req.functionsOffsetTable,
+      req.staticsOffsetTable,
       __asterius_table_base.value,
       __asterius_memory_base.value
     ),
