@@ -43,6 +43,7 @@ makeInfoTableSet AsteriusModule {..} ss_off_map =
 
 resolveAsteriusModule ::
   Bool ->
+  Bool ->
   AsteriusModule ->
   ( Module,
     AsteriusModule,
@@ -51,7 +52,7 @@ resolveAsteriusModule ::
     Int,
     Int
   )
-resolveAsteriusModule debug m_globals_resolved =
+resolveAsteriusModule pic_on debug m_globals_resolved =
   (new_mod, final_m, ss_off_map, fn_off_map, table_slots, initial_mblocks)
   where
     -- Create the offset tables first. A dummy relocation function already
@@ -61,7 +62,7 @@ resolveAsteriusModule debug m_globals_resolved =
     -- Create the data segments and the new relocation function second.
     -- We need to update the module with the real relocation function
     -- before we proceed.
-    (segs, reloc_function) = makeMemory m_globals_resolved fn_off_map ss_off_map
+    (segs, reloc_function) = makeMemory pic_on m_globals_resolved fn_off_map ss_off_map
     final_m = reloc_function <> m_globals_resolved
     -- Continue with the rest using the "real" module.
     func_table = makeFunctionTable fn_off_map
@@ -110,11 +111,12 @@ resolveAsteriusModule debug m_globals_resolved =
 linkStart ::
   Bool ->
   Bool ->
+  Bool ->
   AsteriusCachedModule ->
   SS.SymbolSet ->
   [EntitySymbol] ->
   (AsteriusModule, Module, LinkReport)
-linkStart debug gc_sections store root_syms export_funcs =
+linkStart pic_on debug gc_sections store root_syms export_funcs =
   ( merged_m,
     result_m,
     LinkReport
@@ -136,4 +138,4 @@ linkStart debug gc_sections store root_syms export_funcs =
       | debug = addMemoryTrap merged_m0_evaluated
       | otherwise = merged_m0_evaluated
     (!result_m, !merged_m, !ss_off_map, !fn_off_map, !tbl_slots, !static_mbs) =
-      resolveAsteriusModule debug merged_m1
+      resolveAsteriusModule pic_on debug merged_m1

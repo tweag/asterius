@@ -18,6 +18,7 @@ import Bag
 import qualified Data.ByteString as BS
 import Data.Foldable
 import Data.List
+import Data.Maybe
 import Data.Monoid
 import qualified Data.Set as Set
 import Data.Tuple
@@ -78,14 +79,14 @@ makeWasmApplyRelocs fn_offsets ss_offsets = runEDSL "__wasm_apply_relocs" $ do
 -- relocation function. NOTE: we do not generate data segments for
 -- uninitialized statics; we do not have to specify each segment and the
 -- linear memory is zero-initialized anyway.
-{-# INLINEABLE makeSegment #-}
-makeSegment ::
+{-# INLINEABLE makeDynamicSegment #-}
+makeDynamicSegment ::
   SM.SymbolMap Word32 ->
   SM.SymbolMap Word32 ->
   (Word32, Set.Set Word32, Set.Set Word32) ->
   AsteriusStatic ->
   ((Word32, Set.Set Word32, Set.Set Word32), Bag DataSegment)
-makeSegment fn_off_map ss_off_map (current_off, fn_meta, ss_meta) static = case static of
+makeDynamicSegment fn_off_map ss_off_map (current_off, fn_meta, ss_meta) static = case static of
   SymbolStatic sym o
     | Just off <- SM.lookup sym fn_off_map ->
       let off_to_store :: Int64 = fromIntegral $ off + fromIntegral o
@@ -129,9 +130,53 @@ makeSegment fn_off_map ss_off_map (current_off, fn_meta, ss_meta) static = case 
   where
     next_off = current_off + sizeofStatic static
 
-{-# INLINEABLE makeMemory #-}
-makeMemory :: AsteriusModule -> SM.SymbolMap Word32 -> SM.SymbolMap Word32 -> ([DataSegment], AsteriusModule) -- relocation function implementation
-makeMemory AsteriusModule {..} fn_off_map ss_off_map =
+-- | Given the offset of a static and the static itself, compute the
+-- corresponding data segment and the offset of the subsequent static. NOTE: we
+-- do not generate data segments for uninitialized statics; we do not have to
+-- specify each segment and the linear memory is zero-initialized anyway.
+{-# INLINEABLE makeStaticSegment #-}
+makeStaticSegment :: SM.SymbolMap Word32 -> SM.SymbolMap Word32 -> Word32 -> AsteriusStatic -> (Word32, Maybe DataSegment)
+makeStaticSegment fn_off_map ss_off_map current_off static =
+  ( current_off + sizeofStatic static,
+    case static of
+      SymbolStatic sym o
+        | Just off <- SM.lookup sym fn_off_map ->
+          Just
+            DataSegment
+              { content = encodeStorable $ mkStaticFunctionAddress (off + fromIntegral o),
+                offset = ConstI32 $ fromIntegral $ staticMemoryBase + current_off
+              }
+        | Just off <- SM.lookup sym ss_off_map ->
+          Just
+            DataSegment
+              { content = encodeStorable $ mkStaticDataAddress (off + fromIntegral o),
+                offset = ConstI32 $ fromIntegral $ staticMemoryBase + current_off
+              }
+        | otherwise ->
+          Just
+            DataSegment
+              { content = encodeStorable invalidAddress,
+                offset = ConstI32 $ fromIntegral $ staticMemoryBase + current_off
+              }
+      Uninitialized {} -> Nothing
+      Serialized buf ->
+        Just
+          DataSegment
+            { content = buf,
+              offset = ConstI32 $ fromIntegral $ staticMemoryBase + current_off
+            }
+  )
+
+{-# INLINEABLE makeStaticMemory #-}
+makeStaticMemory :: AsteriusModule -> SM.SymbolMap Word32 -> SM.SymbolMap Word32 -> [DataSegment]
+makeStaticMemory AsteriusModule {..} fn_off_map ss_off_map =
+  concat $ SM.elems $ flip SM.mapWithKey staticsMap $ \statics_sym ss ->
+    let initial_offset = ss_off_map SM.! statics_sym
+     in catMaybes $ snd $ mapAccumL (makeStaticSegment fn_off_map ss_off_map) initial_offset $ asteriusStatics ss
+
+{-# INLINEABLE makeDynamicMemory #-}
+makeDynamicMemory :: AsteriusModule -> SM.SymbolMap Word32 -> SM.SymbolMap Word32 -> ([DataSegment], AsteriusModule) -- relocation function implementation
+makeDynamicMemory AsteriusModule {..} fn_off_map ss_off_map =
   ( bagToList $ unionManyBags [segs | (segs, _, _) <- all_data],
     makeWasmApplyRelocs
       (Set.unions [fn_offs | (_, fn_offs, _) <- all_data])
@@ -146,7 +191,7 @@ makeMemory AsteriusModule {..} fn_off_map ss_off_map =
     process_statics_entry :: EntitySymbol -> AsteriusStatics -> (Bag DataSegment, Set.Set Word32, Set.Set Word32)
     process_statics_entry statics_sym ss =
       case mapAccumL
-        (makeSegment fn_off_map ss_off_map)
+        (makeDynamicSegment fn_off_map ss_off_map)
         (init_offset, init_fn_offs, init_ss_offs)
         (asteriusStatics ss) of
         ((_, fn_offs, ss_offs), mb_segs) -> (unionManyBags mb_segs, fn_offs, ss_offs)
@@ -154,3 +199,8 @@ makeMemory AsteriusModule {..} fn_off_map ss_off_map =
         init_offset = ss_off_map SM.! statics_sym
         init_fn_offs = Set.empty
         init_ss_offs = Set.empty
+
+makeMemory :: Bool -> AsteriusModule -> SM.SymbolMap Word32 -> SM.SymbolMap Word32 -> ([DataSegment], AsteriusModule) -- relocation function implementation
+makeMemory pic_is_on final_m fn_off_map ss_off_map
+  | pic_is_on = makeDynamicMemory final_m fn_off_map ss_off_map
+  | otherwise = (makeStaticMemory final_m fn_off_map ss_off_map, mempty)

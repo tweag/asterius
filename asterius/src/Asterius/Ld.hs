@@ -94,6 +94,7 @@ linkModules ::
   LinkTask -> AsteriusCachedModule -> (AsteriusModule, Module, LinkReport)
 linkModules LinkTask {..} m =
   linkStart
+    pic
     debug
     gcSections
     ( toCachedModule
