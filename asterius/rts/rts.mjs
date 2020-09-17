@@ -26,6 +26,10 @@ import * as rtsConstants from "./rts.constants.mjs";
 
 export async function newAsteriusInstance(req) {
   const __asterius_components = {};
+  const __asterius_spt_entries = new Map();
+  for (const [k, off] of req.sptOffsetEntries.entries()) {
+    __asterius_spt_entries.set(k, Memory.tagData(memory_base + off));
+  }
   let __asterius_persistent_state = req.persistentState
       ? req.persistentState
       : {},
@@ -70,7 +74,11 @@ export async function newAsteriusInstance(req) {
       __asterius_heapalloc,
       __asterius_symbol_table
     ),
-    __asterius_staticptr_manager = new StaticPtrManager(__asterius_memory, __asterius_stableptr_manager, req.sptEntries),
+    __asterius_staticptr_manager = new StaticPtrManager(
+      __asterius_memory,
+      __asterius_stableptr_manager,
+      __asterius_spt_entries
+    ),
     __asterius_scheduler = new Scheduler(
       __asterius_memory,
       __asterius_symbol_table,

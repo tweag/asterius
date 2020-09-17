@@ -185,7 +185,7 @@ genReq task LinkReport {..} =
       if debug task
         then mconcat [", infoTables: ", genInfoTables infoTableSet]
         else mempty,
-      ", sptEntries: ",
+      ", sptOffsetEntries: ",
       genSPT staticsOffsetMap sptEntries,
       ", tableSlots: ",
       intDec tableSlots,
