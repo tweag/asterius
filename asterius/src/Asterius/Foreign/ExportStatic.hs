@@ -8,7 +8,6 @@ module Asterius.Foreign.ExportStatic
 where
 
 import Asterius.Foreign.SupportedTypes
-import Asterius.Internals.MagicNumber
 import Asterius.Types
 import qualified Asterius.Types.SymbolMap as SM
 import Data.Bits
@@ -43,7 +42,7 @@ genExportStaticFunc k FFIExportDecl {ffiFunctionType = FFIFunctionType {..}, ..}
     "[\""
       <> byteString (entityName k)
       <> "\",0x"
-      <> int64HexFixed (mkStaticDataAddress off)
+      <> int64HexFixed (fromIntegral off :: Int64)
       <> ",0x"
       <> int64HexFixed (encodeTys ffiParamTypes)
       <> ",0x"
