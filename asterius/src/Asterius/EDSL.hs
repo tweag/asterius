@@ -350,21 +350,13 @@ dynamicTableBase =
 
 mkDynamicDataAddress :: Word32 -> Expression
 mkDynamicDataAddress off =
-  tagData $ dynamicMemoryBase `addInt32` ConstI32 (fromIntegral off)
+  extendUInt32 (dynamicMemoryBase `addInt32` ConstI32 (fromIntegral off))
+    `andInt64` ConstI64 (dataTag `shiftL` 32)
 
 mkDynamicFunctionAddress :: Word32 -> Expression
 mkDynamicFunctionAddress off =
-  tagFunction $ dynamicTableBase `addInt32` ConstI32 (fromIntegral off)
-
--- | TODO: Document @(UInt32 -> UInt64)@.
-{-# INLINEABLE tagFunction #-}
-tagFunction :: Expression -> Expression
-tagFunction e = extendUInt32 e `andInt64` ConstI64 (functionTag `shiftL` 32)
-
--- | TODO: Document @(UInt32 -> UInt64)@.
-{-# INLINEABLE tagData #-}
-tagData :: Expression -> Expression
-tagData e = extendUInt32 e `andInt64` ConstI64 (dataTag `shiftL` 32)
+  extendUInt32 (dynamicTableBase `addInt32` ConstI32 (fromIntegral off))
+    `andInt64` ConstI64 (functionTag `shiftL` 32)
 
 -- ----------------------------------------------------------------------------
 
