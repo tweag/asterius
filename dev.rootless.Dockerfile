@@ -1,8 +1,41 @@
-FROM debian:sid-slim
-
 ARG DEBIAN_FRONTEND=noninteractive
 ARG USERNAME=asterius
 ARG UID=1000
+
+FROM debian:sid-slim AS rootless
+
+ARG DEBIAN_FRONTEND
+ARG USERNAME
+ARG UID
+
+RUN \
+  apt update && \
+  apt full-upgrade -y && \
+  apt install -y \
+    sudo && \
+  apt autoremove --purge -y && \
+  apt clean && \
+  rm -rf -v \
+    /tmp/* \
+    /var/lib/apt/lists/* \
+    /var/tmp/* && \
+  useradd \
+    --create-home \
+    --shell /bin/bash \
+    --uid ${UID} \
+    ${USERNAME} && \
+  echo "${USERNAME} ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/${USERNAME} && \
+  chmod 0440 /etc/sudoers.d/${USERNAME}
+
+USER ${USERNAME}
+
+WORKDIR /home/${USERNAME}
+
+FROM rootless
+
+ARG DEBIAN_FRONTEND
+ARG USERNAME
+ARG UID
 
 ENV \
   BROWSER=echo \
@@ -12,9 +45,9 @@ ENV \
   PATH=/home/${USERNAME}/.local/bin:/home/${USERNAME}/.nvm/versions/node/v14.10.1/bin:${PATH}
 
 RUN \
-  apt update && \
-  apt full-upgrade -y && \
-  apt install -y \
+  sudo apt update && \
+  sudo apt full-upgrade -y && \
+  sudo apt install -y \
     automake \
     binaryen \
     build-essential \
@@ -28,25 +61,16 @@ RUN \
     openssh-client \
     python3-pip \
     ripgrep \
-    sudo \
     wabt \
     xdg-utils \
     zlib1g-dev \
     zstd && \
-  apt autoremove --purge -y && \
-  apt clean && \
-  rm -rf -v /var/lib/apt/lists/* && \
-  useradd \
-    --create-home \
-    --shell /bin/bash \
-    --uid ${UID} \
-    asterius && \
-  echo "${USERNAME} ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/${USERNAME} && \
-  chmod 0440 /etc/sudoers.d/${USERNAME}
-
-USER ${USERNAME}
-
-WORKDIR /home/${USERNAME}
+  sudo apt autoremove --purge -y && \
+  sudo apt clean && \
+  sudo rm -rf -v \
+    /tmp/* \
+    /var/lib/apt/lists/* \
+    /var/tmp/*
 
 RUN \
   (curl https://raw.githubusercontent.com/nvm-sh/nvm/v0.35.3/install.sh | bash) && \
@@ -80,10 +104,10 @@ RUN \
     ormolu \
     pretty-show \
     wai-app-static && \
-  cd /home/${USERNAME} && \
+  cd ~ && \
   sudo rm -rf -v \
-    /home/${USERNAME}/.npm \
-    /home/${USERNAME}/.stack/pantry \
-    /home/${USERNAME}/.stack/programs/*/*.tar.xz \
+    ~/.npm \
+    ~/.stack/pantry \
+    ~/.stack/programs/*/*.tar.xz \
     /tmp/* \
     /var/tmp/*
