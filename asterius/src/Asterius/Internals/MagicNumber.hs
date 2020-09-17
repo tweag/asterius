@@ -5,6 +5,7 @@ module Asterius.Internals.MagicNumber
     staticTableBase,
     staticMemoryBase,
     mkStaticDataAddress,
+    mkStaticFunctionAddress,
   )
 where
 
@@ -32,3 +33,6 @@ staticMemoryBase = 1024
 
 mkStaticDataAddress :: Word32 -> Int64
 mkStaticDataAddress off = (dataTag `shiftL` 32) .|. fromIntegral (staticMemoryBase + off)
+
+mkStaticFunctionAddress :: Word32 -> Int64
+mkStaticFunctionAddress off = (functionTag `shiftL` 32) .|. fromIntegral (staticTableBase + off)
