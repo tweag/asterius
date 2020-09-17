@@ -114,6 +114,8 @@ parseTask args = case err_msgs of
             \t ->
               t
                 { backend = Binaryen,
+                  optimizeLevel = 0,
+                  shrinkLevel = 0,
                   debug = True,
                   outputIR = True,
                   verboseErr = True
