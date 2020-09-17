@@ -193,6 +193,8 @@ genReq task LinkReport {..} =
       intDec staticMBlocks,
       ", yolo: ",
       if yolo task then "true" else "false",
+      ", pic: ",
+      if pic task then "true" else "false",
       ", consoleHistory: ",
       if consoleHistory task then "true" else "false",
       ", gcThreshold: ",
