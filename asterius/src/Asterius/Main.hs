@@ -163,8 +163,8 @@ genFunctionsOffsetTableDict fn_off_map =
       )
     <> "})"
 
-genInfoTables :: [Int64] -> Builder
-genInfoTables sym_set =
+genOffsetInfoTables :: [Word32] -> Builder
+genOffsetInfoTables sym_set =
   "new Set([" <> mconcat (intersperse "," (map intHex sym_set)) <> "])"
 
 genReq :: Task -> LinkReport -> Builder
@@ -183,7 +183,7 @@ genReq task LinkReport {..} =
       ", staticsOffsetTable: ",
       genStaticsOffsetTableDict ss_off_map,
       if debug task
-        then mconcat [", infoTables: ", genInfoTables infoTableSet]
+        then mconcat [", offsetInfoTables: ", genOffsetInfoTables infoTableOffsetSet]
         else mempty,
       ", sptOffsetEntries: ",
       genSPT staticsOffsetMap sptEntries,

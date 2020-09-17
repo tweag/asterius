@@ -30,6 +30,15 @@ export async function newAsteriusInstance(req) {
   for (const [k, off] of req.sptOffsetEntries.entries()) {
     __asterius_spt_entries.set(k, Memory.tagData(memory_base + off));
   }
+  if (req.offsetInfoTables) {
+    const __asterius_info_tables = new Set();
+    for (const [k, v] of req.offsetInfoTables.entries()) { // TODO: well.
+      __asterius_info_tables.add(Memory.tagData(memory_base + off));
+    }
+  }
+  else {
+    __asterius_info_tables = undefined;
+  }
   let __asterius_persistent_state = req.persistentState
       ? req.persistentState
       : {},
@@ -94,7 +103,7 @@ export async function newAsteriusInstance(req) {
       __asterius_stableptr_manager,
       __asterius_stablename_manager,
       __asterius_scheduler,
-      req.infoTables,
+      __asterius_info_tables,
       __asterius_symbol_table,
       __asterius_reentrancy_guard,
       req.yolo,
@@ -114,7 +123,7 @@ export async function newAsteriusInstance(req) {
       __asterius_memory,
       __asterius_heapalloc,
       __asterius_exports,
-      req.infoTables,
+      __asterius_info_tables,
       __asterius_symbol_table
     );
   __asterius_scheduler.exports = __asterius_exports;

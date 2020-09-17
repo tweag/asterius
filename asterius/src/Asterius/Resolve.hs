@@ -34,9 +34,9 @@ unresolvedGlobalRegType gr = case gr of
   DoubleReg _ -> F64
   _ -> I64
 
-makeInfoTableSet :: AsteriusModule -> SM.SymbolMap Word32 -> [Int64]
-makeInfoTableSet AsteriusModule {..} ss_off_map =
-  map mkStaticDataAddress $ SM.elems $ SM.restrictKeys ss_off_map $ SM.keysSet $
+makeInfoTableOffsetSet :: AsteriusModule -> SM.SymbolMap Word32 -> [Word32]
+makeInfoTableOffsetSet AsteriusModule {..} ss_off_map =
+  SM.elems $ SM.restrictKeys ss_off_map $ SM.keysSet $
     SM.filter
       ((== InfoTable) . staticsType)
       staticsMap
@@ -122,7 +122,7 @@ linkStart pic_on debug gc_sections store root_syms export_funcs =
     LinkReport
       { staticsOffsetMap = ss_off_map,
         functionOffsetMap = fn_off_map,
-        infoTableSet = makeInfoTableSet merged_m ss_off_map,
+        infoTableOffsetSet = makeInfoTableOffsetSet merged_m ss_off_map,
         Asterius.Types.LinkReport.tableSlots = tbl_slots,
         staticMBlocks = static_mbs,
         sptEntries = sptMap merged_m,
