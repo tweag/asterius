@@ -3,6 +3,7 @@ FROM debian:sid-slim
 ARG DEBIAN_FRONTEND=noninteractive
 
 ENV \
+  BROWSER=echo \
   LANG=C.UTF-8 \
   LC_ALL=C.UTF-8 \
   LC_CTYPE=C.UTF-8 \
@@ -26,6 +27,7 @@ RUN \
     python3-pip \
     ripgrep \
     wabt \
+    xdg-utils \
     zlib1g-dev \
     zstd && \
   apt autoremove --purge -y && \
