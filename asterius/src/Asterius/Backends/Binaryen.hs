@@ -453,11 +453,15 @@ marshalExpression e = case e of
       fn_off_map <- askFunctionsOffsetMap
       case SM.lookup returnCallTarget64 fn_off_map of
         Just off -> do
+          pic_is_on <- isPicOn
           s <-
             marshalExpression
               SetGlobal
                 { globalSymbol = "__asterius_pc",
-                  value = mkDynamicFunctionAddress off
+                  value =
+                   if pic_is_on
+                     then mkDynamicFunctionAddress off
+                     else ConstI64 $ mkStaticFunctionAddress off
                 }
           m <- askModuleRef
           a <- askArena
@@ -512,11 +516,13 @@ marshalExpression e = case e of
     fn_off_map <- askFunctionsOffsetMap
     m <- askModuleRef
     if  | Just off <- SM.lookup unresolvedSymbol ss_off_map ->
-          -- TODO: choice point
-          marshalExpression $ mkDynamicDataAddress $ off + fromIntegral symbolOffset
+          if pic_is_on
+            then marshalExpression $ mkDynamicDataAddress $ off + fromIntegral symbolOffset
+            else lift $ Binaryen.constInt64 m $ mkStaticDataAddress $ off + fromIntegral symbolOffset
         | Just off <- SM.lookup unresolvedSymbol fn_off_map ->
-          -- TODO: choice point
-          marshalExpression $ mkDynamicFunctionAddress $ off + fromIntegral symbolOffset
+          if pic_is_on
+            then marshalExpression $ mkDynamicFunctionAddress $ off + fromIntegral symbolOffset
+            else lift $ Binaryen.constInt64 m $ mkStaticFunctionAddress $ off + fromIntegral symbolOffset
         | verbose_err ->
           marshalExpression $ barf (entityName unresolvedSymbol) [I64]
         | otherwise ->

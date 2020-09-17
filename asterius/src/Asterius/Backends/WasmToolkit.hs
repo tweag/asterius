@@ -706,6 +706,7 @@ makeInstructions expr =
     ReturnCall {..} -> do
       fn_off_map <- askFunctionsOffsetMap
       ModuleSymbolTable {..} <- askModuleSymbolTable
+      pic_is_on <- isPicOn
       verbose_err <- isVerboseErrOn
       tail_calls <- areTailCallsOn
       if tail_calls
@@ -723,7 +724,10 @@ makeInstructions expr =
           Just off -> makeInstructions
             SetGlobal
               { globalSymbol = "__asterius_pc",
-                value = mkDynamicFunctionAddress off
+                value =
+                  if pic_is_on
+                    then mkDynamicFunctionAddress off
+                    else ConstI64 $ mkStaticFunctionAddress off
               }
           _
             | verbose_err ->
@@ -761,11 +765,13 @@ makeInstructions expr =
       ss_off_map <- askStaticsOffsetMap
       fn_off_map <- askFunctionsOffsetMap
       if  | Just off <- SM.lookup unresolvedSymbol ss_off_map ->
-            -- TODO: choice point
-            makeInstructions $ mkDynamicDataAddress $ off + fromIntegral symbolOffset
+            if pic_is_on
+              then makeInstructions $ mkDynamicDataAddress $ off + fromIntegral symbolOffset
+              else makeInstructions $ ConstI64 $ mkStaticDataAddress $ off + fromIntegral symbolOffset
           | Just off <- SM.lookup unresolvedSymbol fn_off_map ->
-            -- TODO: choice point
-            makeInstructions $ mkDynamicFunctionAddress $ off + fromIntegral symbolOffset
+            if pic_is_on
+              then makeInstructions $ mkDynamicFunctionAddress $ off + fromIntegral symbolOffset
+              else makeInstructions $ ConstI64 $ mkStaticFunctionAddress $ off + fromIntegral symbolOffset
           | verbose_err ->
             makeInstructions $ barf (entityName unresolvedSymbol) [I64]
           | otherwise ->
