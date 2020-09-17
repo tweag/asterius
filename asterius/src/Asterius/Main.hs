@@ -145,7 +145,7 @@ genStaticsOffsetTableDict ss_off_map =
     <> mconcat
       ( intersperse
           ","
-          [ "\"" <> byteString (entityName sym) <> "\":" <> intHex (fromIntegral sym_off :: Int64)
+          [ "\"" <> byteString (entityName sym) <> "\":" <> intHex sym_off
             | (sym, sym_off) <- SM.toList ss_off_map
           ]
       )
@@ -157,7 +157,7 @@ genFunctionsOffsetTableDict fn_off_map =
     <> mconcat
       ( intersperse
           ","
-          [ "\"" <> byteString (entityName sym) <> "\":" <> intHex (fromIntegral sym_off :: Int64)
+          [ "\"" <> byteString (entityName sym) <> "\":" <> intHex sym_off
             | (sym, sym_off) <- SM.toList fn_off_map
           ]
       )
