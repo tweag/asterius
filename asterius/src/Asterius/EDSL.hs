@@ -332,8 +332,6 @@ nandInt64 e1 e2 = notInt64 $ andInt64 e1 e2
 unTagClosure :: Expression -> Expression
 unTagClosure p = p `andInt64` constI64 0xFFFFFFFFFFFFFFF8
 
--- ----------------------------------------------------------------------------
-
 dynamicMemoryBase :: Expression
 dynamicMemoryBase =
   GetGlobal
@@ -357,8 +355,6 @@ mkDynamicFunctionAddress :: Word32 -> Expression
 mkDynamicFunctionAddress off =
   extendUInt32 (dynamicTableBase `addInt32` ConstI32 (fromIntegral off))
     `andInt64` ConstI64 (functionTag `shiftL` 32)
-
--- ----------------------------------------------------------------------------
 
 call :: EntitySymbol -> [Expression] -> EDSL ()
 call f xs = emit Call {target = f, operands = xs, callReturnTypes = []}

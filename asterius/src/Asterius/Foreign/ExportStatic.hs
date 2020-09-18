@@ -42,7 +42,7 @@ genExportStaticFunc k FFIExportDecl {ffiFunctionType = FFIFunctionType {..}, ..}
     "[\""
       <> byteString (entityName k)
       <> "\",0x"
-      <> int64HexFixed (fromIntegral off :: Int64)
+      <> word32HexFixed off
       <> ",0x"
       <> int64HexFixed (encodeTys ffiParamTypes)
       <> ",0x"

@@ -765,13 +765,15 @@ makeInstructions expr =
       ss_off_map <- askStaticsOffsetMap
       fn_off_map <- askFunctionsOffsetMap
       if  | Just off <- SM.lookup unresolvedSymbol ss_off_map ->
-            if pic_is_on
-              then makeInstructions $ mkDynamicDataAddress $ off + fromIntegral symbolOffset
-              else makeInstructions $ ConstI64 $ mkStaticDataAddress $ off + fromIntegral symbolOffset
+            makeInstructions $
+              if pic_is_on
+                then mkDynamicDataAddress $ off + fromIntegral symbolOffset
+                else ConstI64 $ mkStaticDataAddress $ off + fromIntegral symbolOffset
           | Just off <- SM.lookup unresolvedSymbol fn_off_map ->
-            if pic_is_on
-              then makeInstructions $ mkDynamicFunctionAddress $ off + fromIntegral symbolOffset
-              else makeInstructions $ ConstI64 $ mkStaticFunctionAddress $ off + fromIntegral symbolOffset
+            makeInstructions $
+              if pic_is_on
+                then mkDynamicFunctionAddress $ off + fromIntegral symbolOffset
+                else ConstI64 $ mkStaticFunctionAddress $ off + fromIntegral symbolOffset
           | verbose_err ->
             makeInstructions $ barf (entityName unresolvedSymbol) [I64]
           | otherwise ->

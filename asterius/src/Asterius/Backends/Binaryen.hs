@@ -516,13 +516,15 @@ marshalExpression e = case e of
     fn_off_map <- askFunctionsOffsetMap
     m <- askModuleRef
     if  | Just off <- SM.lookup unresolvedSymbol ss_off_map ->
-          if pic_is_on
-            then marshalExpression $ mkDynamicDataAddress $ off + fromIntegral symbolOffset
-            else lift $ Binaryen.constInt64 m $ mkStaticDataAddress $ off + fromIntegral symbolOffset
+          marshalExpression $
+            if pic_is_on
+              then mkDynamicDataAddress $ off + fromIntegral symbolOffset
+              else ConstI64 $ mkStaticDataAddress $ off + fromIntegral symbolOffset
         | Just off <- SM.lookup unresolvedSymbol fn_off_map ->
-          if pic_is_on
-            then marshalExpression $ mkDynamicFunctionAddress $ off + fromIntegral symbolOffset
-            else lift $ Binaryen.constInt64 m $ mkStaticFunctionAddress $ off + fromIntegral symbolOffset
+          marshalExpression $
+            if pic_is_on
+              then mkDynamicFunctionAddress $ off + fromIntegral symbolOffset
+              else ConstI64 $ mkStaticFunctionAddress $ off + fromIntegral symbolOffset
         | verbose_err ->
           marshalExpression $ barf (entityName unresolvedSymbol) [I64]
         | otherwise ->

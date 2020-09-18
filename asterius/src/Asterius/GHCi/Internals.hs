@@ -305,7 +305,7 @@ asteriusWriteIServ hsc_env i a
           asteriusRunTH
             i
             st
-            (fromIntegral (mkStaticDataAddress $ staticsOffsetMap link_report ! sym))
+            (fromIntegral (mkStaticDataAddress $ staticsOffsetMap link_report ! sym)) -- TODO
             ty
             loc
             js_s
