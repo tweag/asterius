@@ -42,7 +42,7 @@ ENV \
   LANG=C.UTF-8 \
   LC_ALL=C.UTF-8 \
   LC_CTYPE=C.UTF-8 \
-  PATH=/home/${USERNAME}/.local/bin:/home/${USERNAME}/.nvm/versions/node/v14.10.1/bin:${PATH}
+  PATH=/home/${USERNAME}/.local/bin:/home/${USERNAME}/.nvm/versions/node/v14.11.0/bin:${PATH}
 
 RUN \
   sudo apt update && \
@@ -74,14 +74,15 @@ RUN \
 
 RUN \
   (curl https://raw.githubusercontent.com/nvm-sh/nvm/v0.35.3/install.sh | bash) && \
-  bash -c ". ~/.nvm/nvm.sh && nvm install 14.10.1" && \
+  bash -c ". ~/.nvm/nvm.sh && nvm install 14.11.0" && \
   echo "eval \"\$(direnv hook bash)\"" >> ~/.bashrc && \
   mkdir -p ~/.local/bin && \
   curl -L https://github.com/commercialhaskell/stack/releases/download/v2.3.3/stack-2.3.3-linux-x86_64-bin -o ~/.local/bin/stack && \
   chmod +x ~/.local/bin/stack && \
   curl -L https://downloads.haskell.org/~cabal/cabal-install-3.2.0.0/cabal-install-3.2.0.0-x86_64-unknown-linux.tar.xz | tar xJ -C ~/.local/bin 'cabal' && \
   npm install -g \
-    0x@4.9.1 \
+    @cloudflare/wrangler \
+    0x \
     webpack@next \
     webpack-cli && \
   pip3 install \

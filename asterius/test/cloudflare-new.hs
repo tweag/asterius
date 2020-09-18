@@ -7,7 +7,6 @@ main :: IO ()
 main = do
   args <- getArgs
   withCurrentDirectory "test/cloudflare-new" $ do
-    callCommand "npm install"
     callProcess "ahc-link" $
       [ "--browser",
         "--yolo",
@@ -22,4 +21,4 @@ main = do
         <> args
     createDirectoryIfMissing True "worker"
     copyFile "Worker.wasm" ("worker" </> "module.wasm")
-    callCommand "npx wrangler preview --headless"
+    callCommand "wrangler preview --headless"

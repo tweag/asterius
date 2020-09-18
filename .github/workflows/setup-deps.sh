@@ -3,6 +3,7 @@
 set -eu
 
 npm install -g \
+  @cloudflare/wrangler \
   webpack@next \
   webpack-cli
 
