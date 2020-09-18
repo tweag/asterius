@@ -138,6 +138,102 @@ jobs:
 
           stack test asterius:endianness --test-arguments="--backend=$ASTERIUS_BACKEND"
 
+  test-pic:
+    name: test-pic-${{ matrix.backend }}
+    needs: boot
+    runs-on: ubuntu-20.04
+    strategy:
+      fail-fast: false
+      matrix:
+        backend:
+          - binaryen
+          - wasm-toolkit
+    env:
+      ASTERIUS_BACKEND: ${{ matrix.backend }}
+    steps:
+
+      - name: setup-haskell
+        uses: actions/setup-haskell@v1
+        with:
+          cabal-version: 3.2.0.0
+          stack-version: 2.3.3
+          enable-stack: true
+
+      - name: setup-node-14
+        uses: actions/setup-node@v2.0.0
+        with:
+          node-version: 14.10.1
+
+      - name: checkout
+        uses: actions/checkout@v2
+
+      - name: setup-deps
+        run: |
+          .github/workflows/setup-deps.sh
+
+      - name: download-cache
+        uses: actions/cache@v2
+        with:
+          key: cache-${{ github.sha }}
+          path: |
+            ~/.stack
+            **/.stack-work
+
+      - name: setup-wasm-deps
+        run: |
+          . ./.envrc
+          ahc-cabal v1-update
+          pushd ghc-toolkit/boot-libs
+          ahc-cabal v1-install -j2 \
+            wai-middleware-caching
+          popd
+
+      - name: test-pic
+        run: |
+          stack test asterius:fib --test-arguments="--backend=$ASTERIUS_BACKEND --pic"
+          stack test asterius:jsffi --test-arguments="--backend=$ASTERIUS_BACKEND --pic"
+          stack test asterius:array --test-arguments="--backend=$ASTERIUS_BACKEND --pic"
+          stack test asterius:stableptr --test-arguments="--backend=$ASTERIUS_BACKEND --pic"
+          stack test asterius:rtsapi --test-arguments="--backend=$ASTERIUS_BACKEND --pic"
+          stack test asterius:teletype --test-arguments="--backend=$ASTERIUS_BACKEND --pic"
+          stack test asterius:bytearray --test-arguments="--backend=$ASTERIUS_BACKEND --pic"
+          stack test asterius:bigint --test-arguments="--backend=$ASTERIUS_BACKEND --pic"
+          stack test asterius:todomvc --test-arguments="--backend=$ASTERIUS_BACKEND --pic"
+          stack test asterius:cloudflare --test-arguments="--backend=$ASTERIUS_BACKEND --pic"
+          stack test asterius:cloudflare-new --test-arguments="--backend=$ASTERIUS_BACKEND --pic"
+          stack test asterius:exception --test-arguments="--backend=$ASTERIUS_BACKEND --pic"
+          stack test asterius:regression60 --test-arguments="--backend=$ASTERIUS_BACKEND --pic"
+          stack test asterius:sizeof_md5context --test-arguments="--backend=$ASTERIUS_BACKEND --pic"
+          stack test asterius:largenum --test-arguments="--backend=$ASTERIUS_BACKEND --pic"
+
+          stack test asterius:bytearray --test-arguments="--yolo --backend=$ASTERIUS_BACKEND --pic"
+          stack test asterius:bytearray --test-arguments="--gc-threshold=128 --backend=$ASTERIUS_BACKEND --pic"
+          stack test asterius:fib --test-arguments="--no-gc-sections --backend=$ASTERIUS_BACKEND --pic"
+
+          stack test asterius:fib --test-arguments="--debug --backend=$ASTERIUS_BACKEND --pic" > /dev/null
+          stack test asterius:jsffi --test-arguments="--debug --backend=$ASTERIUS_BACKEND --pic" > /dev/null
+          stack test asterius:array --test-arguments="--debug --backend=$ASTERIUS_BACKEND --pic" > /dev/null
+          stack test asterius:stableptr --test-arguments="--debug --backend=$ASTERIUS_BACKEND --pic" > /dev/null
+          stack test asterius:rtsapi --test-arguments="--debug --backend=$ASTERIUS_BACKEND --pic" > /dev/null
+          stack test asterius:teletype --test-arguments="--debug --backend=$ASTERIUS_BACKEND --pic" > /dev/null
+          # stack test asterius:bytearray --test-arguments="--debug --backend=$ASTERIUS_BACKEND" > /dev/null
+          stack test asterius:bigint --test-arguments="--debug --backend=$ASTERIUS_BACKEND --pic" > /dev/null
+          stack test asterius:exception --test-arguments="--debug --backend=$ASTERIUS_BACKEND --pic" > /dev/null
+
+          stack test asterius:fib --test-arguments="--tail-calls --backend=$ASTERIUS_BACKEND --pic"
+          stack test asterius:fib --test-arguments="--tail-calls --no-gc-sections --backend=$ASTERIUS_BACKEND --pic"
+
+          stack test asterius:nomain --test-arguments="--backend=$ASTERIUS_BACKEND --pic"
+          stack test asterius:nomain --test-arguments="--tail-calls --backend=$ASTERIUS_BACKEND --pic"
+
+          stack test asterius:th --test-arguments="--backend=$ASTERIUS_BACKEND --pic"
+
+          stack test asterius:primitive --test-arguments="--backend=$ASTERIUS_BACKEND --pic"
+
+          stack test asterius:argv --test-arguments="--backend=$ASTERIUS_BACKEND --pic"
+
+          stack test asterius:endianness --test-arguments="--backend=$ASTERIUS_BACKEND --pic"
+
   ghc-testsuite:
     name: ghc-testsuite
     needs: boot
