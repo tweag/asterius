@@ -29,11 +29,11 @@ export async function newAsteriusInstance(req) {
 
   let __asterius_table_base = new WebAssembly.Global(
       { value: "i32", mutable: false },
-      1 // Reserve 0 for the null function pointer.
+      req.pic ? req.defaultTableBase : req.defaultTableBase // TODO
     ),
     __asterius_memory_base = new WebAssembly.Global(
       { value: "i32", mutable: false },
-      1024 // Leave 1KB empty for the --low-memory-unused optimization to work.
+      req.pic ? req.defaultMemoryBase : req.defaultMemoryBase // TODO
     );
 
   let mkSptEntries = function(spt_offset_entries) {

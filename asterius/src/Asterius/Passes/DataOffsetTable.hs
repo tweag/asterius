@@ -94,7 +94,7 @@ makeDynamicSegment fn_off_map ss_off_map (current_off, fn_meta, ss_meta) static 
             unitBag
               DataSegment
                 { content = encodeStorable off_to_store, -- To be fixed at runtime; see makeWasmApplyRelocs
-                  offset = ConstI32 $ fromIntegral $ staticMemoryBase + current_off
+                  offset = ConstI32 $ fromIntegral $ defaultMemoryBase + current_off
                 }
           )
     | Just off <- SM.lookup sym ss_off_map ->
@@ -103,7 +103,7 @@ makeDynamicSegment fn_off_map ss_off_map (current_off, fn_meta, ss_meta) static 
             unitBag
               DataSegment
                 { content = encodeStorable off_to_store, -- To be fixed at runtime; see makeWasmApplyRelocs
-                  offset = ConstI32 $ fromIntegral $ staticMemoryBase + current_off
+                  offset = ConstI32 $ fromIntegral $ defaultMemoryBase + current_off
                 }
           )
     | otherwise ->
@@ -112,7 +112,7 @@ makeDynamicSegment fn_off_map ss_off_map (current_off, fn_meta, ss_meta) static 
             unitBag
               DataSegment
                 { content = encodeStorable off_to_store,
-                  offset = ConstI32 $ fromIntegral $ staticMemoryBase + current_off
+                  offset = ConstI32 $ fromIntegral $ defaultMemoryBase + current_off
                 }
           )
   Uninitialized {} ->
@@ -124,7 +124,7 @@ makeDynamicSegment fn_off_map ss_off_map (current_off, fn_meta, ss_meta) static 
       unitBag
         DataSegment
           { content = buf,
-            offset = ConstI32 $ fromIntegral $ staticMemoryBase + current_off
+            offset = ConstI32 $ fromIntegral $ defaultMemoryBase + current_off
           }
     )
   where
@@ -144,26 +144,26 @@ makeStaticSegment fn_off_map ss_off_map current_off static =
           Just
             DataSegment
               { content = encodeStorable $ mkStaticFunctionAddress (off + fromIntegral o),
-                offset = ConstI32 $ fromIntegral $ staticMemoryBase + current_off
+                offset = ConstI32 $ fromIntegral $ defaultMemoryBase + current_off
               }
         | Just off <- SM.lookup sym ss_off_map ->
           Just
             DataSegment
               { content = encodeStorable $ mkStaticDataAddress (off + fromIntegral o),
-                offset = ConstI32 $ fromIntegral $ staticMemoryBase + current_off
+                offset = ConstI32 $ fromIntegral $ defaultMemoryBase + current_off
               }
         | otherwise ->
           Just
             DataSegment
               { content = encodeStorable invalidAddress,
-                offset = ConstI32 $ fromIntegral $ staticMemoryBase + current_off
+                offset = ConstI32 $ fromIntegral $ defaultMemoryBase + current_off
               }
       Uninitialized {} -> Nothing
       Serialized buf ->
         Just
           DataSegment
             { content = buf,
-              offset = ConstI32 $ fromIntegral $ staticMemoryBase + current_off
+              offset = ConstI32 $ fromIntegral $ defaultMemoryBase + current_off
             }
   )
 

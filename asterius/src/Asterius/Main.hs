@@ -21,6 +21,7 @@ import Asterius.Foreign.ExportStatic
 import Asterius.Internals
 import qualified Asterius.Internals.Arena as A
 import Asterius.Internals.ByteString
+import Asterius.Internals.MagicNumber
 import Asterius.Internals.Marshal
 import Asterius.Internals.Temp
 import Asterius.JSFFI
@@ -195,6 +196,10 @@ genReq task LinkReport {..} =
       if yolo task then "true" else "false",
       ", pic: ",
       if pic task then "true" else "false",
+      ", defaultTableBase: ",
+      intHex defaultTableBase,
+      ", defaultMemoryBase: ",
+      intHex defaultMemoryBase,
       ", consoleHistory: ",
       if consoleHistory task then "true" else "false",
       ", gcThreshold: ",
