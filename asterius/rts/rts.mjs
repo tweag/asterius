@@ -26,36 +26,45 @@ import * as rtsConstants from "./rts.constants.mjs";
 
 export async function newAsteriusInstance(req) {
   const __asterius_components = {};
-  const __asterius_spt_entries = new Map();
-  for (const [k, off] of req.sptOffsetEntries.entries()) {
-    __asterius_spt_entries.set(k, Memory.tagData(memory_base + off));
-  }
-  if (req.offsetInfoTables) {
-    const __asterius_info_tables = new Set();
-    for (const [k, v] of req.offsetInfoTables.entries()) { // TODO: well.
-      __asterius_info_tables.add(Memory.tagData(memory_base + off));
-    }
-  }
-  else {
-    __asterius_info_tables = undefined;
-  }
-  let __asterius_persistent_state = req.persistentState
-      ? req.persistentState
-      : {},
-    __asterius_table_base = new WebAssembly.Global(
+
+  let __asterius_table_base = new WebAssembly.Global(
       { value: "i32", mutable: false },
       1 // Reserve 0 for the null function pointer.
     ),
     __asterius_memory_base = new WebAssembly.Global(
       { value: "i32", mutable: false },
       1024 // Leave 1KB empty for the --low-memory-unused optimization to work.
-    ),
+    );
+
+  let mkSptEntries = function(spt_offset_entries) {
+    const absolute_spt_entries = new Map();
+    for (const [k, off] of spt_offset_entries.entries()) {
+      absolute_spt_entries.set(k, Memory.tagData(__asterius_memory_base.value + off));
+    }
+    return absolute_spt_entries;
+  };
+
+  let mkInfoTable = function(offset_info_tables) {
+    if (!(typeof offset_info_table === 'undefined')) {
+      const absolute_info_tables = new Set();
+      for (const [k, off] of req.offsetInfoTables.entries()) { // TODO: well.
+        absolute_info_tables.add(Memory.tagData(__asterius_memory_base.value + off));
+      }
+      return absolute_info_tables;
+    }
+  };
+
+  let __asterius_persistent_state = req.persistentState
+      ? req.persistentState
+      : {},
     __asterius_symbol_table = new SymbolTable(
       req.functionsOffsetTable,
       req.staticsOffsetTable,
       __asterius_table_base.value,
       __asterius_memory_base.value
     ),
+    __asterius_spt_entries = mkSptEntries(req.sptOffsetEntries),
+    __asterius_info_tables = mkInfoTable(req.offsetInfoTables),
     __asterius_reentrancy_guard = new ReentrancyGuard(["Scheduler", "GC"]),
     __asterius_fs = new FS(__asterius_components),
     __asterius_logger = new EventLogManager(),
