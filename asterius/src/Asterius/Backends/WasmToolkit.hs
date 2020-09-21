@@ -480,7 +480,7 @@ data MarshalEnv
 
 -- | Check whether the @pic@ extension is on.
 isPicOn :: MonadReader MarshalEnv m => m Bool
-isPicOn = reader envIsVerboseErrOn
+isPicOn = reader envIsPicOn
 
 -- | Check whether the @verbose_err@ extension is on.
 isVerboseErrOn :: MonadReader MarshalEnv m => m Bool
