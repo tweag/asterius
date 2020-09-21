@@ -52,6 +52,8 @@ module Asterius.EDSL
     storeF64,
     storeF32,
     unTagClosure,
+    dynamicTableBase,
+    dynamicMemoryBase,
     mkDynamicDataAddress,
     mkDynamicFunctionAddress,
     call,

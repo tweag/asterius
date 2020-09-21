@@ -66,13 +66,13 @@ resolveAsteriusModule pic_on debug m_globals_resolved =
     final_m = reloc_function <> m_globals_resolved
     -- Continue with the rest using the "real" module.
     func_table = makeFunctionTable fn_off_map
-    table_slots = fromIntegral $ defaultTableBase + last_func_offset
+    table_slots = fromIntegral $ defaultTableBase + last_func_offset -- TODO: make dynamic. How?
     func_imports =
       rtsFunctionImports debug <> generateFFIFunctionImports (ffiMarshalState final_m)
     new_function_map =
       LM.mapKeys entityName $ SM.toMap $ functionMap final_m
     initial_pages =
-      (fromIntegral (defaultMemoryBase + last_data_offset) `roundup` mblock_size)
+      (fromIntegral (defaultMemoryBase + last_data_offset) `roundup` mblock_size) -- TODO: make dynamic. How?
         `quot` wasmPageSize
     initial_mblocks =
       initial_pages `quot` (mblock_size `quot` wasmPageSize)
