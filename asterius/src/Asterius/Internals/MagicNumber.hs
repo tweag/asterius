@@ -29,7 +29,7 @@ defaultTableBase = 3517 -- TODO: TEST WITH A FANCY ONE (still >= 1 though) -- 1
 -- | Base address for data segments. NOTE: leave 1KB empty for the
 -- @--low-memory-unused@ optimization to work.
 defaultMemoryBase :: Word32
-defaultMemoryBase = 1024
+defaultMemoryBase = 4096 -- TODO: TEST WITH A FANCY ONE (still >= 1024, and careful to avoid alignment issues though)
 
 mkStaticDataAddress :: Word32 -> Int64
 mkStaticDataAddress off = (dataTag `shiftL` 32) .|. fromIntegral (defaultMemoryBase + off)
