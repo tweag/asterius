@@ -47,7 +47,7 @@ export async function newAsteriusInstance(req) {
   let mkInfoTable = function(offset_info_tables) {
     if (!(typeof offset_info_table === 'undefined')) {
       const absolute_info_tables = new Set();
-      for (const [k, off] of offset_info_tables.entries()) { // TODO: well.
+      for (const off of offset_info_tables.keys()) {
         absolute_info_tables.add(Memory.tagData(__asterius_memory_base.value + off));
       }
       return absolute_info_tables;
