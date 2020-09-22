@@ -26,6 +26,7 @@ where
 import Asterius.Internals.Barf
 import Asterius.Internals.MagicNumber
 import Asterius.Internals.Marshal
+import Asterius.Internals.Parallel
 import Asterius.Types
 import qualified Asterius.Types.SymbolMap as SM
 import Asterius.TypesConv
@@ -525,24 +526,22 @@ marshalFunctionTable m tbl_slots FunctionTable {..} = flip runContT pure $ do
       (fromIntegral fnl)
       o
 
+-- | Marshal the memory segments of a 'Module'. NOTE: It would be nice to
+-- parallelize this process (see issue #621), but given that we want marshaling
+-- to happen in @ContT@ for efficiency reasons, this might backfire. Leaving
+-- linear for now.
 marshalMemorySegments :: Int -> [DataSegment] -> CodeGen ()
 marshalMemorySegments mbs segs = do
   env <- ask
   m <- askModuleRef
   let segs_len = length segs
+      marshalOffset = \DataSegment {..} ->
+        lift $ flip runReaderT env $ marshalExpression $ ConstI32 offset
   lift $ flip runContT pure $ do
     (seg_bufs, _) <- marshalV =<< for segs (marshalBS . content)
     (seg_passives, _) <- marshalV $ replicate segs_len 0
-    (seg_offsets, _) <-
-      marshalV
-        =<< for
-          segs
-          ( \DataSegment {..} ->
-              lift $ flip runReaderT env $ marshalExpression $ ConstI32 offset
-          )
-    (seg_sizes, _) <-
-      marshalV $
-        map (fromIntegral . BS.length . content) segs
+    (seg_offsets, _) <- marshalV =<< for segs marshalOffset
+    (seg_sizes, _) <- marshalV $ map (fromIntegral . BS.length . content) segs
     lift $
       Binaryen.setMemory
         m
@@ -571,8 +570,8 @@ marshalMemoryImport m MemoryImport {..} = flip runContT pure $ do
   lift $ Binaryen.addMemoryImport m inp emp ebp 0
 
 marshalModule ::
-  Bool -> SM.SymbolMap Int64 -> Module -> IO Binaryen.Module
-marshalModule tail_calls sym_map hs_mod@Module {..} = do
+  Bool -> Int -> SM.SymbolMap Int64 -> Module -> IO Binaryen.Module
+marshalModule tail_calls pool_size sym_map hs_mod@Module {..} = do
   let fts = generateWasmFunctionTypeSet hs_mod
   m <- Binaryen.Module.create
   Binaryen.setFeatures m
@@ -588,8 +587,8 @@ marshalModule tail_calls sym_map hs_mod@Module {..} = do
             envSymbolMap = sym_map,
             envModuleRef = m
           }
-  for_ (M.toList functionMap') $ \(k, f@Function {..}) ->
-    flip runReaderT env $ marshalFunction k (ftps M.! functionType) f
+  parallelFoldMap pool_size (M.toList functionMap') $ \(k, f@Function {..}) ->
+    flip runReaderT env $ void $ marshalFunction k (ftps M.! functionType) f
   forM_ functionImports $ \fi@FunctionImport {..} ->
     marshalFunctionImport m (ftps M.! functionType) fi
   forM_ functionExports $ marshalFunctionExport m

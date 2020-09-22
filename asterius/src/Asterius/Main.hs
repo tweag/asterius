@@ -104,6 +104,11 @@ parseTask args = case err_msgs of
              in if i >= 0 && i <= 2
                   then t {shrinkLevel = i}
                   else error "Shrink level must be [0..2]",
+          str_opt "thread-pool-size" $ \s t ->
+            let i = read s
+             in if i >= 1
+                  then t {threadPoolSize = i}
+                  else error "Thread pool size must be positive",
           bool_opt "debug" $
             \t ->
               t
@@ -272,6 +277,7 @@ ahcLink task = do
          ]
       <> ["-optl--no-gc-sections" | not (gcSections task)]
       <> ["-optl--verbose-err" | verboseErr task]
+      <> ["-optl--thread-pool-size=" <> show (threadPoolSize task)]
       <> extraGHCFlags task
       <> [ "-optl--output-ir="
              <> outputDirectory task
@@ -313,6 +319,7 @@ ahcDistMain logger task (final_m, report) = do
       m_ref <-
         Binaryen.marshalModule
           (tailCalls task)
+          (threadPoolSize task)
           (staticsSymbolMap report <> functionSymbolMap report)
           final_m
       when (optimizeLevel task > 0 || shrinkLevel task > 0) $ do

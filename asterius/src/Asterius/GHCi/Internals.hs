@@ -295,6 +295,7 @@ asteriusWriteIServ hsc_env i a
                 debug = False,
                 gcSections = True,
                 verboseErr = True,
+                threadPoolSize = 1,
                 outputIR = Nothing,
                 rootSymbols =
                   [ run_q_exp_sym,
