@@ -8,11 +8,11 @@ export class SymbolTable {
     memory_base
   ) {
     this.symbolTable = new Map();
-    for (const [k, v] of Object.entries(fn_offset_table)) {
-      this.symbolTable.set(k, Memory.tagFunction(table_base + v));
+    for (const [k, off] of Object.entries(fn_offset_table)) {
+      this.symbolTable.set(k, Memory.tagFunction(table_base + off));
     }
-    for (const [k, v] of Object.entries(ss_offset_table)) {
-      this.symbolTable.set(k, Memory.tagData(memory_base + v));
+    for (const [k, off] of Object.entries(ss_offset_table)) {
+      this.symbolTable.set(k, Memory.tagData(memory_base + off));
     }
     Object.freeze(this);
   }
