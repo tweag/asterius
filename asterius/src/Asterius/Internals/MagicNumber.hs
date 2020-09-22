@@ -24,7 +24,7 @@ invalidAddress = 0x001fffffffff0000
 
 -- | Base address for functions. NOTE: reserve 0 for the null function pointer.
 defaultTableBase :: Word32
-defaultTableBase = 1
+defaultTableBase = 3517 -- TODO: TEST WITH A FANCY ONE (still >= 1 though) -- 1
 
 -- | Base address for data segments. NOTE: leave 1KB empty for the
 -- @--low-memory-unused@ optimization to work.
