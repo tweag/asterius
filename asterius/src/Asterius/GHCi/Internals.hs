@@ -287,7 +287,7 @@ asteriusWriteIServ hsc_env i a
                 debug = False,
                 gcSections = True,
                 verboseErr = True,
-                pic = False, -- TODO: motivation for hardcoding either choice here?
+                pic = False,
                 outputIR = Nothing,
                 rootSymbols =
                   [ run_q_exp_sym,
@@ -305,7 +305,7 @@ asteriusWriteIServ hsc_env i a
           asteriusRunTH
             i
             st
-            (fromIntegral (mkStaticDataAddress $ staticsOffsetMap link_report ! sym)) -- TODO: make dynamic?
+            (fromIntegral (mkStaticDataAddress $ staticsOffsetMap link_report ! sym)) -- TODO: make dynamic.
             ty
             loc
             js_s

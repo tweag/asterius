@@ -29,11 +29,11 @@ export async function newAsteriusInstance(req) {
 
   let __asterius_table_base = new WebAssembly.Global(
       { value: "i32", mutable: false },
-      req.pic ? req.defaultTableBase : req.defaultTableBase // TODO
+      req.pic ? req.defaultTableBase : req.defaultTableBase // TODO: make dynamic.
     ),
     __asterius_memory_base = new WebAssembly.Global(
       { value: "i32", mutable: false },
-      req.pic ? req.defaultMemoryBase : req.defaultMemoryBase // TODO
+      req.pic ? req.defaultMemoryBase : req.defaultMemoryBase // TODO: make dynamic.
     );
 
   let mkSptEntries = function(spt_offset_entries) {
@@ -225,7 +225,7 @@ export async function newAsteriusInstance(req) {
   );
 
   return WebAssembly.instantiate(req.module, importObject).then(i => {
-    i.exports.__wasm_apply_relocs(); // TODO: I hope this is early enough.
+    i.exports.__wasm_apply_relocs();
     __asterius_wasm_instance = i;
     __asterius_memory.init(__asterius_wasm_memory, req.staticMBlocks);
     __asterius_heapalloc.init();
