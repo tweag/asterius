@@ -54,12 +54,12 @@ makeWasmApplyRelocs fn_offsets ss_offsets = runEDSL "__wasm_apply_relocs" $ do
     let loc = mkDynamicDataAddress off
      in storeI64 loc 0 $
           (table_base `addInt64` loadI64 loc 0)
-            `andInt64` ConstI64 (functionTag `shiftL` 32)
+            `orInt64` ConstI64 (functionTag `shiftL` 32)
   for_ ss_offsets $ \off ->
     let loc = mkDynamicDataAddress off
      in storeI64 loc 0 $
           (memory_base `addInt64` loadI64 loc 0)
-            `andInt64` ConstI64 (dataTag `shiftL` 32)
+            `orInt64` ConstI64 (dataTag `shiftL` 32)
 
 -- NOTE: It is done unintuitively so that it is faster (we don't want to
 -- re-read the global every time).

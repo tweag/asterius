@@ -351,12 +351,12 @@ dynamicTableBase =
 mkDynamicDataAddress :: Word32 -> Expression
 mkDynamicDataAddress off =
   extendUInt32 (dynamicMemoryBase `addInt32` ConstI32 (fromIntegral off))
-    `andInt64` ConstI64 (dataTag `shiftL` 32)
+    `orInt64` ConstI64 (dataTag `shiftL` 32)
 
 mkDynamicFunctionAddress :: Word32 -> Expression
 mkDynamicFunctionAddress off =
   extendUInt32 (dynamicTableBase `addInt32` ConstI32 (fromIntegral off))
-    `andInt64` ConstI64 (functionTag `shiftL` 32)
+    `orInt64` ConstI64 (functionTag `shiftL` 32)
 
 call :: EntitySymbol -> [Expression] -> EDSL ()
 call f xs = emit Call {target = f, operands = xs, callReturnTypes = []}
