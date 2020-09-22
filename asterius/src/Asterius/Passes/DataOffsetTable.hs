@@ -18,7 +18,6 @@ import Bag
 import qualified Data.ByteString as BS
 import Data.Foldable
 import Data.List
-import Data.Maybe
 import Data.Monoid
 import qualified Data.Set as Set
 import Data.Tuple
@@ -55,12 +54,12 @@ makeWasmApplyRelocs fn_offsets ss_offsets = runEDSL "__wasm_apply_relocs" $ do
     let loc = mkDynamicDataAddress off
      in storeI64 loc 0 $
           (table_base `addInt64` loadI64 loc 0)
-            `andInt64` constI64 (fromIntegral $ functionTag `shiftL` 32)
+            `andInt64` ConstI64 (functionTag `shiftL` 32)
   for_ ss_offsets $ \off ->
     let loc = mkDynamicDataAddress off
      in storeI64 loc 0 $
           (memory_base `addInt64` loadI64 loc 0)
-            `andInt64` constI64 (fromIntegral $ dataTag `shiftL` 32)
+            `andInt64` ConstI64 (dataTag `shiftL` 32)
 
 -- NOTE: It is done unintuitively so that it is faster (we don't want to
 -- re-read the global every time).
@@ -127,32 +126,32 @@ makeDynamicSegment fn_off_map ss_off_map (current_off, fn_meta, ss_meta) static 
 -- do not generate data segments for uninitialized statics; we do not have to
 -- specify each segment and the linear memory is zero-initialized anyway.
 {-# INLINEABLE makeStaticSegment #-}
-makeStaticSegment :: SM.SymbolMap Word32 -> SM.SymbolMap Word32 -> Word32 -> AsteriusStatic -> (Word32, Maybe DataSegment)
+makeStaticSegment :: SM.SymbolMap Word32 -> SM.SymbolMap Word32 -> Word32 -> AsteriusStatic -> (Word32, Bag DataSegment)
 makeStaticSegment fn_off_map ss_off_map current_off static =
   ( current_off + sizeofStatic static,
     case static of
       SymbolStatic sym o
         | Just off <- SM.lookup sym fn_off_map ->
-          Just
+          unitBag
             DataSegment
               { content = encodeStorable $ mkStaticFunctionAddress (off + fromIntegral o),
                 offset = ConstI32 $ fromIntegral $ defaultMemoryBase + current_off
               }
         | Just off <- SM.lookup sym ss_off_map ->
-          Just
+          unitBag
             DataSegment
               { content = encodeStorable $ mkStaticDataAddress (off + fromIntegral o),
                 offset = ConstI32 $ fromIntegral $ defaultMemoryBase + current_off
               }
         | otherwise ->
-          Just
+          unitBag
             DataSegment
               { content = encodeStorable invalidAddress,
                 offset = ConstI32 $ fromIntegral $ defaultMemoryBase + current_off
               }
-      Uninitialized {} -> Nothing
+      Uninitialized {} -> emptyBag
       Serialized buf ->
-        Just
+        unitBag
           DataSegment
             { content = buf,
               offset = ConstI32 $ fromIntegral $ defaultMemoryBase + current_off
@@ -163,8 +162,17 @@ makeStaticSegment fn_off_map ss_off_map current_off static =
 makeStaticMemory :: AsteriusModule -> SM.SymbolMap Word32 -> SM.SymbolMap Word32 -> ([DataSegment], AsteriusModule)
 makeStaticMemory AsteriusModule {..} fn_off_map ss_off_map = (segs, mempty)
   where
-    segs = concat $ SM.elems $ flip SM.mapWithKey staticsMap $ \statics_sym ss ->
-      catMaybes $ snd $ mapAccumL (makeStaticSegment fn_off_map ss_off_map) (ss_off_map SM.! statics_sym) $ asteriusStatics ss
+    segs = concat
+      $ SM.elems
+      $ flip SM.mapWithKey staticsMap
+      $ \statics_sym AsteriusStatics {..} ->
+        bagToList
+          $ unionManyBags
+          $ snd
+          $ mapAccumL
+            (makeStaticSegment fn_off_map ss_off_map)
+            (ss_off_map SM.! statics_sym)
+            asteriusStatics
 
 {-# INLINEABLE makeDynamicMemory #-}
 makeDynamicMemory :: AsteriusModule -> SM.SymbolMap Word32 -> SM.SymbolMap Word32 -> ([DataSegment], AsteriusModule) -- relocation function implementation
