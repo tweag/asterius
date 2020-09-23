@@ -16,6 +16,8 @@ import Asterius.Types
 import qualified Asterius.Types.SymbolMap as SM
 import Bag
 import qualified Data.ByteString as BS
+import Data.ByteString.Builder
+import Data.ByteString.Lazy (toStrict)
 import Data.Foldable
 import Data.List
 import Data.Monoid
@@ -78,54 +80,35 @@ makeDynamicSegment ::
   SM.SymbolMap Word32 ->
   (Word32, Set.Set Word32, Set.Set Word32) ->
   AsteriusStatic ->
-  ((Word32, Set.Set Word32, Set.Set Word32), Bag DataSegment)
+  ((Word32, Set.Set Word32, Set.Set Word32), Builder)
 makeDynamicSegment fn_off_map ss_off_map (current_off, fn_meta, ss_meta) static = case static of
   SymbolStatic sym o
     | Just off <- SM.lookup sym fn_off_map ->
-      let off_to_store :: Int64 = fromIntegral $ off + fromIntegral o
-       in ( (next_off, current_off `Set.insert` fn_meta, ss_meta),
-            unitBag
-              DataSegment
-                { content = encodeStorable off_to_store, -- To be fixed at runtime; see makeWasmApplyRelocs
-                  offset = ConstI32 $ fromIntegral $ defaultMemoryBase + current_off -- TODO: make dynamic.
-                }
-          )
+      ( (next_off, current_off `Set.insert` fn_meta, ss_meta),
+        byteString $ encodeStorable $ castOffsetToAddress $ fromIntegral $ off + fromIntegral o -- To be fixed at runtime; see makeWasmApplyRelocs
+      )
     | Just off <- SM.lookup sym ss_off_map ->
-      let off_to_store :: Int64 = fromIntegral $ off + fromIntegral o
-       in ( (next_off, fn_meta, current_off `Set.insert` ss_meta),
-            unitBag
-              DataSegment
-                { content = encodeStorable off_to_store, -- To be fixed at runtime; see makeWasmApplyRelocs
-                  offset = ConstI32 $ fromIntegral $ defaultMemoryBase + current_off -- TODO: make dynamic.
-                }
-          )
+      ( (next_off, fn_meta, current_off `Set.insert` ss_meta),
+        byteString $ encodeStorable $ castOffsetToAddress $ fromIntegral $ off + fromIntegral o -- To be fixed at runtime; see makeWasmApplyRelocs
+      )
     | otherwise ->
-      let off_to_store = invalidAddress
-       in ( (next_off, fn_meta, ss_meta),
-            unitBag
-              DataSegment
-                { content = encodeStorable off_to_store,
-                  offset = ConstI32 $ fromIntegral $ defaultMemoryBase + current_off -- TODO: make dynamic.
-                }
-          )
+      ( (next_off, fn_meta, ss_meta),
+        byteString $ encodeStorable $ invalidAddress
+      )
   Uninitialized len ->
     ( (next_off, fn_meta, ss_meta),
-      unitBag
-        DataSegment
-          { content = BS.replicate len 0,
-            offset = ConstI32 $ fromIntegral $ defaultMemoryBase + current_off -- TODO: make dynamic.
-          }
+      byteString $ BS.replicate len 0
     )
   Serialized buf ->
     ( (next_off, fn_meta, ss_meta),
-      unitBag
-        DataSegment
-          { content = buf,
-            offset = ConstI32 $ fromIntegral $ defaultMemoryBase + current_off -- TODO: make dynamic.
-          }
+      byteString buf
     )
   where
     next_off = current_off + sizeofStatic static
+
+{-# INLINEABLE castOffsetToAddress #-}
+castOffsetToAddress :: Word32 -> Int64
+castOffsetToAddress = fromIntegral
 
 -- | Given the offset of a static and the static itself, compute the
 -- corresponding data segment and the offset of the subsequent static. NOTE: we
@@ -192,13 +175,20 @@ makeDynamicMemory ::
   SM.SymbolMap Word32 ->
   ([DataSegment], AsteriusModule) -- relocation function implementation
 makeDynamicMemory AsteriusModule {..} fn_off_map ss_off_map =
-  ( bagToList $ unionManyBags [segs | (segs, _, _) <- all_data],
+  ( [ DataSegment
+        { content =
+            toStrict -- TODO: expensive
+              $ toLazyByteString
+              $ mconcat [segs | (segs, _, _) <- all_data],
+          offset = dynamicMemoryBase
+        }
+    ],
     makeWasmApplyRelocs
       (Set.unions [fn_offs | (_, fn_offs, _) <- all_data])
       (Set.unions [ss_offs | (_, _, ss_offs) <- all_data])
   )
   where
-    all_data :: [(Bag DataSegment, Set.Set Word32, Set.Set Word32)]
+    all_data :: [(Builder, Set.Set Word32, Set.Set Word32)]
     all_data =
       SM.elems
         $ flip SM.mapWithKey staticsMap
@@ -207,7 +197,7 @@ makeDynamicMemory AsteriusModule {..} fn_off_map ss_off_map =
             (makeDynamicSegment fn_off_map ss_off_map)
             (ss_off_map SM.! statics_sym, Set.empty, Set.empty)
             asteriusStatics of
-            ((_, fn_offs, ss_offs), mb_segs) -> (unionManyBags mb_segs, fn_offs, ss_offs)
+            ((_, fn_offs, ss_offs), seg_contents) -> (mconcat seg_contents, fn_offs, ss_offs)
 
 makeMemory ::
   Bool ->
