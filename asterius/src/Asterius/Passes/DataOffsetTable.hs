@@ -78,30 +78,40 @@ makeWasmApplyRelocs fn_offsets ss_offsets = runEDSL "__wasm_apply_relocs" $ do
 makeDynamicSegment ::
   SM.SymbolMap Word32 ->
   SM.SymbolMap Word32 ->
-  (Word32, Set.Set Word32, Set.Set Word32) ->
+  (Word32, Set.Set Word32, Set.Set Word32, Builder) ->
   AsteriusStatic ->
-  ((Word32, Set.Set Word32, Set.Set Word32), Builder)
-makeDynamicSegment fn_off_map ss_off_map (current_off, fn_meta, ss_meta) static = case static of
+  (Word32, Set.Set Word32, Set.Set Word32, Builder)
+makeDynamicSegment fn_off_map ss_off_map (current_off, fn_meta, ss_meta, acc) static = case static of
   SymbolStatic sym o
     | Just off <- SM.lookup sym fn_off_map ->
-      ( (next_off, current_off `Set.insert` fn_meta, ss_meta),
-        byteString $ encodeStorable $ castOffsetToAddress $ fromIntegral $ off + fromIntegral o -- To be fixed at runtime; see makeWasmApplyRelocs
+      ( next_off,
+        current_off `Set.insert` fn_meta,
+        ss_meta,
+        acc <> byteString (encodeStorable $ castOffsetToAddress $ fromIntegral $ off + fromIntegral o) -- To be fixed at runtime; see makeWasmApplyRelocs
       )
     | Just off <- SM.lookup sym ss_off_map ->
-      ( (next_off, fn_meta, current_off `Set.insert` ss_meta),
-        byteString $ encodeStorable $ castOffsetToAddress $ fromIntegral $ off + fromIntegral o -- To be fixed at runtime; see makeWasmApplyRelocs
+      ( next_off,
+        fn_meta,
+        current_off `Set.insert` ss_meta,
+        acc <> byteString (encodeStorable $ castOffsetToAddress $ fromIntegral $ off + fromIntegral o) -- To be fixed at runtime; see makeWasmApplyRelocs
       )
     | otherwise ->
-      ( (next_off, fn_meta, ss_meta),
-        byteString $ encodeStorable $ invalidAddress
+      ( next_off,
+        fn_meta,
+        ss_meta,
+        acc <> byteString (encodeStorable invalidAddress)
       )
   Uninitialized len ->
-    ( (next_off, fn_meta, ss_meta),
-      byteString $ BS.replicate len 0
+    ( next_off,
+      fn_meta,
+      ss_meta,
+      acc <> byteString (BS.replicate len 0)
     )
   Serialized buf ->
-    ( (next_off, fn_meta, ss_meta),
-      byteString buf
+    ( next_off,
+      fn_meta,
+      ss_meta,
+      acc <> byteString buf
     )
   where
     next_off = current_off + sizeofStatic static
@@ -176,28 +186,24 @@ makeDynamicMemory ::
   ([DataSegment], AsteriusModule) -- relocation function implementation
 makeDynamicMemory AsteriusModule {..} fn_off_map ss_off_map =
   ( [ DataSegment
-        { content =
-            toStrict -- TODO: expensive
-              $ toLazyByteString
-              $ mconcat [segs | (segs, _, _) <- all_data],
+        { content = toStrict $ toLazyByteString all_content, -- TODO: expensive
           offset = dynamicMemoryBase
         }
     ],
-    makeWasmApplyRelocs
-      (Set.unions [fn_offs | (_, fn_offs, _) <- all_data])
-      (Set.unions [ss_offs | (_, _, ss_offs) <- all_data])
+    makeWasmApplyRelocs all_fn_offs all_ss_offs
   )
   where
-    all_data :: [(Builder, Set.Set Word32, Set.Set Word32)]
-    all_data =
-      SM.elems
-        $ flip SM.mapWithKey staticsMap
-        $ \statics_sym AsteriusStatics {..} ->
-          case mapAccumL
-            (makeDynamicSegment fn_off_map ss_off_map)
-            (ss_off_map SM.! statics_sym, Set.empty, Set.empty)
-            asteriusStatics of
-            ((_, fn_offs, ss_offs), seg_contents) -> (mconcat seg_contents, fn_offs, ss_offs)
+    (_final_offset, all_fn_offs, all_ss_offs, all_content) =
+      -- TODO: Utilize final_offset.
+      foldl
+        ( \(_, fn_offs, ss_offs, seg_contents) (sym, AsteriusStatics {..}) ->
+            foldl
+              (makeDynamicSegment fn_off_map ss_off_map)
+              (ss_off_map SM.! sym, fn_offs, ss_offs, seg_contents)
+              asteriusStatics
+        )
+        (0, Set.empty, Set.empty, mempty)
+        (SM.toList staticsMap)
 
 makeMemory ::
   Bool ->
