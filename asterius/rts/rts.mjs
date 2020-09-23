@@ -225,7 +225,9 @@ export async function newAsteriusInstance(req) {
   );
 
   return WebAssembly.instantiate(req.module, importObject).then(i => {
-    i.exports.__wasm_apply_relocs();
+    if (req.pic) {
+      i.exports.__wasm_apply_relocs();
+    }
     __asterius_wasm_instance = i;
     __asterius_memory.init(__asterius_wasm_memory, req.staticMBlocks);
     __asterius_heapalloc.init();
