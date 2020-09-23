@@ -108,9 +108,13 @@ makeDynamicSegment fn_off_map ss_off_map (current_off, fn_meta, ss_meta) static 
                   offset = ConstI32 $ fromIntegral $ defaultMemoryBase + current_off -- TODO: make dynamic.
                 }
           )
-  Uninitialized {} ->
+  Uninitialized len ->
     ( (next_off, fn_meta, ss_meta),
-      emptyBag
+      unitBag
+        DataSegment
+          { content = BS.replicate len 0,
+            offset = ConstI32 $ fromIntegral $ defaultMemoryBase + current_off -- TODO: make dynamic.
+          }
     )
   Serialized buf ->
     ( (next_off, fn_meta, ss_meta),
