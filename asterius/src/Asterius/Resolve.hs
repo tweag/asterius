@@ -70,7 +70,7 @@ resolveAsteriusModule pic_on debug m_globals_resolved =
 
     -- Continue with the rest using the "real" module.
     func_table = makeFunctionTable fn_off_map
-    table_slots = fromIntegral $ defaultTableBase + last_func_offset -- TODO: make dynamic.
+    table_slots = fromIntegral last_func_offset
     func_imports =
       rtsFunctionImports debug <> generateFFIFunctionImports (ffiMarshalState final_m)
     new_function_map =

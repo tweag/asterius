@@ -72,7 +72,7 @@ export async function newAsteriusInstance(req) {
     __asterius_wasm_instance = null,
     __asterius_wasm_table = new WebAssembly.Table({
       element: "anyfunc",
-      initial: req.tableSlots
+      initial: __asterius_table_base.value + req.tableSlots
     }),
     __asterius_wasm_memory = new WebAssembly.Memory({
       initial: Math.max(req.staticMBlocks + 2, req.gcThreshold) * (rtsConstants.mblock_size / 65536)
