@@ -58,12 +58,16 @@ resolveAsteriusModule pic_on debug m_globals_resolved =
     -- Create the offset tables first. A dummy relocation function already
     -- exists in the input module so the maps will be created correctly.
     (fn_off_map, last_func_offset) = makeFunctionOffsetTable m_globals_resolved
-    (ss_off_map, last_data_offset) = makeDataOffsetTable m_globals_resolved
+    (_ss_off_map, _last_data_offset) = makeDataOffsetTable m_globals_resolved
     -- Create the data segments and the new relocation function second.
     -- We need to update the module with the real relocation function
     -- before we proceed.
-    (segs, reloc_function) = makeMemory pic_on m_globals_resolved fn_off_map ss_off_map
+    (segs, reloc_function, new_seg_len, new_seg_offs) = makeMemory pic_on m_globals_resolved fn_off_map ss_off_map
+
+    last_data_offset = _last_data_offset + fromIntegral new_seg_len
+    ss_off_map = _ss_off_map <> new_seg_offs
     final_m = reloc_function <> m_globals_resolved
+
     -- Continue with the rest using the "real" module.
     func_table = makeFunctionTable fn_off_map
     table_slots = fromIntegral $ defaultTableBase + last_func_offset -- TODO: make dynamic.

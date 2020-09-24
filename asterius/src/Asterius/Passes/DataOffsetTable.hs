@@ -162,8 +162,8 @@ makeStaticMemory ::
   AsteriusModule ->
   SM.SymbolMap Word32 ->
   SM.SymbolMap Word32 ->
-  ([DataSegment], AsteriusModule) -- relocation function implementation
-makeStaticMemory AsteriusModule {..} fn_off_map ss_off_map = (segs, reloc)
+  ([DataSegment], AsteriusModule, Int, SM.SymbolMap Word32) -- relocation function implementation
+makeStaticMemory AsteriusModule {..} fn_off_map ss_off_map = (segs, reloc, 0, mempty)
   where
     reloc = runEDSL "__wasm_apply_relocs" (pure ())
     segs = concat
@@ -183,18 +183,15 @@ makeDynamicMemory ::
   AsteriusModule ->
   SM.SymbolMap Word32 ->
   SM.SymbolMap Word32 ->
-  ([DataSegment], AsteriusModule) -- relocation function implementation
+  ([DataSegment], AsteriusModule, Int, SM.SymbolMap Word32) -- relocation function implementation
 makeDynamicMemory AsteriusModule {..} fn_off_map ss_off_map =
-  ( [ DataSegment
-        { content = toStrict $ toLazyByteString all_content, -- TODO: expensive
-          offset = dynamicMemoryBase
-        }
-    ],
-    makeWasmApplyRelocs all_fn_offs all_ss_offs
+  ( [complete_segment],
+    reloc <> new_statics,
+    fn_segment_len + ss_segment_len,
+    new_offsets
   )
   where
-    (_final_offset, all_fn_offs, all_ss_offs, all_content) =
-      -- TODO: Utilize final_offset.
+    (final_offset, all_fn_offs, all_ss_offs, all_content) =
       foldl
         ( \(_, fn_offs, ss_offs, seg_contents) (sym, AsteriusStatics {..}) ->
             foldl
@@ -204,13 +201,89 @@ makeDynamicMemory AsteriusModule {..} fn_off_map ss_off_map =
         )
         (0, Set.empty, Set.empty, mempty)
         (SM.toList staticsMap)
+    -- The two new segments, containing the function offsets and the static
+    -- offsets that the relocation function needs to change.
+    fn_segment =
+      mconcat
+        $ map (byteString . encodeStorable . castOffsetToAddress)
+        $ Set.toAscList all_fn_offs
+    ss_segment =
+      mconcat
+        $ map (byteString . encodeStorable . castOffsetToAddress)
+        $ Set.toAscList all_ss_offs
+    -- The lengths of the new segments. These have to be computed so that
+    -- @resolveAsteriusModule@ can update the last data address.
+    fn_segment_len = 8 * Set.size all_fn_offs
+    ss_segment_len = 8 * Set.size all_ss_offs
+    -- The new relocation function; this should replace the placeholder no-op.
+    reloc :: AsteriusModule
+    reloc = makeWasmApplyRelocs all_fn_offs all_ss_offs -- TODO: Implement the new approach.
+
+    -- All the data segments, collapsed into one. At the end we include the two
+    -- newly created data segments: the one containing the function offsets
+    -- should appear first, then the one containing the static offsets.
+    complete_segment :: DataSegment
+    complete_segment =
+      DataSegment
+        { content =
+            toStrict -- NOTE: expensive
+              $ toLazyByteString
+              $ all_content <> fn_segment <> ss_segment,
+          offset = dynamicMemoryBase
+        }
+    -- The offsets of the two new data segments / statics. These have to be
+    -- computed so that @resolveAsteriusModule@ can update the offset map. The
+    -- one containing the function offsets should appear first, then the one
+    -- containing the static offsets.
+    new_offsets :: SM.SymbolMap Word32
+    new_offsets =
+      SM.fromList
+        [ ("__asterius_fn_segment", final_offset),
+          ("__asterius_ss_segment", final_offset + fromIntegral (8 * Set.size all_fn_offs))
+        ]
+    -- The two statics corresponding to the newly created data segments. We
+    -- should return these for consistency. TODO: One potential issue I see
+    -- here is that there is no way to ensure that the new statics are placed
+    -- _at the end_ of the list (i.e. if we call @SM.toList@), because ordering
+    -- in @SymbolMap@ is not lexicographic. Even if it was though, naming it
+    -- @zzzzzzz@ is not that great.
+    new_statics :: AsteriusModule
+    new_statics =
+      mempty
+        { staticsMap =
+            SM.fromList
+              [ ( "__asterius_fn_segment",
+                  AsteriusStatics
+                    { staticsType = ConstBytes,
+                      asteriusStatics =
+                        [ Serialized
+                            $ toStrict
+                            $ toLazyByteString fn_segment
+                        ]
+                    }
+                ),
+                ( "__asterius_ss_segment",
+                  AsteriusStatics
+                    { staticsType = ConstBytes,
+                      asteriusStatics =
+                        [ Serialized
+                            $ toStrict
+                            $ toLazyByteString ss_segment
+                        ]
+                    }
+                )
+              ]
+        }
+
+-- TODO: Q: Why do we use @roundup@ only when constructing the offset table but
+-- not when we construct the segments?
 
 makeMemory ::
   Bool ->
   AsteriusModule ->
   SM.SymbolMap Word32 ->
   SM.SymbolMap Word32 ->
-  ([DataSegment], AsteriusModule) -- relocation function implementation
+  ([DataSegment], AsteriusModule, Int, SM.SymbolMap Word32) -- relocation function implementation
 makeMemory pic_is_on final_m fn_off_map ss_off_map
   | pic_is_on = makeDynamicMemory final_m fn_off_map ss_off_map
   | otherwise = makeStaticMemory final_m fn_off_map ss_off_map
