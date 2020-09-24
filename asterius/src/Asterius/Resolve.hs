@@ -75,11 +75,9 @@ resolveAsteriusModule pic_on debug m_globals_resolved =
       rtsFunctionImports debug <> generateFFIFunctionImports (ffiMarshalState final_m)
     new_function_map =
       LM.mapKeys entityName $ SM.toMap $ functionMap final_m
-    initial_pages =
-      (fromIntegral (defaultMemoryBase + last_data_offset) `roundup` mblock_size) -- TODO: make dynamic.
-        `quot` wasmPageSize
     initial_mblocks =
-      initial_pages `quot` (mblock_size `quot` wasmPageSize)
+      (fromIntegral (defaultMemoryBase + last_data_offset) `roundup` mblock_size) -- TODO: make dynamic.
+        `quot` mblock_size
     new_mod = Module
       { functionMap' = new_function_map,
         functionImports = func_imports,
