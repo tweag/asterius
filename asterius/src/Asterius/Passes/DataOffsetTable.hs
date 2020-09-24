@@ -18,7 +18,6 @@ import Bag
 import qualified Data.ByteString as BS
 import Data.ByteString.Builder
 import Data.ByteString.Lazy (toStrict)
-import Data.Foldable
 import Data.List
 import Data.Monoid
 import qualified Data.Set as Set
@@ -45,28 +44,6 @@ makeDataOffsetTable AsteriusModule {..} =
       )
       0
       staticsMap
-
--- | Given the the offsets of symbols (for both function and static symbols),
--- create the relocation function. TODO: At the moment we create a single
--- monolithic function which is likely to overflow the maximum wasm function
--- size when the linker output is big enough. We should split it into smaller
--- parts (see https://github.com/tweag/asterius/pull/736#issuecomment-676466449).
-makeWasmApplyRelocs :: Set.Set Word32 -> Set.Set Word32 -> AsteriusModule
-makeWasmApplyRelocs fn_offsets ss_offsets = runEDSL "__wasm_apply_relocs" $ do
-  -- Store the extended (64-bit) bases into local variables, to speed things up
-  -- and keep the size of the relocation function more manageable.
-  table_base <- i64Local $ extendUInt32 dynamicTableBase
-  memory_base <- i64Local $ extendUInt32 dynamicMemoryBase
-  for_ fn_offsets $ \off ->
-    let loc = mkDynamicDataAddress off
-     in storeI64 loc 0 $
-          (table_base `addInt64` loadI64 loc 0)
-            `orInt64` ConstI64 (functionTag `shiftL` 32)
-  for_ ss_offsets $ \off ->
-    let loc = mkDynamicDataAddress off
-     in storeI64 loc 0 $
-          (memory_base `addInt64` loadI64 loc 0)
-            `orInt64` ConstI64 (dataTag `shiftL` 32)
 
 -- | Given the offset of a static and the static itself, compute the
 -- corresponding data segment and the offset of the subsequent static.
@@ -186,7 +163,7 @@ makeDynamicMemory ::
   ([DataSegment], AsteriusModule, Int, SM.SymbolMap Word32) -- relocation function implementation
 makeDynamicMemory AsteriusModule {..} fn_off_map ss_off_map =
   ( [complete_segment],
-    reloc <> new_statics,
+    new_reloc <> new_statics,
     fn_segment_len + ss_segment_len,
     new_offsets
   )
@@ -215,10 +192,6 @@ makeDynamicMemory AsteriusModule {..} fn_off_map ss_off_map =
     -- @resolveAsteriusModule@ can update the last data address.
     fn_segment_len = 8 * Set.size all_fn_offs
     ss_segment_len = 8 * Set.size all_ss_offs
-    -- The new relocation function; this should replace the placeholder no-op.
-    reloc :: AsteriusModule
-    reloc = makeWasmApplyRelocs all_fn_offs all_ss_offs -- TODO: Implement the new approach.
-
     -- All the data segments, collapsed into one. At the end we include the two
     -- newly created data segments: the one containing the function offsets
     -- should appear first, then the one containing the static offsets.
@@ -274,6 +247,38 @@ makeDynamicMemory AsteriusModule {..} fn_off_map ss_off_map =
                 )
               ]
         }
+    -- The new relocation function; this should replace the placeholder no-op.
+    new_reloc :: AsteriusModule
+    new_reloc = runEDSL "__wasm_apply_relocs" $ do
+      -- Store the extended (64-bit) bases into local variables, to speed things up
+      -- and keep the size of the relocation function more manageable.
+      table_base <- i64Local $ extendUInt32 dynamicTableBase
+      memory_base <- i64Local $ extendUInt32 dynamicMemoryBase
+      i <- i64MutLocal
+      loc <- i64MutLocal -- for performance only
+
+      -- Fix the function offsets first
+      putLVal i (ConstI64 0)
+      whileLoop (getLVal i `neInt64` ConstI64 (fromIntegral fn_segment_len)) $ do
+        let off = loadI64 (symbol "__asterius_fn_segment" `addInt64` getLVal i) 0
+        putLVal loc $
+          (memory_base `addInt64` off)
+            `orInt64` ConstI64 (dataTag `shiftL` 32)
+        storeI64 (getLVal loc) 0 $
+          (table_base `addInt64` loadI64 (getLVal loc) 0)
+            `orInt64` ConstI64 (functionTag `shiftL` 32)
+        putLVal i (getLVal i `addInt64` ConstI64 8)
+      -- Fix the static offsets second
+      putLVal i (ConstI64 0)
+      whileLoop (getLVal i `neInt64` ConstI64 (fromIntegral ss_segment_len)) $ do
+        let off = loadI64 (symbol "__asterius_ss_segment" `addInt64` getLVal i) 0
+        putLVal loc $
+          (memory_base `addInt64` off)
+            `orInt64` ConstI64 (dataTag `shiftL` 32)
+        storeI64 (getLVal loc) 0 $
+          (memory_base `addInt64` loadI64 (getLVal loc) 0)
+            `orInt64` ConstI64 (dataTag `shiftL` 32)
+        putLVal i (getLVal i `addInt64` ConstI64 8)
 
 -- TODO: Q: Why do we use @roundup@ only when constructing the offset table but
 -- not when we construct the segments?
