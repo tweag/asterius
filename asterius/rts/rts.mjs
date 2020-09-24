@@ -74,13 +74,17 @@ export async function newAsteriusInstance(req) {
       element: "anyfunc",
       initial: __asterius_table_base.value + req.tableSlots
     }),
-
     __asterius_wasm_memory = new WebAssembly.Memory({
       // The storage manager will allocate 2 mblocks right away (for
       // unpinned/pinned heap). Hence, we add 2 to avoid having to resize the
       // wasm linear memory immediately (in case gcThreshold is small).
       initial:
-        Math.max(req.staticMBlocks + 2, req.gcThreshold) *
+        Math.max(
+          req.staticMBlocks +
+            Math.ceil(__asterius_memory_base.value / rtsConstants.mblock_size) +
+            2,
+          req.gcThreshold
+        ) *
         (rtsConstants.mblock_size / rtsConstants.pageSize),
     }),
     __asterius_memory = new Memory(),

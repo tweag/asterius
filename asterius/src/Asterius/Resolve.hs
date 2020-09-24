@@ -13,7 +13,6 @@ where
 
 import Asterius.Binary.Orphans ()
 import Asterius.Builtins
-import Asterius.Internals.MagicNumber
 import Asterius.JSFFI
 import Asterius.MemoryTrap
 import Asterius.Passes.DataOffsetTable
@@ -76,8 +75,7 @@ resolveAsteriusModule pic_on debug m_globals_resolved =
     new_function_map =
       LM.mapKeys entityName $ SM.toMap $ functionMap final_m
     initial_mblocks =
-      (fromIntegral (defaultMemoryBase + last_data_offset) `roundup` mblock_size) -- TODO: make dynamic.
-        `quot` mblock_size
+      (fromIntegral last_data_offset `roundup` mblock_size) `quot` mblock_size
     new_mod = Module
       { functionMap' = new_function_map,
         functionImports = func_imports,
