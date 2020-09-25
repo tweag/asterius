@@ -170,11 +170,16 @@ makeDynamicMemory AsteriusModule {..} fn_off_map ss_off_map =
   where
     (final_offset, all_fn_offs, all_ss_offs, all_content) =
       foldl
-        ( \(_, fn_offs, ss_offs, seg_contents) (sym, AsteriusStatics {..}) ->
-            foldl
-              (makeDynamicSegment fn_off_map ss_off_map)
-              (ss_off_map SM.! sym, fn_offs, ss_offs, seg_contents)
-              asteriusStatics
+        ( \(real_current_offset, fn_offs, ss_offs, seg_contents) (sym, AsteriusStatics {..}) ->
+            let aligned_current_offset = ss_off_map SM.! sym
+                padding = byteString
+                            $ BS.replicate
+                                (fromIntegral $ aligned_current_offset - real_current_offset)
+                                0
+             in foldl
+                  (makeDynamicSegment fn_off_map ss_off_map)
+                  (aligned_current_offset, fn_offs, ss_offs, seg_contents <> padding)
+                  asteriusStatics
         )
         (0, Set.empty, Set.empty, mempty)
         (SM.toList staticsMap)
