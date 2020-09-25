@@ -29,11 +29,11 @@ export async function newAsteriusInstance(req) {
 
   let __asterius_table_base = new WebAssembly.Global(
       { value: "i32", mutable: false },
-      req.pic ? req.defaultTableBase : req.defaultTableBase // TODO: make dynamic.
+      req.pic ? 3517 : req.defaultTableBase // TODO: make dynamic.
     ),
     __asterius_memory_base = new WebAssembly.Global(
       { value: "i32", mutable: false },
-      req.pic ? req.defaultMemoryBase : req.defaultMemoryBase // TODO: make dynamic.
+      req.pic ? 4096 : req.defaultMemoryBase // TODO: make dynamic.
     );
 
   let mkSptEntries = function(spt_offset_entries) {
