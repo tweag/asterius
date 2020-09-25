@@ -283,6 +283,7 @@ ahcLink task = do
            | export_func <- exportFunctions task
          ]
       <> ["-optl--no-gc-sections" | not (gcSections task)]
+      <> ["-optl--pic" | pic task]
       <> ["-optl--verbose-err" | verboseErr task]
       <> extraGHCFlags task
       <> [ "-optl--output-ir="
