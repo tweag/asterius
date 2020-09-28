@@ -221,11 +221,10 @@ makeDynamicMemory AsteriusModule {..} fn_off_map ss_off_map =
                     BS.replicate
                       (fromIntegral $ aligned_current_offset - real_current_offset)
                       0
-             in (foldl
+             in foldl
                   (makeDynamicSegment fn_off_map ss_off_map)
                   (aligned_current_offset, fn_offs, ss_offs, seg_contents <> padding)
                   asteriusStatics
-                ) :: (Word32, Set.Set Word32, Set.Set Word32, Builder)
         )
         (0, Set.empty, Set.empty, mempty)
         (SM.toList staticsMap)
@@ -257,12 +256,12 @@ makeDynamicMemory AsteriusModule {..} fn_off_map ss_off_map =
         [ ("__asterius_fn_segment", final_offset),
           ("__asterius_ss_segment", final_offset + fn_segment_len)
         ]
-    -- The two statics corresponding to the newly created data segments. We
-    -- should return these for consistency. TODO: One potential issue I see
-    -- here is that there is no way to ensure that the new statics are placed
-    -- _at the end_ of the list (i.e. if we call @SM.toList@), because ordering
-    -- in @SymbolMap@ is not lexicographic. Even if it was though, naming it
-    -- @zzzzzzz@ is not that great.
+    -- The two statics corresponding to the newly created data segments. Note
+    -- that there is no way to ensure that the new statics are placed _at the
+    -- end_ of the list (i.e. if we call @SM.toList@), because ordering in
+    -- @SymbolMap@ is not lexicographic (but it is deterministic). Since we've
+    -- already laid down the segments though, this is no problem; the
+    -- information is correctly set in the offset maps.
     new_statics :: AsteriusModule
     new_statics =
       mempty
