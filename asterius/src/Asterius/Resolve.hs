@@ -51,7 +51,7 @@ resolveAsteriusModule ::
     Int,
     Int
   )
-resolveAsteriusModule pic_on debug m_globals_resolved =
+resolveAsteriusModule pic_is_on debug m_globals_resolved =
   (new_mod, final_m, ss_off_map, fn_off_map, table_slots, initial_mblocks)
   where
     -- Create the offset tables first. A dummy relocation function already
@@ -61,12 +61,7 @@ resolveAsteriusModule pic_on debug m_globals_resolved =
     -- Create the data segments and the new relocation function second.
     -- We need to update the module with the real relocation function
     -- before we proceed.
-    (segs, reloc_function, new_seg_len, new_seg_offs) = makeMemory pic_on m_globals_resolved fn_off_map ss_off_map
-
-    last_data_offset = _last_data_offset + fromIntegral new_seg_len
-    ss_off_map = _ss_off_map <> new_seg_offs
-    final_m = reloc_function <> m_globals_resolved
-
+    (segs, ss_off_map, last_data_offset, final_m) = makeMemory pic_is_on m_globals_resolved fn_off_map
     -- Continue with the rest using the "real" module.
     func_table = makeFunctionTable fn_off_map
     table_slots = fromIntegral last_func_offset

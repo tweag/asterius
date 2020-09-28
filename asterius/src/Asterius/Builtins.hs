@@ -900,11 +900,12 @@ hsInitFunction _ = runEDSL "hs_init" $ do
     truncUFloat64ToInt64 <$> callImport' "__asterius_hpAlloc" [constF64 8] F64
   putLVal currentNursery bd_nursery
 
+-- | Placeholder relocation function implementation. If @--pic@ is on, this
+-- implementation should be overwritten during resolution (see
+-- @resolveAsteriusModule@ in @Asterius.Resolve@).
 wasmApplyRelocsFunction :: BuiltinsOptions -> AsteriusModule
 wasmApplyRelocsFunction _ = runEDSL "__wasm_apply_relocs" $ do
-  setReturnTypes [] -- Zero outputs
-  _ <- params [] -- Zero inputs
-  pure ()
+  pure () -- [] -> []
 
 rtsApplyFunction :: BuiltinsOptions -> AsteriusModule
 rtsApplyFunction _ = runEDSL "rts_apply" $ do
