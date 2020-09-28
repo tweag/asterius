@@ -32,7 +32,9 @@ defaultMemoryBase :: Word32
 defaultMemoryBase = 1024
 
 mkStaticDataAddress :: Word32 -> Int64
-mkStaticDataAddress off = (dataTag `shiftL` 32) .|. fromIntegral (defaultMemoryBase + off)
+mkStaticDataAddress off =
+  (dataTag `shiftL` 32) .|. fromIntegral (defaultMemoryBase + off)
 
 mkStaticFunctionAddress :: Word32 -> Int64
-mkStaticFunctionAddress off = (functionTag `shiftL` 32) .|. fromIntegral (defaultTableBase + off)
+mkStaticFunctionAddress off =
+  (functionTag `shiftL` 32) .|. fromIntegral (defaultTableBase + off)

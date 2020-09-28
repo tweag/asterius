@@ -36,19 +36,24 @@ export async function newAsteriusInstance(req) {
       req.pic ? 4096 : req.defaultMemoryBase // TODO: make dynamic.
     );
 
-  let mkSptEntries = function(spt_offset_entries) {
+  let mkSptEntries = function (spt_offset_entries) {
     const absolute_spt_entries = new Map();
     for (const [k, off] of spt_offset_entries.entries()) {
-      absolute_spt_entries.set(k, Memory.tagData(__asterius_memory_base.value + off));
+      absolute_spt_entries.set(
+        k,
+        Memory.tagData(__asterius_memory_base.value + off)
+      );
     }
     return absolute_spt_entries;
   };
 
-  let mkInfoTable = function(offset_info_tables) {
-    if (!(typeof offset_info_table === 'undefined')) {
+  let mkInfoTable = function (offset_info_tables) {
+    if (!(typeof offset_info_table === "undefined")) {
       const absolute_info_tables = new Set();
       for (const off of offset_info_tables.keys()) {
-        absolute_info_tables.add(Memory.tagData(__asterius_memory_base.value + off));
+        absolute_info_tables.add(
+          Memory.tagData(__asterius_memory_base.value + off)
+        );
       }
       return absolute_info_tables;
     }
