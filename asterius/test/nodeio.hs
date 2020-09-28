@@ -33,7 +33,6 @@ main = do
       $ callProcess "ahc-link"
       $ [ "--input-hs",
           "test/nodeio/nodeio.hs",
-          "--backend=binaryen",
           "--verbose-err",
           "--run"
         ]

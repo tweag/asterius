@@ -127,7 +127,7 @@ export class ExceptionHelper {
       i64/f64 conversion workaround.
 
     * The rts cmm files call `barf` with either 0, 1, 2 arguments. In the
-      backends we remove extra arguments, and if there isn't any, we use a
+      backend we remove extra arguments, and if there isn't any, we use a
       `NULL` pointer as argument, which is interpreted as empty error message in
       our implementation.
    */
@@ -162,7 +162,7 @@ export class ExceptionHelper {
       ascii code of) a single character of the error message, followed by a
       call to `barf_throw`.
 
-    In the backends (`Asterius.Backends.*`), when we encounter an unresolved
+    In the backend (`Asterius.Backends.Binaryen*`), when we encounter an unresolved
     symbol `sym`, if @verbose_err@ is on, we insert a `barf` call there. So
     if an execution path leads to the unresolved symbol, we're likely to get
     the symbol name from the js error message.

@@ -2,10 +2,8 @@
 
 module Asterius.Main.Task
   ( Target (..),
-    Backend (..),
     Task,
     target,
-    backend,
     optimizeLevel,
     shrinkLevel,
     inputHS,
@@ -39,15 +37,9 @@ data Target
   | Browser
   deriving (Eq)
 
-data Backend
-  = WasmToolkit
-  | Binaryen
-  deriving (Eq)
-
 data Task
   = Task
       { target :: Target,
-        backend :: Backend,
         optimizeLevel, shrinkLevel :: Int,
         inputHS :: FilePath,
         inputEntryMJS :: Maybe FilePath,
@@ -62,7 +54,6 @@ data Task
 defTask :: Task
 defTask = Task
   { target = Node,
-    backend = Binaryen,
     optimizeLevel = 4,
     shrinkLevel = 2,
     inputHS = error "Asterius.Main.parseTask: missing inputHS",

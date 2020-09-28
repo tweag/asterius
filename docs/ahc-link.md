@@ -151,16 +151,6 @@ Specify additional ghc options. The `{-# OPTIONS_GHC #-}` pragma also works.
 
 Runs the output code using `node`. Ignored for browser targets.
 
-### `--backend`
-
-Specify a backend for generating `.wasm` files; `--backend=binaryen` or
-`--backend=wasm-toolkit` is supported. The default backend is `binaryen`. At the
-moment, the `binaryen` backend is likely to emit better code, due to factors
-like a more decent relooper.
-
-Other than performance, if any different runtime behavior of output code is
-observed with different backends, it should be a bug.
-
 ### `--debug`
 
 Switch on the debug mode. The memory trap will be enabled, which replaces all
