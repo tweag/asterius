@@ -12,7 +12,7 @@ jobs:
     steps:
 
       - name: setup-haskell
-        uses: actions/setup-haskell@v1
+        uses: actions/setup-haskell@main
         with:
           cabal-version: 3.2.0.0
           stack-version: 2.5.0.1
@@ -57,7 +57,7 @@ jobs:
     steps:
 
       - name: setup-haskell
-        uses: actions/setup-haskell@v1
+        uses: actions/setup-haskell@main
         with:
           cabal-version: 3.2.0.0
           stack-version: 2.5.0.1
@@ -145,7 +145,7 @@ jobs:
     steps:
 
       - name: setup-haskell
-        uses: actions/setup-haskell@v1
+        uses: actions/setup-haskell@main
         with:
           cabal-version: 3.2.0.0
           stack-version: 2.5.0.1
@@ -188,7 +188,7 @@ jobs:
     steps:
 
       - name: setup-haskell
-        uses: actions/setup-haskell@v1
+        uses: actions/setup-haskell@main
         with:
           cabal-version: 3.2.0.0
           stack-version: 2.5.0.1
@@ -246,7 +246,7 @@ jobs:
     steps:
 
       - name: setup-haskell
-        uses: actions/setup-haskell@v1
+        uses: actions/setup-haskell@main
         with:
           cabal-version: 3.2.0.0
           stack-version: 2.5.0.1
@@ -293,7 +293,7 @@ jobs:
     steps:
 
       - name: setup-haskell
-        uses: actions/setup-haskell@v1
+        uses: actions/setup-haskell@main
         with:
           cabal-version: 3.2.0.0
           stack-version: 2.5.0.1
@@ -346,7 +346,7 @@ jobs:
     steps:
 
       - name: setup-haskell
-        uses: actions/setup-haskell@v1
+        uses: actions/setup-haskell@main
         with:
           stack-version: 2.5.0.1
           enable-stack: true
