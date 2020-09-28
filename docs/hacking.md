@@ -168,6 +168,7 @@ with your user and doesn't mess up local file permissions:
 $ docker build --build-arg UID=$(id -u) --file dev.rootless.Dockerfile --tag my_dev_image .
 ```
 
+Building the image can take around 10min.
 After `my_dev_image` is built, a dev container can be started:
 
 ```sh
