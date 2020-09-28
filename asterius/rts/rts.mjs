@@ -26,13 +26,50 @@ import * as rtsConstants from "./rts.constants.mjs";
 
 export async function newAsteriusInstance(req) {
   const __asterius_components = {};
+
+  let __asterius_table_base = new WebAssembly.Global(
+      { value: "i32", mutable: false },
+      req.pic ? 3517 : req.defaultTableBase // TODO: make dynamic.
+    ),
+    __asterius_memory_base = new WebAssembly.Global(
+      { value: "i32", mutable: false },
+      req.pic ? 4096 : req.defaultMemoryBase // TODO: make dynamic.
+    );
+
+  let mkSptEntries = function (spt_offset_entries) {
+    const absolute_spt_entries = new Map();
+    for (const [k, off] of spt_offset_entries.entries()) {
+      absolute_spt_entries.set(
+        k,
+        Memory.tagData(__asterius_memory_base.value + off)
+      );
+    }
+    return absolute_spt_entries;
+  };
+
+  let mkInfoTable = function (offset_info_tables) {
+    if (!(typeof offset_info_table === "undefined")) {
+      const absolute_info_tables = new Set();
+      for (const off of offset_info_tables.keys()) {
+        absolute_info_tables.add(
+          Memory.tagData(__asterius_memory_base.value + off)
+        );
+      }
+      return absolute_info_tables;
+    }
+  };
+
   let __asterius_persistent_state = req.persistentState
       ? req.persistentState
       : {},
     __asterius_symbol_table = new SymbolTable(
-      req.functionsSymbolTable,
-      req.staticsSymbolTable,
+      req.functionsOffsetTable,
+      req.staticsOffsetTable,
+      __asterius_table_base.value,
+      __asterius_memory_base.value
     ),
+    __asterius_spt_entries = mkSptEntries(req.sptOffsetEntries),
+    __asterius_info_tables = mkInfoTable(req.offsetInfoTables),
     __asterius_reentrancy_guard = new ReentrancyGuard(["Scheduler", "GC"]),
     __asterius_fs = new FS(__asterius_components),
     __asterius_logger = new EventLogManager(),
@@ -40,10 +77,19 @@ export async function newAsteriusInstance(req) {
     __asterius_wasm_instance = null,
     __asterius_wasm_table = new WebAssembly.Table({
       element: "anyfunc",
-      initial: req.tableSlots
+      initial: __asterius_table_base.value + req.tableSlots
     }),
+    __asterius_static_mblocks = Math.ceil(
+      (__asterius_memory_base.value + req.staticBytes) /
+        rtsConstants.mblock_size
+    ),
     __asterius_wasm_memory = new WebAssembly.Memory({
-      initial: Math.max(req.staticMBlocks + 2, req.gcThreshold) * (rtsConstants.mblock_size / 65536)
+      // The storage manager will allocate 2 mblocks right away (for
+      // unpinned/pinned heap). Hence, we add 2 to avoid having to resize the
+      // wasm linear memory immediately (in case gcThreshold is small).
+      initial:
+        Math.max(__asterius_static_mblocks + 2, req.gcThreshold) *
+        (rtsConstants.mblock_size / rtsConstants.pageSize),
     }),
     __asterius_memory = new Memory(),
     __asterius_memory_trap = new MemoryTrap(
@@ -60,7 +106,11 @@ export async function newAsteriusInstance(req) {
       __asterius_heapalloc,
       __asterius_symbol_table
     ),
-    __asterius_staticptr_manager = new StaticPtrManager(__asterius_memory, __asterius_stableptr_manager, req.sptEntries),
+    __asterius_staticptr_manager = new StaticPtrManager(
+      __asterius_memory,
+      __asterius_stableptr_manager,
+      __asterius_spt_entries
+    ),
     __asterius_scheduler = new Scheduler(
       __asterius_memory,
       __asterius_symbol_table,
@@ -76,7 +126,7 @@ export async function newAsteriusInstance(req) {
       __asterius_stableptr_manager,
       __asterius_stablename_manager,
       __asterius_scheduler,
-      req.infoTables,
+      __asterius_info_tables,
       __asterius_symbol_table,
       __asterius_reentrancy_guard,
       req.yolo,
@@ -96,7 +146,7 @@ export async function newAsteriusInstance(req) {
       __asterius_memory,
       __asterius_heapalloc,
       __asterius_exports,
-      req.infoTables,
+      __asterius_info_tables,
       __asterius_symbol_table
     );
   __asterius_scheduler.exports = __asterius_exports;
@@ -131,6 +181,10 @@ export async function newAsteriusInstance(req) {
       },
       WasmMemory: {
         memory: __asterius_wasm_memory
+      },
+      env: {
+        __memory_base: __asterius_memory_base,
+        __table_base: __asterius_table_base
       },
       rts: {
         printI64: x => __asterius_fs.writeNonMemory(1, `${__asterius_show_I64(x)}\n`),
@@ -185,17 +239,22 @@ export async function newAsteriusInstance(req) {
   );
 
   return WebAssembly.instantiate(req.module, importObject).then(i => {
+    if (req.pic) {
+      i.exports.__wasm_apply_relocs();
+    }
     __asterius_wasm_instance = i;
-    __asterius_memory.init(__asterius_wasm_memory, req.staticMBlocks);
+    __asterius_memory.init(__asterius_wasm_memory, __asterius_static_mblocks);
     __asterius_heapalloc.init();
     __asterius_bytestring_cbits.memory = __asterius_memory;
     __asterius_scheduler.setGC(__asterius_gc);
 
-    for (const [f, p, a, r, i] of req.exportsStatic) {
+    for (const [f, off, a, r, i] of req.exportsStaticOffsets) {
       __asterius_exports[
         f
       ] = __asterius_exports.newHaskellCallback(
-        __asterius_stableptr_manager.newStablePtr(p),
+        __asterius_stableptr_manager.newStablePtr(
+          Memory.tagData(__asterius_memory_base.value + off)
+        ),
         a,
         r,
         i,

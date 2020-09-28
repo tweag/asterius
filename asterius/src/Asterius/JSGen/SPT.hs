@@ -5,7 +5,6 @@ module Asterius.JSGen.SPT
   )
 where
 
-import Asterius.Internals.MagicNumber
 import qualified Asterius.Types.SymbolMap as SM
 import Data.ByteString.Builder
 import Data.List
@@ -24,7 +23,7 @@ genSPT ss_off_map spt_entries =
               <> word64HexFixed w1
               <> word64HexFixed w0
               <> "n,0x"
-              <> int64HexFixed (mkDataAddress $ ss_off_map SM.! sym)
+              <> word32HexFixed (ss_off_map SM.! sym)
               <> "]"
             | (sym, (w0, w1)) <- SM.toList spt_entries
           ]

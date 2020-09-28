@@ -30,7 +30,7 @@ data LinkTask
       { progName, linkOutput :: FilePath,
         linkObjs, linkLibs :: [FilePath],
         linkModule :: AsteriusCachedModule,
-        hasMain, debug, gcSections, verboseErr :: Bool,
+        hasMain, debug, gcSections, verboseErr, pic :: Bool,
         outputIR :: Maybe FilePath,
         rootSymbols, exportFunctions :: [EntitySymbol]
       }
@@ -94,6 +94,7 @@ linkModules ::
   LinkTask -> AsteriusCachedModule -> (AsteriusModule, Module, LinkReport)
 linkModules LinkTask {..} m =
   linkStart
+    pic
     debug
     gcSections
     ( toCachedModule

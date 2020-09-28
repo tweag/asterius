@@ -24,6 +24,7 @@ module Asterius.Backends.WasmToolkit
 where
 
 import Asterius.Builtins
+import Asterius.EDSL (mkDynamicDataAddress, mkDynamicFunctionAddress)
 import Asterius.Internals.Barf
 import Asterius.Internals.MagicNumber
 import Asterius.Passes.Relooper
@@ -459,7 +460,9 @@ marshalBinaryOp op = case op of
 -- | Environment used during the elaboration of Asterius' types to WebAssembly.
 data MarshalEnv
   = MarshalEnv
-      { -- | Whether the @verbose_err@ extension is on.
+      { -- | Whether the @pic@ extension is on.
+        envIsPicOn :: Bool,
+        -- | Whether the @verbose_err@ extension is on.
         envIsVerboseErrOn :: Bool,
         -- | Whether the tail call extension is on.
         envAreTailCallsOn :: Bool,
@@ -474,6 +477,10 @@ data MarshalEnv
         -- | The local context. Used for local variable access.
         envLclContext :: LocalContext
       }
+
+-- | Check whether the @pic@ extension is on.
+isPicOn :: MonadReader MarshalEnv m => m Bool
+isPicOn = reader envIsPicOn
 
 -- | Check whether the @verbose_err@ extension is on.
 isVerboseErrOn :: MonadReader MarshalEnv m => m Bool
@@ -699,6 +706,7 @@ makeInstructions expr =
     ReturnCall {..} -> do
       fn_off_map <- askFunctionsOffsetMap
       ModuleSymbolTable {..} <- askModuleSymbolTable
+      pic_is_on <- isPicOn
       verbose_err <- isVerboseErrOn
       tail_calls <- areTailCallsOn
       if tail_calls
@@ -713,10 +721,13 @@ makeInstructions expr =
               pure $ unitBag Wasm.Unreachable
         -- Case 2: Tail calls are off
         else case SM.lookup returnCallTarget64 fn_off_map of
-          Just t -> makeInstructions
+          Just off -> makeInstructions
             SetGlobal
               { globalSymbol = "__asterius_pc",
-                value = ConstI64 $ mkFunctionAddress $ t
+                value =
+                  if pic_is_on
+                    then mkDynamicFunctionAddress off
+                    else ConstI64 $ mkStaticFunctionAddress off
               }
           _
             | verbose_err ->
@@ -749,17 +760,20 @@ makeInstructions expr =
     Unreachable -> pure $ unitBag Wasm.Unreachable
     CFG {..} -> makeInstructions $ relooper graph
     Symbol {..} -> do
+      pic_is_on <- isPicOn
       verbose_err <- isVerboseErrOn
       ss_off_map <- askStaticsOffsetMap
       fn_off_map <- askFunctionsOffsetMap
-      if  | Just x <- SM.lookup unresolvedSymbol ss_off_map ->
-            pure $ unitBag Wasm.I64Const
-              { i64ConstValue = mkDataAddress $ x + fromIntegral symbolOffset
-              }
-          | Just x <- SM.lookup unresolvedSymbol fn_off_map ->
-            pure $ unitBag Wasm.I64Const
-              { i64ConstValue = mkFunctionAddress $ x + fromIntegral symbolOffset
-              }
+      if  | Just off <- SM.lookup unresolvedSymbol ss_off_map ->
+            makeInstructions $
+              if pic_is_on
+                then mkDynamicDataAddress $ off + fromIntegral symbolOffset
+                else ConstI64 $ mkStaticDataAddress $ off + fromIntegral symbolOffset
+          | Just off <- SM.lookup unresolvedSymbol fn_off_map ->
+            makeInstructions $
+              if pic_is_on
+                then mkDynamicFunctionAddress $ off + fromIntegral symbolOffset
+                else ConstI64 $ mkStaticFunctionAddress $ off + fromIntegral symbolOffset
           | verbose_err ->
             makeInstructions $ barf (entityName unresolvedSymbol) [I64]
           | otherwise ->
@@ -829,15 +843,17 @@ makeModule ::
   MonadError MarshalError m =>
   Bool ->
   Bool ->
+  Bool ->
   SM.SymbolMap Word32 ->
   SM.SymbolMap Word32 ->
   Module ->
   m Wasm.Module
-makeModule verbose_err tail_calls ss_off_map fn_off_map m = do
+makeModule pic_on verbose_err tail_calls ss_off_map fn_off_map m = do
   _module_symtable <- makeModuleSymbolTable m
   let env =
         MarshalEnv
-          { envIsVerboseErrOn = verbose_err,
+          { envIsPicOn = pic_on,
+            envIsVerboseErrOn = verbose_err,
             envAreTailCallsOn = tail_calls,
             envStaticsOffsetMap = ss_off_map,
             envFunctionsOffsetMap = fn_off_map,

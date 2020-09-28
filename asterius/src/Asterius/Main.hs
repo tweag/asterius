@@ -123,6 +123,7 @@ parseTask args = case err_msgs of
           bool_opt "output-ir" $ \t -> t {outputIR = True},
           bool_opt "run" $ \t -> t {run = True},
           bool_opt "verbose-err" $ \t -> t {backend = Binaryen, verboseErr = True},
+          bool_opt "pic" $ \t -> t {pic = True},
           bool_opt "yolo" $ \t -> t {yolo = True},
           bool_opt "console-history" $ \t -> t {consoleHistory = True},
           str_opt "ghc-option" $
@@ -139,32 +140,32 @@ parseTask args = case err_msgs of
 getTask :: IO Task
 getTask = parseTask <$> getArgs
 
-genStaticsSymbolTableDict :: SM.SymbolMap Word32 -> Builder
-genStaticsSymbolTableDict ss_off_map =
+genStaticsOffsetTableDict :: SM.SymbolMap Word32 -> Builder
+genStaticsOffsetTableDict ss_off_map =
   "Object.freeze({"
     <> mconcat
       ( intersperse
           ","
-          [ "\"" <> byteString (entityName sym) <> "\":" <> intHex (mkDataAddress sym_off)
+          [ "\"" <> byteString (entityName sym) <> "\":" <> intHex sym_off
             | (sym, sym_off) <- SM.toList ss_off_map
           ]
       )
     <> "})"
 
-genFunctionsSymbolTableDict :: SM.SymbolMap Word32 -> Builder
-genFunctionsSymbolTableDict fn_off_map =
+genFunctionsOffsetTableDict :: SM.SymbolMap Word32 -> Builder
+genFunctionsOffsetTableDict fn_off_map =
   "Object.freeze({"
     <> mconcat
       ( intersperse
           ","
-          [ "\"" <> byteString (entityName sym) <> "\":" <> intHex (mkFunctionAddress sym_off)
+          [ "\"" <> byteString (entityName sym) <> "\":" <> intHex sym_off
             | (sym, sym_off) <- SM.toList fn_off_map
           ]
       )
     <> "})"
 
-genInfoTables :: [Int64] -> Builder
-genInfoTables sym_set =
+genOffsetInfoTables :: [Word32] -> Builder
+genOffsetInfoTables sym_set =
   "new Set([" <> mconcat (intersperse "," (map intHex sym_set)) <> "])"
 
 genReq :: Task -> LinkReport -> Builder
@@ -176,23 +177,29 @@ genReq task LinkReport {..} =
       "export default {",
       "jsffiFactory: ",
       generateFFIImportObjectFactory bundledFFIMarshalState,
-      ", exportsStatic: ",
+      ", exportsStaticOffsets: ",
       genExportStaticObj bundledFFIMarshalState staticsOffsetMap,
-      ", functionsSymbolTable: ",
-      genFunctionsSymbolTableDict fn_off_map,
-      ", staticsSymbolTable: ",
-      genStaticsSymbolTableDict ss_off_map,
+      ", functionsOffsetTable: ",
+      genFunctionsOffsetTableDict fn_off_map,
+      ", staticsOffsetTable: ",
+      genStaticsOffsetTableDict ss_off_map,
       if debug task
-        then mconcat [", infoTables: ", genInfoTables infoTableSet]
+        then mconcat [", offsetInfoTables: ", genOffsetInfoTables infoTableOffsetSet]
         else mempty,
-      ", sptEntries: ",
+      ", sptOffsetEntries: ",
       genSPT staticsOffsetMap sptEntries,
       ", tableSlots: ",
       intDec tableSlots,
-      ", staticMBlocks: ",
-      intDec staticMBlocks,
+      ", staticBytes: ",
+      intDec staticBytes,
       ", yolo: ",
       if yolo task then "true" else "false",
+      ", pic: ",
+      if pic task then "true" else "false",
+      ", defaultTableBase: ",
+      intHex defaultTableBase,
+      ", defaultMemoryBase: ",
+      intHex defaultMemoryBase,
       ", consoleHistory: ",
       if consoleHistory task then "true" else "false",
       ", gcThreshold: ",
@@ -276,6 +283,7 @@ ahcLink task = do
            | export_func <- exportFunctions task
          ]
       <> ["-optl--no-gc-sections" | not (gcSections task)]
+      <> ["-optl--pic" | pic task]
       <> ["-optl--verbose-err" | verboseErr task]
       <> extraGHCFlags task
       <> [ "-optl--output-ir="
@@ -316,6 +324,7 @@ ahcDistMain logger task (final_m, report) = do
       Binaryen.setLowMemoryUnused 1
       m_ref <-
         Binaryen.marshalModule
+          (pic task)
           (verboseErr task)
           (tailCalls task)
           (staticsOffsetMap report)
@@ -355,6 +364,7 @@ ahcDistMain logger task (final_m, report) = do
       let conv_result =
             runExcept $
               WasmToolkit.makeModule
+                (pic task)
                 (verboseErr task)
                 (tailCalls task)
                 (staticsOffsetMap report)

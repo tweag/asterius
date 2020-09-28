@@ -1,14 +1,18 @@
+import { Memory } from "./rts.memory.mjs";
+
 export class SymbolTable {
   constructor(
-    func_symbol_table,
-    statics_symbol_table
+    fn_offset_table,
+    ss_offset_table,
+    table_base,
+    memory_base
   ) {
     this.symbolTable = new Map();
-    for (const [k, v] of Object.entries(func_symbol_table)) {
-      this.symbolTable.set(k, v);
+    for (const [k, off] of Object.entries(fn_offset_table)) {
+      this.symbolTable.set(k, Memory.tagFunction(table_base + off));
     }
-    for (const [k, v] of Object.entries(statics_symbol_table)) {
-      this.symbolTable.set(k, v);
+    for (const [k, off] of Object.entries(ss_offset_table)) {
+      this.symbolTable.set(k, Memory.tagData(memory_base + off));
     }
     Object.freeze(this);
   }
