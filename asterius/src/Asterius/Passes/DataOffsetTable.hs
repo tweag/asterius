@@ -24,6 +24,11 @@ import Data.Tuple
 import Foreign
 import Language.Haskell.GHC.Toolkit.Constants
 
+-- | Segments are 16-bytes aligned.
+{-# INLINE segAlignment #-}
+segAlignment :: Int
+segAlignment = 16
+
 {-# INLINEABLE sizeofStatic #-}
 sizeofStatic :: AsteriusStatic -> Word32
 sizeofStatic = \case
@@ -36,7 +41,7 @@ sizeofStatics = getSum . foldMap (Sum . sizeofStatic) . asteriusStatics
 
 {-# INLINEABLE sizeofStaticsAligned #-}
 sizeofStaticsAligned :: AsteriusStatics -> Word32
-sizeofStaticsAligned ss = fromIntegral $ fromIntegral (sizeofStatics ss) `roundup` 16
+sizeofStaticsAligned ss = fromIntegral $ fromIntegral (sizeofStatics ss) `roundup` segAlignment
 
 {-# INLINEABLE makeDataOffsetTable #-}
 makeDataOffsetTable :: AsteriusModule -> (SM.SymbolMap Word32, Word32)
@@ -225,7 +230,7 @@ makeDynamicMemory AsteriusModule {..} fn_off_map ss_off_map =
         (0, Set.empty, Set.empty, mempty)
         (SM.toList staticsMap)
     -- Ensure that the last bit is also aligned
-    final_offset = fromIntegral $ fromIntegral _final_offset `roundup` 16
+    final_offset = fromIntegral $ fromIntegral _final_offset `roundup` segAlignment
     all_content = _all_content <> byteString (BS.replicate (fromIntegral (final_offset - _final_offset)) 0)
     -- The two new segments, containing the function offsets and the static
     -- offsets that the relocation function needs to change.
@@ -276,7 +281,7 @@ mkOffsetSegment :: Set.Set Word32 -> (Builder, Word32, AsteriusStatics, Int)
 mkOffsetSegment all_offs = (segment <> padding, fromIntegral aligned_len, statics, init_len)
   where
     init_len = 8 * Set.size all_offs
-    aligned_len = init_len `roundup` 16
+    aligned_len = init_len `roundup` segAlignment
     segment =
       mconcat
         $ map (byteString . encodeStorable . castOffsetToAddress)
