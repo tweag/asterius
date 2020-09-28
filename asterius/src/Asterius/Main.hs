@@ -13,16 +13,13 @@ where
 
 import qualified Asterius.Backends.Binaryen
 import qualified Asterius.Backends.Binaryen as Binaryen
-import qualified Asterius.Backends.WasmToolkit as WasmToolkit
 import Asterius.Binary.File
 import Asterius.Binary.NameCache
 import Asterius.BuildInfo
 import Asterius.Foreign.ExportStatic
 import Asterius.Internals
-import qualified Asterius.Internals.Arena as A
 import Asterius.Internals.ByteString
 import Asterius.Internals.MagicNumber
-import Asterius.Internals.Marshal
 import Asterius.Internals.Temp
 import Asterius.JSFFI
 import qualified Asterius.JSGen.Bundle as Bundle
@@ -40,18 +37,14 @@ import qualified Asterius.Types.SymbolSet as SS
 import qualified Binaryen
 import qualified Binaryen.Module as Binaryen
 import Control.Monad
-import Control.Monad.Except
 import Data.Binary.Get
-import Data.Binary.Put
 import qualified Data.ByteString as BS
 import Data.ByteString.Builder
 import qualified Data.ByteString.Lazy as LBS
-import qualified Data.ByteString.Unsafe as BS
 import Data.Foldable
 import Data.List
 import Data.String
 import Foreign
-import Language.WebAssembly.WireFormat
 import qualified Language.WebAssembly.WireFormat as Wasm
 import System.Console.GetOpt
 import System.Directory
@@ -96,10 +89,6 @@ parseTask args = case err_msgs of
           bool_opt "tail-calls" $ \t -> t {tailCalls = True},
           bool_opt "no-gc-sections" $ \t -> t {gcSections = False},
           bool_opt "bundle" $ \t -> t {bundle = True},
-          str_opt "backend" $ \s t -> case s of
-            "wasm-toolkit" -> t {backend = WasmToolkit}
-            "binaryen" -> t {backend = Binaryen}
-            _ -> error $ "Unsupported backend " <> show s,
           str_opt "optimize-level" $ \s t ->
             let i = read s
              in if i >= 0 && i <= 4
@@ -113,8 +102,7 @@ parseTask args = case err_msgs of
           bool_opt "debug" $
             \t ->
               t
-                { backend = Binaryen,
-                  optimizeLevel = 0,
+                { optimizeLevel = 0,
                   shrinkLevel = 0,
                   debug = True,
                   outputIR = True,
@@ -122,7 +110,7 @@ parseTask args = case err_msgs of
                 },
           bool_opt "output-ir" $ \t -> t {outputIR = True},
           bool_opt "run" $ \t -> t {run = True},
-          bool_opt "verbose-err" $ \t -> t {backend = Binaryen, verboseErr = True},
+          bool_opt "verbose-err" $ \t -> t {verboseErr = True},
           bool_opt "pic" $ \t -> t {pic = True},
           bool_opt "yolo" $ \t -> t {yolo = True},
           bool_opt "console-history" $ \t -> t {consoleHistory = True},
@@ -315,90 +303,48 @@ ahcDistMain logger task (final_m, report) = do
     let p = out_wasm -<.> "linked.txt"
     logger $ "[INFO] Printing linked IR to " <> show p
     writeFile p $ show final_m
-  case backend task of
-    Binaryen -> do
-      logger "[INFO] Converting linked IR to binaryen IR"
-      Binaryen.setDebugInfo $ if verboseErr task then 1 else 0
-      Binaryen.setOptimizeLevel $ fromIntegral $ optimizeLevel task
-      Binaryen.setShrinkLevel $ fromIntegral $ shrinkLevel task
-      Binaryen.setLowMemoryUnused 1
-      m_ref <-
-        Binaryen.marshalModule
-          (pic task)
-          (verboseErr task)
-          (tailCalls task)
-          (staticsOffsetMap report)
-          (functionOffsetMap report)
-          final_m
-      when (optimizeLevel task > 0 || shrinkLevel task > 0) $ do
-        logger "[INFO] Running binaryen optimization"
-        Binaryen.optimize m_ref
-      when (validate task) $ do
-        logger "[INFO] Validating binaryen IR"
-        pass_validation <- Binaryen.validate m_ref
-        when (pass_validation /= 1) $ fail "[ERROR] binaryen validation failed"
-      m_bin <- Binaryen.serializeModule m_ref
-      logger $ "[INFO] Writing WebAssembly binary to " <> show out_wasm
-      BS.writeFile out_wasm m_bin
-      when (outputIR task) $ do
-        let p = out_wasm -<.> "binaryen-show.txt"
-        logger $ "[info] writing re-parsed wasm-toolkit ir to " <> show p
-        case runGetOrFail Wasm.getModule (LBS.fromStrict m_bin) of
-          Right (rest, _, r)
-            | LBS.null rest -> writeFile p (show r)
-            | otherwise -> fail "[ERROR] Re-parsing produced residule"
-          _ -> fail "[ERROR] Re-parsing failed"
-        let out_wasm_binaryen_sexpr = out_wasm -<.> "binaryen-sexpr.txt"
-        logger $
-          "[info] writing re-parsed wasm-toolkit ir as s-expresions to "
-            <> show out_wasm_binaryen_sexpr
-        -- disable colors when writing out the binaryen module
-        -- to a file, so that we don't get ANSI escape sequences
-        -- for colors. Reset the state after
-        Asterius.Backends.Binaryen.setColorsEnabled False
-        m_sexpr <- Binaryen.serializeModuleSExpr m_ref
-        BS.writeFile out_wasm_binaryen_sexpr m_sexpr
-      Binaryen.dispose m_ref
-    WasmToolkit -> do
-      logger "[INFO] Converting linked IR to wasm-toolkit IR"
-      let conv_result =
-            runExcept $
-              WasmToolkit.makeModule
-                (pic task)
-                (verboseErr task)
-                (tailCalls task)
-                (staticsOffsetMap report)
-                (functionOffsetMap report)
-                final_m
-      r <- case conv_result of
-        Left err -> fail $ "[ERROR] Conversion failed with " <> show err
-        Right r -> pure r
-      when (outputIR task) $ do
-        let p = out_wasm -<.> "wasm-toolkit.txt"
-        logger $ "[INFO] Writing wasm-toolkit IR to " <> show p
-        writeFile p $ show r
-      fin <-
-        if optimizeLevel task > 0 || shrinkLevel task > 0
-          then do
-            logger "[INFO] Re-parsing wasm-toolkit IR with binaryen"
-            m_ref <-
-              BS.unsafeUseAsCStringLen
-                (LBS.toStrict $ toLazyByteString $ execPut $ putModule r)
-                $ \(p, l) -> Binaryen.read p (fromIntegral l)
-            logger "[INFO] Running binaryen optimization"
-            Binaryen.optimize m_ref
-            A.with $ \a -> do
-              lim_segs <- marshalBS a "limit-segments"
-              (lim_segs_p, _) <- marshalV a [lim_segs]
-              Binaryen.runPasses m_ref lim_segs_p 1
-            b <- Binaryen.serializeModule m_ref
-            Binaryen.dispose m_ref
-            pure $ Left b
-          else pure $ Right $ execPut $ putModule r
-      logger $ "[INFO] Writing WebAssembly binary to " <> show out_wasm
-      case fin of
-        Left b -> BS.writeFile out_wasm b
-        Right b -> withBinaryFile out_wasm WriteMode $ \h -> hPutBuilder h b
+  logger "[INFO] Converting linked IR to binaryen IR"
+  Binaryen.setDebugInfo $ if verboseErr task then 1 else 0
+  Binaryen.setOptimizeLevel $ fromIntegral $ optimizeLevel task
+  Binaryen.setShrinkLevel $ fromIntegral $ shrinkLevel task
+  Binaryen.setLowMemoryUnused 1
+  m_ref <-
+    Binaryen.marshalModule
+      (pic task)
+      (verboseErr task)
+      (tailCalls task)
+      (staticsOffsetMap report)
+      (functionOffsetMap report)
+      final_m
+  when (optimizeLevel task > 0 || shrinkLevel task > 0) $ do
+    logger "[INFO] Running binaryen optimization"
+    Binaryen.optimize m_ref
+  when (validate task) $ do
+    logger "[INFO] Validating binaryen IR"
+    pass_validation <- Binaryen.validate m_ref
+    when (pass_validation /= 1) $ fail "[ERROR] binaryen validation failed"
+  m_bin <- Binaryen.serializeModule m_ref
+  logger $ "[INFO] Writing WebAssembly binary to " <> show out_wasm
+  BS.writeFile out_wasm m_bin
+  when (outputIR task) $ do
+    let p = out_wasm -<.> "binaryen-show.txt"
+    logger $ "[info] writing re-parsed wasm-toolkit ir to " <> show p
+    case runGetOrFail Wasm.getModule (LBS.fromStrict m_bin) of
+      Right (rest, _, r)
+        | LBS.null rest -> writeFile p (show r)
+        | otherwise -> fail "[ERROR] Re-parsing produced residule"
+      _ -> fail "[ERROR] Re-parsing failed"
+    let out_wasm_binaryen_sexpr = out_wasm -<.> "binaryen-sexpr.txt"
+    logger $
+      "[info] writing re-parsed wasm-toolkit ir as s-expresions to "
+        <> show out_wasm_binaryen_sexpr
+    -- disable colors when writing out the binaryen module
+    -- to a file, so that we don't get ANSI escape sequences
+    -- for colors. Reset the state after
+    Asterius.Backends.Binaryen.setColorsEnabled False
+    m_sexpr <- Binaryen.serializeModuleSExpr m_ref
+    BS.writeFile out_wasm_binaryen_sexpr m_sexpr
+  Binaryen.dispose m_ref
   logger $
     "[INFO] Writing JavaScript runtime modules to "
       <> show

@@ -123,7 +123,6 @@ runTestCase l_opts tlref TestCase {..} = catch m h
                 [ "--input-hs",
                   takeFileName tmp_case_path,
                   "--console-history",
-                  "--backend=binaryen",
                   "--tail-calls",
                   "--verbose-err"
                 ]

@@ -43,20 +43,16 @@ jobs:
             **/.stack-work
 
   test:
-    name: test-${{ matrix.backend }}-${{ matrix.with-pic }}
+    name: test-${{ matrix.with-pic }}
     needs: boot
     runs-on: ubuntu-20.04
     strategy:
       fail-fast: false
       matrix:
-        backend:
-          - binaryen
-          - wasm-toolkit
         with-pic:
           - "--pic"
           - ""
     env:
-      ASTERIUS_BACKEND: ${{ matrix.backend }}
       ASTERIUS_WITH_PIC: ${{ matrix.with-pic }}
     steps:
 
@@ -98,49 +94,49 @@ jobs:
 
       - name: test
         run: |
-          stack test asterius:fib --test-arguments="--backend=$ASTERIUS_BACKEND $ASTERIUS_WITH_PIC"
-          stack test asterius:jsffi --test-arguments="--backend=$ASTERIUS_BACKEND $ASTERIUS_WITH_PIC"
-          stack test asterius:array --test-arguments="--backend=$ASTERIUS_BACKEND $ASTERIUS_WITH_PIC"
-          stack test asterius:stableptr --test-arguments="--backend=$ASTERIUS_BACKEND $ASTERIUS_WITH_PIC"
-          stack test asterius:rtsapi --test-arguments="--backend=$ASTERIUS_BACKEND $ASTERIUS_WITH_PIC"
-          stack test asterius:teletype --test-arguments="--backend=$ASTERIUS_BACKEND $ASTERIUS_WITH_PIC"
-          stack test asterius:bytearray --test-arguments="--backend=$ASTERIUS_BACKEND $ASTERIUS_WITH_PIC"
-          stack test asterius:bigint --test-arguments="--backend=$ASTERIUS_BACKEND $ASTERIUS_WITH_PIC"
-          stack test asterius:todomvc --test-arguments="--backend=$ASTERIUS_BACKEND $ASTERIUS_WITH_PIC"
-          stack test asterius:cloudflare --test-arguments="--backend=$ASTERIUS_BACKEND $ASTERIUS_WITH_PIC"
-          stack test asterius:cloudflare-new --test-arguments="--backend=$ASTERIUS_BACKEND $ASTERIUS_WITH_PIC"
-          stack test asterius:exception --test-arguments="--backend=$ASTERIUS_BACKEND $ASTERIUS_WITH_PIC"
-          stack test asterius:regression60 --test-arguments="--backend=$ASTERIUS_BACKEND $ASTERIUS_WITH_PIC"
-          stack test asterius:sizeof_md5context --test-arguments="--backend=$ASTERIUS_BACKEND $ASTERIUS_WITH_PIC"
-          stack test asterius:largenum --test-arguments="--backend=$ASTERIUS_BACKEND $ASTERIUS_WITH_PIC"
+          stack test asterius:fib --test-arguments="$ASTERIUS_WITH_PIC"
+          stack test asterius:jsffi --test-arguments="$ASTERIUS_WITH_PIC"
+          stack test asterius:array --test-arguments="$ASTERIUS_WITH_PIC"
+          stack test asterius:stableptr --test-arguments="$ASTERIUS_WITH_PIC"
+          stack test asterius:rtsapi --test-arguments="$ASTERIUS_WITH_PIC"
+          stack test asterius:teletype --test-arguments="$ASTERIUS_WITH_PIC"
+          stack test asterius:bytearray --test-arguments="$ASTERIUS_WITH_PIC"
+          stack test asterius:bigint --test-arguments="$ASTERIUS_WITH_PIC"
+          stack test asterius:todomvc --test-arguments="$ASTERIUS_WITH_PIC"
+          stack test asterius:cloudflare --test-arguments="$ASTERIUS_WITH_PIC"
+          stack test asterius:cloudflare-new --test-arguments="$ASTERIUS_WITH_PIC"
+          stack test asterius:exception --test-arguments="$ASTERIUS_WITH_PIC"
+          stack test asterius:regression60 --test-arguments="$ASTERIUS_WITH_PIC"
+          stack test asterius:sizeof_md5context --test-arguments="$ASTERIUS_WITH_PIC"
+          stack test asterius:largenum --test-arguments="$ASTERIUS_WITH_PIC"
 
-          stack test asterius:bytearray --test-arguments="--yolo --backend=$ASTERIUS_BACKEND $ASTERIUS_WITH_PIC"
-          stack test asterius:bytearray --test-arguments="--gc-threshold=128 --backend=$ASTERIUS_BACKEND $ASTERIUS_WITH_PIC"
-          stack test asterius:fib --test-arguments="--no-gc-sections --backend=$ASTERIUS_BACKEND $ASTERIUS_WITH_PIC"
+          stack test asterius:bytearray --test-arguments="--yolo $ASTERIUS_WITH_PIC"
+          stack test asterius:bytearray --test-arguments="--gc-threshold=128 $ASTERIUS_WITH_PIC"
+          stack test asterius:fib --test-arguments="--no-gc-sections $ASTERIUS_WITH_PIC"
 
-          stack test asterius:fib --test-arguments="--debug --backend=$ASTERIUS_BACKEND $ASTERIUS_WITH_PIC" > /dev/null
-          stack test asterius:jsffi --test-arguments="--debug --backend=$ASTERIUS_BACKEND $ASTERIUS_WITH_PIC" > /dev/null
-          stack test asterius:array --test-arguments="--debug --backend=$ASTERIUS_BACKEND $ASTERIUS_WITH_PIC" > /dev/null
-          stack test asterius:stableptr --test-arguments="--debug --backend=$ASTERIUS_BACKEND $ASTERIUS_WITH_PIC" > /dev/null
-          stack test asterius:rtsapi --test-arguments="--debug --backend=$ASTERIUS_BACKEND $ASTERIUS_WITH_PIC" > /dev/null
-          stack test asterius:teletype --test-arguments="--debug --backend=$ASTERIUS_BACKEND $ASTERIUS_WITH_PIC" > /dev/null
-          # stack test asterius:bytearray --test-arguments="--debug --backend=$ASTERIUS_BACKEND $ASTERIUS_WITH_PIC" > /dev/null
-          stack test asterius:bigint --test-arguments="--debug --backend=$ASTERIUS_BACKEND $ASTERIUS_WITH_PIC" > /dev/null
-          stack test asterius:exception --test-arguments="--debug --backend=$ASTERIUS_BACKEND $ASTERIUS_WITH_PIC" > /dev/null
+          stack test asterius:fib --test-arguments="--debug $ASTERIUS_WITH_PIC" > /dev/null
+          stack test asterius:jsffi --test-arguments="--debug $ASTERIUS_WITH_PIC" > /dev/null
+          stack test asterius:array --test-arguments="--debug $ASTERIUS_WITH_PIC" > /dev/null
+          stack test asterius:stableptr --test-arguments="--debug $ASTERIUS_WITH_PIC" > /dev/null
+          stack test asterius:rtsapi --test-arguments="--debug $ASTERIUS_WITH_PIC" > /dev/null
+          stack test asterius:teletype --test-arguments="--debug $ASTERIUS_WITH_PIC" > /dev/null
+          # stack test asterius:bytearray --test-arguments="--debug $ASTERIUS_WITH_PIC" > /dev/null
+          stack test asterius:bigint --test-arguments="--debug $ASTERIUS_WITH_PIC" > /dev/null
+          stack test asterius:exception --test-arguments="--debug $ASTERIUS_WITH_PIC" > /dev/null
 
-          stack test asterius:fib --test-arguments="--tail-calls --backend=$ASTERIUS_BACKEND $ASTERIUS_WITH_PIC"
-          stack test asterius:fib --test-arguments="--tail-calls --no-gc-sections --backend=$ASTERIUS_BACKEND $ASTERIUS_WITH_PIC"
+          stack test asterius:fib --test-arguments="--tail-calls $ASTERIUS_WITH_PIC"
+          stack test asterius:fib --test-arguments="--tail-calls --no-gc-sections $ASTERIUS_WITH_PIC"
 
-          stack test asterius:nomain --test-arguments="--backend=$ASTERIUS_BACKEND $ASTERIUS_WITH_PIC"
-          stack test asterius:nomain --test-arguments="--tail-calls --backend=$ASTERIUS_BACKEND $ASTERIUS_WITH_PIC"
+          stack test asterius:nomain --test-arguments="$ASTERIUS_WITH_PIC"
+          stack test asterius:nomain --test-arguments="--tail-calls $ASTERIUS_WITH_PIC"
 
-          stack test asterius:th --test-arguments="--backend=$ASTERIUS_BACKEND $ASTERIUS_WITH_PIC"
+          stack test asterius:th --test-arguments="$ASTERIUS_WITH_PIC"
 
-          stack test asterius:primitive --test-arguments="--backend=$ASTERIUS_BACKEND $ASTERIUS_WITH_PIC"
+          stack test asterius:primitive --test-arguments="$ASTERIUS_WITH_PIC"
 
-          stack test asterius:argv --test-arguments="--backend=$ASTERIUS_BACKEND $ASTERIUS_WITH_PIC"
+          stack test asterius:argv --test-arguments="$ASTERIUS_WITH_PIC"
 
-          stack test asterius:endianness --test-arguments="--backend=$ASTERIUS_BACKEND $ASTERIUS_WITH_PIC"
+          stack test asterius:endianness --test-arguments="$ASTERIUS_WITH_PIC"
 
   ghc-testsuite:
     name: ghc-testsuite
