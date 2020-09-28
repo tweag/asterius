@@ -57,7 +57,6 @@ resolveAsteriusModule pic_is_on debug m_globals_resolved =
     -- Create the offset tables first. A dummy relocation function already
     -- exists in the input module so the maps will be created correctly.
     (fn_off_map, last_func_offset) = makeFunctionOffsetTable m_globals_resolved
-    (_ss_off_map, _last_data_offset) = makeDataOffsetTable m_globals_resolved
     -- Create the data segments and the new relocation function second.
     -- We need to update the module with the real relocation function
     -- before we proceed.

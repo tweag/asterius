@@ -4,8 +4,7 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 
 module Asterius.Passes.DataOffsetTable
-  ( makeDataOffsetTable,
-    makeMemory,
+  ( makeMemory,
   )
 where
 
