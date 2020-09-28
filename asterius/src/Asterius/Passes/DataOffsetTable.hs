@@ -34,15 +34,14 @@ sizeofStatic = \case
 sizeofStatics :: AsteriusStatics -> Word32
 sizeofStatics = getSum . foldMap (Sum . sizeofStatic) . asteriusStatics
 
+{-# INLINEABLE sizeofStaticsAligned #-}
+sizeofStaticsAligned :: AsteriusStatics -> Word32
+sizeofStaticsAligned ss = fromIntegral $ fromIntegral (sizeofStatics ss) `roundup` 16
+
 {-# INLINEABLE makeDataOffsetTable #-}
 makeDataOffsetTable :: AsteriusModule -> (SM.SymbolMap Word32, Word32)
 makeDataOffsetTable AsteriusModule {..} =
-  swap $
-    SM.mapAccum
-      ( \a ss -> (a + fromIntegral (fromIntegral (sizeofStatics ss) `roundup` 16), a)
-      )
-      0
-      staticsMap
+  swap $ SM.mapAccum (\a ss -> (a + sizeofStaticsAligned ss, a)) 0 staticsMap
 
 -- | Given the offset of a static and the static itself, compute the
 -- corresponding data segment and the offset of the subsequent static.
@@ -98,7 +97,7 @@ castOffsetToAddress = fromIntegral
 
 -- The new relocation function; this should replace the placeholder no-op.
 makeWasmApplyRelocs :: Int -> Int -> AsteriusModule
-makeWasmApplyRelocs fn_segment_len ss_segment_len = runEDSL "__wasm_apply_relocs" $ do
+makeWasmApplyRelocs fn_statics_len ss_statics_len = runEDSL "__wasm_apply_relocs" $ do
   -- Store the extended (64-bit) bases into local variables, to speed things up
   -- and keep the size of the relocation function more manageable.
   table_base <- i64Local $ extendUInt32 dynamicTableBase
@@ -108,7 +107,7 @@ makeWasmApplyRelocs fn_segment_len ss_segment_len = runEDSL "__wasm_apply_relocs
 
   -- Fix the function offsets first
   putLVal i (ConstI64 0)
-  whileLoop (getLVal i `neInt64` ConstI64 (fromIntegral fn_segment_len)) $ do
+  whileLoop (getLVal i `neInt64` ConstI64 (fromIntegral fn_statics_len)) $ do
     let off = loadI64 (symbol "__asterius_fn_segment" `addInt64` getLVal i) 0
     putLVal loc $
       (memory_base `addInt64` off)
@@ -119,7 +118,7 @@ makeWasmApplyRelocs fn_segment_len ss_segment_len = runEDSL "__wasm_apply_relocs
     putLVal i (getLVal i `addInt64` ConstI64 8)
   -- Fix the static offsets second
   putLVal i (ConstI64 0)
-  whileLoop (getLVal i `neInt64` ConstI64 (fromIntegral ss_segment_len)) $ do
+  whileLoop (getLVal i `neInt64` ConstI64 (fromIntegral ss_statics_len)) $ do
     let off = loadI64 (symbol "__asterius_ss_segment" `addInt64` getLVal i) 0
     putLVal loc $
       (memory_base `addInt64` off)
@@ -190,20 +189,25 @@ makeStaticMemory AsteriusModule {..} fn_off_map ss_off_map =
           (ss_off_map SM.! statics_sym)
           asteriusStatics
 
+-- | Create the data segments, when @pic@ is on.
+--
+-- We collapse all the data segments into one, and at the end we include the
+-- two newly created data segments: the one containing the function offsets
+-- appears first and the one containing the static offsets appears second.
 {-# INLINEABLE makeDynamicMemory #-}
 makeDynamicMemory ::
   AsteriusModule ->
   SM.SymbolMap Word32 ->
   SM.SymbolMap Word32 ->
-  ([DataSegment], AsteriusModule, Int, SM.SymbolMap Word32) -- relocation function implementation
+  (DataSegment, AsteriusModule, Word32, SM.SymbolMap Word32) -- relocation function implementation
 makeDynamicMemory AsteriusModule {..} fn_off_map ss_off_map =
-  ( [complete_segment],
+  ( complete_segment,
     new_reloc <> new_statics,
     fn_segment_len + ss_segment_len,
     new_offsets
   )
   where
-    (final_offset, all_fn_offs, all_ss_offs, all_content) =
+    (_final_offset, all_fn_offs, all_ss_offs, _all_content) =
       foldl
         ( \(real_current_offset, fn_offs, ss_offs, seg_contents) (sym, AsteriusStatics {..}) ->
             let aligned_current_offset = ss_off_map SM.! sym
@@ -212,27 +216,21 @@ makeDynamicMemory AsteriusModule {..} fn_off_map ss_off_map =
                     BS.replicate
                       (fromIntegral $ aligned_current_offset - real_current_offset)
                       0
-             in foldl
+             in (foldl
                   (makeDynamicSegment fn_off_map ss_off_map)
-                  (aligned_current_offset, fn_offs, ss_offs, seg_contents <> padding) -- TODO: MISSES THE LAST PADDING I THINK!
+                  (aligned_current_offset, fn_offs, ss_offs, seg_contents <> padding)
                   asteriusStatics
+                ) :: (Word32, Set.Set Word32, Set.Set Word32, Builder)
         )
         (0, Set.empty, Set.empty, mempty)
         (SM.toList staticsMap)
+    -- Ensure that the last bit is also aligned
+    final_offset = fromIntegral $ fromIntegral _final_offset `roundup` 16
+    all_content = _all_content <> byteString (BS.replicate (fromIntegral (final_offset - _final_offset)) 0)
     -- The two new segments, containing the function offsets and the static
     -- offsets that the relocation function needs to change.
-    fn_segment =
-      mconcat
-        $ map (byteString . encodeStorable . castOffsetToAddress)
-        $ Set.toAscList all_fn_offs
-    ss_segment =
-      mconcat
-        $ map (byteString . encodeStorable . castOffsetToAddress)
-        $ Set.toAscList all_ss_offs
-    -- The lengths of the new segments. These have to be computed so that
-    -- @resolveAsteriusModule@ can update the last data address.
-    fn_segment_len = 8 * Set.size all_fn_offs
-    ss_segment_len = 8 * Set.size all_ss_offs
+    (fn_segment, fn_segment_len, fn_statics, fn_statics_len) = mkOffsetSegment all_fn_offs
+    (ss_segment, ss_segment_len, ss_statics, ss_statics_len) = mkOffsetSegment all_ss_offs
     -- All the data segments, collapsed into one. At the end we include the two
     -- newly created data segments: the one containing the function offsets
     -- should appear first, then the one containing the static offsets.
@@ -245,15 +243,14 @@ makeDynamicMemory AsteriusModule {..} fn_off_map ss_off_map =
               $ all_content <> fn_segment <> ss_segment,
           offset = dynamicMemoryBase
         }
-    -- The offsets of the two new data segments / statics. These have to be
-    -- computed so that @resolveAsteriusModule@ can update the offset map. The
-    -- one containing the function offsets should appear first, then the one
-    -- containing the static offsets.
+    -- The offsets of the two new data segments / statics that need to be added
+    -- to the offset map (@__asterius_fn_segment@ comes first,
+    -- @__asterius_ss_segment@ comes second).
     new_offsets :: SM.SymbolMap Word32
     new_offsets =
       SM.fromList
         [ ("__asterius_fn_segment", final_offset),
-          ("__asterius_ss_segment", final_offset + fromIntegral (8 * Set.size all_fn_offs))
+          ("__asterius_ss_segment", final_offset + fn_segment_len)
         ]
     -- The two statics corresponding to the newly created data segments. We
     -- should return these for consistency. TODO: One potential issue I see
@@ -266,31 +263,31 @@ makeDynamicMemory AsteriusModule {..} fn_off_map ss_off_map =
       mempty
         { staticsMap =
             SM.fromList
-              [ ( "__asterius_fn_segment",
-                  AsteriusStatics
-                    { staticsType = ConstBytes,
-                      asteriusStatics =
-                        [ Serialized
-                            $ toStrict
-                            $ toLazyByteString fn_segment
-                        ]
-                    }
-                ),
-                ( "__asterius_ss_segment",
-                  AsteriusStatics
-                    { staticsType = ConstBytes,
-                      asteriusStatics =
-                        [ Serialized
-                            $ toStrict
-                            $ toLazyByteString ss_segment
-                        ]
-                    }
-                )
+              [ ("__asterius_fn_segment", fn_statics),
+                ("__asterius_ss_segment", ss_statics)
               ]
         }
     -- The new relocation function; this should replace the placeholder no-op.
     new_reloc :: AsteriusModule
-    new_reloc = makeWasmApplyRelocs fn_segment_len ss_segment_len
+    new_reloc = makeWasmApplyRelocs fn_statics_len ss_statics_len
+
+{-# INLINEABLE mkOffsetSegment #-}
+mkOffsetSegment :: Set.Set Word32 -> (Builder, Word32, AsteriusStatics, Int)
+mkOffsetSegment all_offs = (segment <> padding, fromIntegral aligned_len, statics, init_len)
+  where
+    init_len = 8 * Set.size all_offs
+    aligned_len = init_len `roundup` 16
+    segment =
+      mconcat
+        $ map (byteString . encodeStorable . castOffsetToAddress)
+        $ Set.toAscList all_offs
+    padding = byteString (BS.replicate (aligned_len - init_len) 0)
+    statics =
+      AsteriusStatics
+        { staticsType = ConstBytes,
+          asteriusStatics =
+            [Serialized $ toStrict $ toLazyByteString segment]
+        }
 
 makeMemory ::
   Bool ->
@@ -299,11 +296,11 @@ makeMemory ::
   ([DataSegment], SM.SymbolMap Word32, Word32, AsteriusModule) -- relocation function implementation
 makeMemory pic_is_on m_globals_resolved fn_off_map
   | pic_is_on =
-    let (_segs, reloc_function, new_seg_len, new_seg_offs) = makeDynamicMemory m_globals_resolved fn_off_map _ss_off_map
-     in ( _segs,
+    let (seg, reloc, new_seg_len, new_seg_offs) = makeDynamicMemory m_globals_resolved fn_off_map _ss_off_map
+     in ( [seg],
           _ss_off_map <> new_seg_offs,
-          _last_data_offset + fromIntegral new_seg_len,
-          reloc_function <> m_globals_resolved
+          _last_data_offset + new_seg_len,
+          reloc <> m_globals_resolved
         )
   | otherwise =
     ( makeStaticMemory m_globals_resolved fn_off_map _ss_off_map,
