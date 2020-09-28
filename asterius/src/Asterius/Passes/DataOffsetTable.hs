@@ -24,10 +24,10 @@ import Data.Tuple
 import Foreign
 import Language.Haskell.GHC.Toolkit.Constants
 
--- | Segments are 16-bytes aligned.
+-- | Segments are 8-bytes aligned.
 {-# INLINE segAlignment #-}
 segAlignment :: Int
-segAlignment = 16
+segAlignment = 8
 
 {-# INLINEABLE sizeofStatic #-}
 sizeofStatic :: AsteriusStatic -> Word32

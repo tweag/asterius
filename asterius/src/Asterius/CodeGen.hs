@@ -153,8 +153,9 @@ marshalCmmStatic st = case st of
   GHC.CmmUninitialised s -> pure $ Uninitialized s
   GHC.CmmString s -> pure $ Serialized $ BS.pack $ s <> [0]
 
-marshalCmmSectionType ::
-  EntitySymbol -> GHC.Section -> AsteriusStaticsType
+marshalCmmSectionType :: EntitySymbol -> GHC.Section -> AsteriusStaticsType
+marshalCmmSectionType _ (GHC.Section GHC.ReadOnlyData16 _) =
+  error "ReadOnlyData16"
 marshalCmmSectionType sym sec@(GHC.Section _ clbl)
   | GHC.isGcPtrLabel clbl = Closure
   | "_info" `BS.isSuffixOf` entityName sym = InfoTable
