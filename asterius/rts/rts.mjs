@@ -79,17 +79,16 @@ export async function newAsteriusInstance(req) {
       element: "anyfunc",
       initial: __asterius_table_base.value + req.tableSlots
     }),
+    __asterius_static_mblocks = Math.ceil(
+      (__asterius_memory_base.value + req.staticBytes) /
+        rtsConstants.mblock_size
+    ),
     __asterius_wasm_memory = new WebAssembly.Memory({
       // The storage manager will allocate 2 mblocks right away (for
       // unpinned/pinned heap). Hence, we add 2 to avoid having to resize the
       // wasm linear memory immediately (in case gcThreshold is small).
       initial:
-        Math.max(
-          req.staticMBlocks +
-            Math.ceil(__asterius_memory_base.value / rtsConstants.mblock_size) +
-            2,
-          req.gcThreshold
-        ) *
+        Math.max(__asterius_static_mblocks + 2, req.gcThreshold) *
         (rtsConstants.mblock_size / rtsConstants.pageSize),
     }),
     __asterius_memory = new Memory(),
@@ -244,7 +243,7 @@ export async function newAsteriusInstance(req) {
       i.exports.__wasm_apply_relocs();
     }
     __asterius_wasm_instance = i;
-    __asterius_memory.init(__asterius_wasm_memory, req.staticMBlocks); // TODO: What about this one?
+    __asterius_memory.init(__asterius_wasm_memory, __asterius_static_mblocks);
     __asterius_heapalloc.init();
     __asterius_bytestring_cbits.memory = __asterius_memory;
     __asterius_scheduler.setGC(__asterius_gc);

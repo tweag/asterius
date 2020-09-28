@@ -52,7 +52,7 @@ resolveAsteriusModule ::
     Int
   )
 resolveAsteriusModule pic_is_on debug m_globals_resolved =
-  (new_mod, final_m, ss_off_map, fn_off_map, table_slots, initial_mblocks)
+  (new_mod, final_m, ss_off_map, fn_off_map, table_slots, initial_bytes)
   where
     -- Create the function offset table first. A dummy relocation function
     -- already so the map will be created correctly.
@@ -69,7 +69,8 @@ resolveAsteriusModule pic_is_on debug m_globals_resolved =
       rtsFunctionImports debug <> generateFFIFunctionImports (ffiMarshalState final_m)
     new_function_map =
       LM.mapKeys entityName $ SM.toMap $ functionMap final_m
-    initial_mblocks =
+    initial_bytes = fromIntegral last_data_offset
+    initial_mblocks = -- minimum limit
       (fromIntegral last_data_offset `roundup` mblock_size) `quot` mblock_size
     new_mod = Module
       { functionMap' = new_function_map,
@@ -119,7 +120,7 @@ linkStart pic_on debug gc_sections store root_syms export_funcs =
         functionOffsetMap = fn_off_map,
         infoTableOffsetSet = makeInfoTableOffsetSet merged_m ss_off_map,
         Asterius.Types.LinkReport.tableSlots = tbl_slots,
-        staticMBlocks = static_mbs,
+        staticBytes = static_bytes,
         sptEntries = sptMap merged_m,
         bundledFFIMarshalState = ffiMarshalState merged_m
       }
@@ -132,5 +133,5 @@ linkStart pic_on debug gc_sections store root_syms export_funcs =
     !merged_m1
       | debug = addMemoryTrap merged_m0_evaluated
       | otherwise = merged_m0_evaluated
-    (!result_m, !merged_m, !ss_off_map, !fn_off_map, !tbl_slots, !static_mbs) =
+    (!result_m, !merged_m, !ss_off_map, !fn_off_map, !tbl_slots, !static_bytes) =
       resolveAsteriusModule pic_on debug merged_m1

@@ -15,7 +15,7 @@ data LinkReport
   = LinkReport
       { staticsOffsetMap, functionOffsetMap :: SymbolMap Word32,
         infoTableOffsetSet :: [Word32],
-        tableSlots, staticMBlocks :: Int,
+        tableSlots, staticBytes :: Int,
         sptEntries :: SymbolMap (Word64, Word64),
         bundledFFIMarshalState :: FFIMarshalState
       }
