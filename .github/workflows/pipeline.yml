@@ -15,13 +15,13 @@ jobs:
         uses: actions/setup-haskell@v1
         with:
           cabal-version: 3.2.0.0
-          stack-version: 2.3.3
+          stack-version: 2.5.0.1
           enable-stack: true
 
       - name: setup-node-14
-        uses: actions/setup-node@v2.0.0
+        uses: actions/setup-node@v2.1.1
         with:
-          node-version: 14.11.0
+          node-version: 14.12.0
 
       - name: checkout
         uses: actions/checkout@v2
@@ -60,13 +60,13 @@ jobs:
         uses: actions/setup-haskell@v1
         with:
           cabal-version: 3.2.0.0
-          stack-version: 2.3.3
+          stack-version: 2.5.0.1
           enable-stack: true
 
       - name: setup-node-14
-        uses: actions/setup-node@v2.0.0
+        uses: actions/setup-node@v2.1.1
         with:
-          node-version: 14.11.0
+          node-version: 14.12.0
 
       - name: checkout
         uses: actions/checkout@v2
@@ -148,13 +148,13 @@ jobs:
         uses: actions/setup-haskell@v1
         with:
           cabal-version: 3.2.0.0
-          stack-version: 2.3.3
+          stack-version: 2.5.0.1
           enable-stack: true
 
       - name: setup-node-14
-        uses: actions/setup-node@v2.0.0
+        uses: actions/setup-node@v2.1.1
         with:
-          node-version: 14.11.0
+          node-version: 14.12.0
 
       - name: checkout
         uses: actions/checkout@v2
@@ -191,13 +191,13 @@ jobs:
         uses: actions/setup-haskell@v1
         with:
           cabal-version: 3.2.0.0
-          stack-version: 2.3.3
+          stack-version: 2.5.0.1
           enable-stack: true
 
       - name: setup-node-14
-        uses: actions/setup-node@v2.0.0
+        uses: actions/setup-node@v2.1.1
         with:
-          node-version: 14.11.0
+          node-version: 14.12.0
 
       - name: checkout
         uses: actions/checkout@v2
@@ -249,13 +249,13 @@ jobs:
         uses: actions/setup-haskell@v1
         with:
           cabal-version: 3.2.0.0
-          stack-version: 2.3.3
+          stack-version: 2.5.0.1
           enable-stack: true
 
       - name: setup-node-14
-        uses: actions/setup-node@v2.0.0
+        uses: actions/setup-node@v2.1.1
         with:
-          node-version: 14.11.0
+          node-version: 14.12.0
 
       - name: checkout
         uses: actions/checkout@v2
@@ -296,13 +296,13 @@ jobs:
         uses: actions/setup-haskell@v1
         with:
           cabal-version: 3.2.0.0
-          stack-version: 2.3.3
+          stack-version: 2.5.0.1
           enable-stack: true
 
       - name: setup-node-14
-        uses: actions/setup-node@v2.0.0
+        uses: actions/setup-node@v2.1.1
         with:
-          node-version: 14.11.0
+          node-version: 14.12.0
 
       - name: checkout
         uses: actions/checkout@v2
@@ -348,7 +348,7 @@ jobs:
       - name: setup-haskell
         uses: actions/setup-haskell@v1
         with:
-          stack-version: 2.3.3
+          stack-version: 2.5.0.1
           enable-stack: true
           stack-no-global: true
 
@@ -413,12 +413,12 @@ jobs:
       - name: setup-python
         uses: actions/setup-python@v2
         with:
-          python-version: 3.8.5
+          python-version: 3.8.6
 
       - name: setup-node-14
-        uses: actions/setup-node@v2.0.0
+        uses: actions/setup-node@v2.1.1
         with:
-          node-version: 14.11.0
+          node-version: 14.12.0
 
       - name: setup-deps
         run: |
