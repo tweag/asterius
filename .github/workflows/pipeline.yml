@@ -12,10 +12,10 @@ jobs:
     steps:
 
       - name: setup-haskell
-        uses: actions/setup-haskell@main
+        uses: actions/setup-haskell@v1
         with:
           cabal-version: 3.2.0.0
-          stack-version: 2.5.0.1
+          stack-version: 2.3.3
           enable-stack: true
 
       - name: setup-node-14
@@ -57,10 +57,10 @@ jobs:
     steps:
 
       - name: setup-haskell
-        uses: actions/setup-haskell@main
+        uses: actions/setup-haskell@v1
         with:
           cabal-version: 3.2.0.0
-          stack-version: 2.5.0.1
+          stack-version: 2.3.3
           enable-stack: true
 
       - name: setup-node-14
@@ -145,10 +145,10 @@ jobs:
     steps:
 
       - name: setup-haskell
-        uses: actions/setup-haskell@main
+        uses: actions/setup-haskell@v1
         with:
           cabal-version: 3.2.0.0
-          stack-version: 2.5.0.1
+          stack-version: 2.3.3
           enable-stack: true
 
       - name: setup-node-14
@@ -188,10 +188,10 @@ jobs:
     steps:
 
       - name: setup-haskell
-        uses: actions/setup-haskell@main
+        uses: actions/setup-haskell@v1
         with:
           cabal-version: 3.2.0.0
-          stack-version: 2.5.0.1
+          stack-version: 2.3.3
           enable-stack: true
 
       - name: setup-node-14
@@ -246,10 +246,10 @@ jobs:
     steps:
 
       - name: setup-haskell
-        uses: actions/setup-haskell@main
+        uses: actions/setup-haskell@v1
         with:
           cabal-version: 3.2.0.0
-          stack-version: 2.5.0.1
+          stack-version: 2.3.3
           enable-stack: true
 
       - name: setup-node-14
@@ -293,10 +293,10 @@ jobs:
     steps:
 
       - name: setup-haskell
-        uses: actions/setup-haskell@main
+        uses: actions/setup-haskell@v1
         with:
           cabal-version: 3.2.0.0
-          stack-version: 2.5.0.1
+          stack-version: 2.3.3
           enable-stack: true
 
       - name: setup-node-14
@@ -346,9 +346,9 @@ jobs:
     steps:
 
       - name: setup-haskell
-        uses: actions/setup-haskell@main
+        uses: actions/setup-haskell@v1
         with:
-          stack-version: 2.5.0.1
+          stack-version: 2.3.3
           enable-stack: true
           stack-no-global: true
 
