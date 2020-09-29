@@ -13,6 +13,7 @@ clean: clean-rts
 	$(RM) ./*/*/Main.req.mjs
 	$(RM) ./*/*/Main.wasm
 	$(RM) ./*/*/Main.wasm.mjs
+	$(RM) ./*/*/default.mjs
 
 clean-rts:
 	$(RM) ./*/*/rts.mjs
