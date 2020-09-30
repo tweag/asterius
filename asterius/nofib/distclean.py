@@ -1,3 +1,4 @@
+#!/usr/bin/python3
 
 import os
 import shutil
@@ -167,6 +168,13 @@ def readTestRuntimeOptionsAHC(testdir, mode):
   rts_opts = readModeSpecificOptions(testdir, mode)
   return rts_opts
 
+def readTestRuntimeOptions(testdir, mode, compiler):
+  assert (compiler in valid_compilers)
+  if compiler == "ghc":
+    return readTestRuntimeOptionsGHC(testdir, mode)
+  else:
+    return readTestRuntimeOptionsAHC(testdir, mode)
+
 def getCompilerExe(compiler):
   assert (compiler in valid_compilers)
   if compiler == "ghc":
@@ -174,9 +182,8 @@ def getCompilerExe(compiler):
   else:
     return shutil.which("ahc-link")
 
-def compileTestfile(testdir, compiler, mode):
+def compileTestFile(testdir, compiler):
   assert (compiler in valid_compilers)
-  assert (mode in valid_modes)
 
   compiler_exe = getCompilerExe(compiler)
   compile_opts = readTestCompileOptions(testdir, compiler)
@@ -220,31 +227,37 @@ def compileTestfile(testdir, compiler, mode):
 def runTestFile(testdir, testname, compiler, mode):
   assert (compiler in valid_compilers)
   assert (mode in valid_modes)
-  # TODO
 
   main_exe = findExecutable(testdir, compiler)
-  stdoutfile = os.path.join(testdir,"{0}.{1}.stdout".format(testname, compiler))
-  stderrfile = os.path.join(testdir,"{0}.{1}.stderr".format(testname, compiler))
 
-  # stdin example: real/fluid/fluid.slowstdin
-  return
+  # Input file
+  stdinfilepath = os.path.join(testdir,"{0}.{1}stdin".format(testname, mode.lower()))
+  if not (os.path.exists(stdinfilepath) and os.path.isfile(stdinfilepath)):
+    stdinfilehandle = None
+  else:
+    stdinfilehandle = open(stdinfilepath, mode='r')
 
+  stdoutfilepath = os.path.join(testdir,"{0}.{1}.stdout".format(testname, compiler))
+  stdoutfilehandle = open(stdoutfilepath, mode='w')
 
-  # subprocess.call()
+  stderrfilepath = os.path.join(testdir,"{0}.{1}.stderr".format(testname, compiler))
+  stderrfilehandle = open(stderrfilepath, mode='w')
 
-# f = open("blah.txt", "w")
-# subprocess.call(["/home/myuser/run.sh", "/tmp/ad_xml",  "/tmp/video_xml"], stdout=f)
+  proc = subprocess.Popen(
+    (main_exe + " " + readTestRuntimeOptions(testdir, mode, compiler)).split(),
+    # [main_exe], # TODO: Compute and use the runtime options!!
+    stdin=stdinfilehandle,
+    stdout=stdoutfilehandle,
+    stderr=stderrfilehandle,
+    universal_newlines=True
+  )
 
+  proc.wait()
+  stdoutfilehandle.flush()
+  stderrfilehandle.flush()
 
-
-# list1 = ['physics', 'chemistry', 'maths']
-# list2 = list(range(5))     #creates list of numbers between 0-4
-# list1.extend(list2)
-# print ('Extended List :', list1)
-
-
-
-
+  print(proc.returncode)
+  print(readEntireFile(stderrfilepath))
 
 def main():
   for category in categories:
@@ -259,7 +272,8 @@ def main():
         print ("ghc-rts-options: {0}".format(readTestRuntimeOptionsGHC(testdir, "fast"))) # ghc_rts_opts
         print ("ahc-rts-options: {0}".format(readTestRuntimeOptionsAHC(testdir, "fast"))) # ghc_rts_opts
 
-        compileTestfile(testdir, "ghc", "fast")
+        compileTestFile(testdir, "ghc")
+        runTestFile(testdir, testname, "ghc", "fast")
 
         # print (lvl2)
         # for item3 in os.listdir(lvl2):
@@ -267,9 +281,6 @@ def main():
         #   if if shoulddelete(item3):
         #     os.remove(lvl3)
 
-
-# if __name__ == "__main__":
-#     main()
 
 # CLEANUP
 
@@ -302,6 +313,9 @@ def distclean():
         for item in os.listdir(testdir):
           if shoulddelete(item):
             os.remove(os.path.join(testdir,item))
+
+if __name__ == "__main__":
+  distclean() # main()
 
 
 
