@@ -101,7 +101,6 @@ def readTestRuntimeOptions(testdir, mode, compiler):
   else:
     return readModeSpecificOptions(testdir, mode)
 
-
 def compileTestFile(testdir, compiler):
   assert (compiler in valid_compilers)
 
@@ -114,8 +113,16 @@ def compileTestFile(testdir, compiler):
   current_directory = os.getcwd()
   os.chdir(testdir)
   print ("Compile test: {0}".format(command))
-  subprocess.call(command)
+  proc = subprocess.Popen(
+    command,
+    universal_newlines=True
+  )
+  proc.wait()
   os.chdir(current_directory)
+
+  print(proc.returncode)
+  if not (proc.returncode == 0):
+    sys.exit("Non-zero exit code for test {0}, using compiler {1}!".format(testdir, compiler))
 
 # #############################################################################
 
@@ -179,20 +186,14 @@ def runAndTimeTest(category, testname, compiler, mode):
 
 # #############################################################################
 
-def main():
+def main(mode):
   for category in categories:
     category_path = os.path.join(working_directory, category)
     for testname in os.listdir(category_path):
       testdir = os.path.join(category_path, testname)
       if os.path.isdir(testdir):
-        print ("testname: {0}".format(testname))
-        print ("mainfile: {0}".format(findMain(testdir))) # mainfile
-
-        # compileTestFile(testdir, "ahc")
-        # runTestFile(testdir, testname, "ahc", "fast")
-
-        compileTestFile(testdir, "ahc")
-        runTestFile(testdir, testname, "ahc", "fast")
+        compileTestFile(testdir, "ahc") # PARAMETERIZE
+        runTestFile(testdir, testname, "ahc", mode)
 
 # CLEANUP
 # #############################################################################
@@ -243,7 +244,13 @@ def cleanup():
 # #############################################################################
 
 if __name__ == "__main__":
-  # cleanup()
-  main()
+  if len(sys.argv) < 2:
+    sys.exit("Too few arguments")
+  elif sys.argv[1] == "clean":
+    cleanup()
+  elif sys.argv[1] == "fast":
+    cleanup() # cleanup first
+    main("fast")
+
 
 
