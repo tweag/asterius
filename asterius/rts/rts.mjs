@@ -29,7 +29,7 @@ export async function newAsteriusInstance(req) {
 
   let __asterius_table_base = new WebAssembly.Global(
       { value: "i32", mutable: false },
-      req.pic ? 3517 : req.defaultTableBase // TODO: make dynamic.
+      req.defaultTableBase // TODO: make dynamic.
     ),
     __asterius_memory_base = new WebAssembly.Global(
       { value: "i32", mutable: false },
