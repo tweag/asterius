@@ -1,5 +1,6 @@
 #!/usr/bin/python3
 
+import filecmp
 import os
 import shutil
 import subprocess
@@ -18,7 +19,9 @@ categories = ["imaginary", "real", "shootout", "spectral"]
 
 working_directory = os.getcwd()
 
-# if working_directory
+# Relative addresses are used later, so it is imperative that the working
+# directory is set to ./asterius/nofib for the script to work. Basically where
+# the script is located.
 if not (os.path.basename(working_directory) == "nofib"):
   sys.exit("Script can only be executed in the nofib directory. Currently in {0}.".format(working_directory))
 
@@ -50,13 +53,14 @@ def readOptionsFromFile(filepath):
 
 def getCompilerExe(compiler):
   assert (compiler in valid_compilers)
-  if compiler == "ghc":
-    return ghc
-  else:
-    return ahc
+  return (ghc if compiler == "ghc" else ahc)
 
+# TEST COMPILATION
 # #############################################################################
 
+# Locate the (absolute address of the) Main file in a test directory. Sometimes
+# this is an *.hs file, and other times this is an *.lhs file; we have to deal
+# with both cases.
 def findMain(testdir):
   if os.path.exists(os.path.join(testdir, "Main.hs")):
     return os.path.join(testdir, "Main.hs")
@@ -65,11 +69,9 @@ def findMain(testdir):
   else:
     sys.exit("No Main.hs or Main.lhs found in {0}".format(testdir))
 
-# READ COMPILE-TIME OPTIONS
-# #############################################################################
-
-# Read the compile-time options from Main.COMPILE_OPTS. If we are compiling
-# using Asterius, wrap them in --ghc-option=.
+# Read the compile-time options from file Main.COMPILE_OPTS. If we are
+# compiling using Asterius, wrap them in --ghc-option=, otherwise they remain
+# unchanged. NOTE: The existence of the file is optional.
 def readTestCompileOptions(testdir, compiler):
   assert (compiler in valid_compilers)
   # Read the compile-time options from Main.COMPILE_OPTS
@@ -84,23 +86,7 @@ def readTestCompileOptions(testdir, compiler):
       ahc_opts.append("--ghc-option={0}".format(option))
     return ahc_opts
 
-# READ RUNTIME OPTIONS
-# #############################################################################
-
-def readModeSpecificOptions(testdir, mode):
-  assert (mode in valid_modes)
-  opt_filepath = os.path.join(testdir, mode.upper() + "_OPTS")
-  return readOptionsFromFile(opt_filepath)
-
-def readTestRuntimeOptions(testdir, mode, compiler):
-  assert (compiler in valid_compilers)
-  if compiler == "ghc":
-    return ["+RTS", "-V0", "-RTS"] \
-         + readOptionsFromFile(os.path.join(testdir, "RTS_EXTRA_OPTS")) \
-         + readModeSpecificOptions(testdir, mode)
-  else:
-    return readModeSpecificOptions(testdir, mode)
-
+# Compile a test
 def compileTestFile(testdir, compiler):
   assert (compiler in valid_compilers)
 
@@ -117,14 +103,38 @@ def compileTestFile(testdir, compiler):
     command,
     universal_newlines=True
   )
-  proc.wait()
+  proc.wait() # TODO: Add timeout
   os.chdir(current_directory)
 
   if not (proc.returncode == 0):
     sys.exit("Non-zero exit code for test {0}, using compiler {1}!".format(testdir, compiler))
 
+# TEST EXECUTION
 # #############################################################################
 
+# Read the runtime, mode-specific options from file <MODE>_OPTS, where <MODE>
+# is one of (FAST, NORM, SLOW). NOTE: The existence of the file is optional.
+def readModeSpecificOptions(testdir, mode):
+  assert (mode in valid_modes)
+  opt_filepath = os.path.join(testdir, mode.upper() + "_OPTS")
+  return readOptionsFromFile(opt_filepath)
+
+# Gather the runtime options for a specific test. The result of this operation
+# varies depending on the compiler used. For GHC, the options include "+RTS -V0
+# -RTS", whatever is in the (NOTE: optional) file RTS_EXTRA_OPTS, as well as
+# the mode-specific inputs, as computed by readModeSpecificOptions (NOTE: also
+# optional). For Asterius, only the last one is passed.
+def readTestRuntimeOptions(testdir, mode, compiler):
+  assert (compiler in valid_compilers)
+  if compiler == "ghc":
+    return ["+RTS", "-V0", "-RTS"] \
+         + readOptionsFromFile(os.path.join(testdir, "RTS_EXTRA_OPTS")) \
+         + readModeSpecificOptions(testdir, mode)
+  else:
+    return readModeSpecificOptions(testdir, mode)
+
+# Execute a test (given a compiler and a mode). Returns the paths where the
+# stdout and stderr were written. Fails if the executio of the test failed.
 def runTestFile(testdir, category, testname, compiler, mode):
   assert (compiler in valid_compilers)
   assert (mode in valid_modes)
@@ -136,9 +146,11 @@ def runTestFile(testdir, category, testname, compiler, mode):
   else:
     stdinfilehandle = open(stdinfilepath, mode='r')
 
+  # Output file
   stdoutfilepath = os.path.join(testdir,"{0}.{1}.stdout".format(testname, compiler))
   stdoutfilehandle = open(stdoutfilepath, mode='w')
 
+  # Error file
   stderrfilepath = os.path.join(testdir,"{0}.{1}.stderr".format(testname, compiler))
   stderrfilehandle = open(stderrfilepath, mode='w')
 
@@ -162,7 +174,7 @@ def runTestFile(testdir, category, testname, compiler, mode):
     stderr=stderrfilehandle,
     universal_newlines=True
   )
-  proc.wait()
+  proc.wait() # TODO: Add timeout
   stdoutfilehandle.flush()
   stderrfilehandle.flush()
 
@@ -171,11 +183,15 @@ def runTestFile(testdir, category, testname, compiler, mode):
   # Return to the previous directory
   os.chdir(current_directory)
 
+  # Fail immediately if execution failed
   if not (proc.returncode == 0):
-    sys.exit("Non-zero exit code for {0}!".format(testdir))
+    print("Non-zero exit code for {0}!".format(testdir), file=sys.stderr)
+    sys.exit(readEntireFile(stderrfilepath))
 
   with open(os.path.join(working_directory, "TIMES.txt"), "a+") as timesfile:
     timesfile.write("{0},{1},{2},{3},{4}\n".format(category, testname, compiler, mode, end - start))
+
+  return (stdoutfilepath, stderrfilepath)
 
 # Would be nice..
 #   $(which time) --format "%E,%U,%S" --output=asdftest --append du -h ~
@@ -188,9 +204,17 @@ def main(mode):
     for testname in os.listdir(category_path):
       testdir = os.path.join(category_path, testname)
       if os.path.isdir(testdir):
-        for compiler in valid_compilers:
-          compileTestFile(testdir, compiler)
-          runTestFile(testdir, category, testname, compiler, mode)
+        # Build and run with GHC
+        compileTestFile(testdir, "ghc")
+        ghc_stdout, ghc_stderr = runTestFile(testdir, category, testname, "ghc", mode)
+        # Build and run with Asterius
+        compileTestFile(testdir, "ahc")
+        ahc_stdout, ahc_stderr = runTestFile(testdir, category, testname, "ahc", mode)
+        # Fail if stdouts or stderrs differ
+        if not filecmp.cmp(ghc_stdout, ahc_stdout):
+          sys.exit("Stdouts for {0} differ!".format(testdir))
+        if not filecmp.cmp(ghc_stderr, ahc_stderr):
+          sys.exit("Stderrs for {0} differ!".format(testdir))
 
 # CLEANUP
 # #############################################################################
@@ -239,6 +263,7 @@ def cleanup():
     if os.path.exists(filename):
       os.remove(filename)
 
+# ENTRY POINT
 # #############################################################################
 
 if __name__ == "__main__":
@@ -249,5 +274,4 @@ if __name__ == "__main__":
   elif sys.argv[1] in valid_modes:
     cleanup() # cleanup first
     main(sys.argv[1])
-
 
