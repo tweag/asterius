@@ -194,13 +194,14 @@ def compileTestFile(testdir, compiler):
   else:
     all_opts = " ".join([compile_opts, testfile])
 
-  print ("I should execute: {0}".format(compiler_exe + " " + all_opts))
+  full_command = compiler_exe + " " + all_opts
+  print ("Compile test: {0}".format(full_command))
 
   # Switch to the test directory
   current_directory = os.getcwd()
   os.chdir(testdir)
   # Compile the file
-  subprocess.call((compiler_exe + " " + all_opts).split())
+  subprocess.call(full_command.split())
   # Return to the previous directory
   os.chdir(current_directory)
 
@@ -243,21 +244,35 @@ def runTestFile(testdir, testname, compiler, mode):
   stderrfilepath = os.path.join(testdir,"{0}.{1}.stderr".format(testname, compiler))
   stderrfilehandle = open(stderrfilepath, mode='w')
 
+  full_command = main_exe + " " + readTestRuntimeOptions(testdir, mode, compiler)
+  print ("Run test: {0}".format(full_command))
+  print ("Run test: {0}".format(full_command.split()))
+
+  # Switch to the test directory
+  current_directory = os.getcwd()
+  os.chdir(testdir)
+  # Run the test
   proc = subprocess.Popen(
-    (main_exe + " " + readTestRuntimeOptions(testdir, mode, compiler)).split(),
+    full_command.split(),
     # [main_exe], # TODO: Compute and use the runtime options!!
     stdin=stdinfilehandle,
     stdout=stdoutfilehandle,
     stderr=stderrfilehandle,
     universal_newlines=True
   )
-
   proc.wait()
   stdoutfilehandle.flush()
   stderrfilehandle.flush()
+  # Return to the previous directory
+  os.chdir(current_directory)
 
   print(proc.returncode)
-  print(readEntireFile(stderrfilepath))
+  if not (proc.returncode == 0):
+    print("Non-zero exit code for {0}!".format(testdir))
+    print(readEntireFile(stderrfilepath))
+    exit (1)
+
+  # print(readEntireFile(stderrfilepath))
 
 def main():
   for category in categories:
@@ -315,7 +330,8 @@ def distclean():
             os.remove(os.path.join(testdir,item))
 
 if __name__ == "__main__":
-  distclean() # main()
+  # distclean()
+  main()
 
 
 
