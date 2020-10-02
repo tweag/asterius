@@ -3,6 +3,7 @@
 import os
 import shutil
 import subprocess
+import sys
 
 working_directory = os.getcwd()
 
@@ -10,20 +11,17 @@ valid_compilers = ["ghc", "ahc"]
 valid_modes = ["fast", "norm", "slow"]
 categories = ["imaginary", "real", "shootout", "spectral"]
 
+def findProgram(progName):
+  if shutil.which(progName):
+    return shutil.which(progName)
+  else:
+    sys.exit("Could not find program {0}!".format(progName))
 
-
-# Find the needed executables
-ahc = shutil.which("ahc-link")
-ghc = shutil.which("ghc")
-time = shutil.which("time")
-node = shutil.which("node")
-
-# if you're interested:
-#   if shutil.which("node"):
-#     node = shutil.which("node")
-#   else:
-#     print ("Couldn't find node!")
-#     exit (1)
+# Find the needed executables (or die trying..)
+ahc  = findProgram("ahc-link")
+ghc  = findProgram("ghc")
+time = findProgram("time")
+node = findProgram("node")
 
 print (working_directory)
 print (valid_modes)
@@ -50,8 +48,7 @@ def findMain(testdir):
   elif os.path.exists(os.path.join(testdir, "Main.lhs")):
     return "Main.lhs" # os.path.join(testdir, "Main.lhs")
   else:
-    print ("No Main.hs or Main.lhs found in {0}".format(testdir))
-    exit (1)
+    sys.exit("No Main.hs or Main.lhs found in {0}".format(testdir))
 
 def findExecutable(testdir, compiler):
   assert (compiler in valid_compilers)
@@ -63,8 +60,7 @@ def findExecutable(testdir, compiler):
   if os.path.exists(filepath):
     return filepath
   else:
-    print ("No {0} found in {1}".format(filename, testdir))
-    exit (1)
+    sys.exit("No {0} found in {1}".format(filename, testdir))
 
 
 #   local executable=""
@@ -268,9 +264,7 @@ def runTestFile(testdir, testname, compiler, mode):
 
   print(proc.returncode)
   if not (proc.returncode == 0):
-    print("Non-zero exit code for {0}!".format(testdir))
-    print(readEntireFile(stderrfilepath))
-    exit (1)
+    sys.exit("Non-zero exit code for {0}!".format(testdir))
 
   # print(readEntireFile(stderrfilepath))
 
@@ -332,6 +326,5 @@ def distclean():
 if __name__ == "__main__":
   # distclean()
   main()
-
 
 
