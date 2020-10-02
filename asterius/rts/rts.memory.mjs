@@ -1,7 +1,10 @@
 import * as rtsConstants from "./rts.constants.mjs";
 
-function mask(n) {
-  return (BigInt(1) << BigInt(n)) - BigInt(1);
+function checkNullAndTag(p) {
+  if (!p) {
+    throw new WebAssembly.RuntimeError(`Allocator returned NULL`);
+  }
+  return Memory.tagData(p);
 }
 
 /**
@@ -13,7 +16,9 @@ function mask(n) {
  * ({@link Memory#getMBlocks} and {@link Memory#freeMBlocks}).
  */
 export class Memory {
-  constructor() {
+  constructor(components) {
+    this.components = components;
+
     /**
      * The underlying Wasm Memory instance.
      * @name Memory#memory
@@ -35,25 +40,15 @@ export class Memory {
      * @name Memory#i8view
      * @name Memory#dataView
      */
-    this.i8View = undefined;
-    this.dataView = undefined;
-    /**
-     * The current capacity of {@link Memory#memory} in MBlocks.
-     * By "capacity" we mean the real size of Wasm linear memory,
-     * whereas by "size" we indicate the range within the capacity
-     * that we really use at the moment.
-     * @name Memory#capacity
-     */
-    this.capacity = undefined;
-    /**
-     * A BigInt storing a bit for each MBlock slot
-     * in {@link Memory#memory}. The bit is either 0 or 1
-     * according to whether that MBlock slot is used or not.
-     * @name Memory#liveBitset
-     * @type BigInt
-     */
-    this.liveBitset = undefined;
     Object.seal(this);
+  }
+
+  get i8View() {
+    return new Uint8Array(this.memory.buffer);
+  }
+
+  get dataView() {
+    return new DataView(this.memory.buffer);
   }
 
   /**
@@ -62,17 +57,6 @@ export class Memory {
   init(memory, static_mblocks) {
     this.memory = memory;
     this.staticMBlocks = static_mblocks;
-    this.initView();
-    this.capacity = this.memory.buffer.byteLength / rtsConstants.mblock_size;
-    this.liveBitset = mask(this.staticMBlocks);
-  }
-
-  /**
-   * (Re)Initializes the low-level interfaces for {@link Memory#memory}.
-   */
-  initView() {
-    this.i8View = new Uint8Array(this.memory.buffer);
-    this.dataView = new DataView(this.memory.buffer);
   }
 
   static unTag(p) {
@@ -81,15 +65,15 @@ export class Memory {
 
   static getTag(p) {
     //return Number(BigInt(p) >> BigInt(32));
-    return Math.floor(Number(p) / (2**32));
+    return Math.floor(Number(p) / 2 ** 32);
   }
 
   static tagData(p) {
-    return rtsConstants.dataTag * (2**32) + Number(p);
+    return rtsConstants.dataTag * 2 ** 32 + Number(p);
   }
 
   static tagFunction(p) {
-    return rtsConstants.functionTag * (2**32) + Number(p);
+    return rtsConstants.functionTag * 2 ** 32 + Number(p);
   }
 
   static unDynTag(p) {
@@ -104,20 +88,6 @@ export class Memory {
   static setDynTag(p, t) {
     const np = Number(p);
     return np - (np & 7) + t;
-  }
-
-  /**
-   * Increases the size of {@link Memory#memory} the given
-   * number of pages.
-   * Recall: the size (in bytes) of a Wasm Memory page is stored
-   * in the {@link rtsConstants.pageSize} constant (=64KiB).
-   * @param n The number of Wasm pages to add
-   * @returns The previous number of pages
-   */
-  grow(n) {
-    this.memory.grow(n);
-    this.capacity = this.memory.buffer.byteLength / rtsConstants.mblock_size;
-    this.initView();
   }
 
   i8Load(p) {
@@ -209,8 +179,7 @@ export class Memory {
    */
   heapAlloced(p) {
     return (
-      Memory.unTag(p) >=
-      this.staticMBlocks << rtsConstants.mblock_size_log2
+      Memory.unTag(p) >= this.staticMBlocks << rtsConstants.mblock_size_log2
     );
   }
 
@@ -220,34 +189,19 @@ export class Memory {
    *   requested free memory area.
    */
   getMBlocks(n) {
-    // First of all, check if there are free spots in the existing memory by
-    // inspecting this.liveBitset for enough adjacent 0's. In this way, we reuse
-    // previously freed MBlock slots and reduce fragmentation.
-    const m = mask(n);
-    for (let i = BigInt(0); i <= BigInt(this.capacity - n); ++i) {
-      const mi = m << i;
-      if (!(this.liveBitset & mi)) {
-        this.liveBitset |= mi;
-        return Memory.tagData(Number(i) * rtsConstants.mblock_size);
-      }
-    }
-    // No luck, we need to grow the Wasm linear memory
-    // (we actually - at least - double it, in order to reduce
-    // amortized overhead of allocating individual MBlocks)
-    let d = Math.max(n, this.capacity);
-    if (this.capacity + d >= 1024) d = n;
-    this.grow(d * (rtsConstants.mblock_size / rtsConstants.pageSize));
-
-    return this.getMBlocks(n);
+    return checkNullAndTag(
+      this.components.exports.aligned_alloc(
+        rtsConstants.mblock_size,
+        rtsConstants.mblock_size * n
+      )
+    );
   }
 
   /**
-   * Frees {@param n} MBlocks starting at address {@param p}.
+   * Frees MBlocks starting at address {@param p}.
    */
-  freeMBlocks(p, n) {
-    const mblock_no =
-      BigInt(Memory.unTag(p)) >> BigInt(rtsConstants.mblock_size_log2);
-    this.liveBitset &= ~(mask(n) << mblock_no);
+  freeMBlocks(p) {
+    this.components.exports.free(Memory.unTag(p));
   }
 
   expose(p, len, t) {
@@ -255,7 +209,7 @@ export class Memory {
   }
 
   strlen(_str) {
-    return this.i8View.subarray(Memory.unTag(_str)).indexOf(0);
+    return this.components.exports.strlen(Memory.unTag(_str));
   }
 
   strLoad(_str) {
@@ -274,30 +228,30 @@ export class Memory {
   }
 
   memchr(_ptr, val, num) {
-    const ptr = Memory.unTag(_ptr),
-      off = this.i8View.subarray(ptr, ptr + num).indexOf(val);
-    return off === -1 ? 0 : _ptr + off;
+    return Memory.tagData(
+      this.components.exports.memchr(Memory.unTag(_ptr), val, num)
+    );
   }
 
   memcpy(_dst, _src, n) {
-    this.i8View.copyWithin(
-      Memory.unTag(_dst),
-      Memory.unTag(_src),
-      Memory.unTag(_src) + n
+    return Memory.tagData(
+      this.components.exports.memcpy(Memory.unTag(_dst), Memory.unTag(_src), n)
     );
   }
 
   memmove(_dst, _src, n) {
-    return this.memcpy(_dst, _src, n);
+    return Memory.tagData(
+      this.components.exports.memmove(Memory.unTag(_dst), Memory.unTag(_src), n)
+    );
   }
 
   memset(_dst, c, n, size = 1) {
     // We only allow 1, 2, 4, 8. Any other size should get a runtime error.
     const ty = {
-      1 : Uint8Array,
-      2 : Uint16Array,
-      4 : Uint32Array,
-      8 : BigUint64Array
+      1: Uint8Array,
+      2: Uint16Array,
+      4: Uint32Array,
+      8: BigUint64Array,
     };
     const buf = this.expose(_dst, n, ty[size]);
 
@@ -323,13 +277,10 @@ export class Memory {
   }
 
   memcmp(_ptr1, _ptr2, n) {
-    for (let i = 0; i < n; ++i) {
-      const sgn = Math.sign(
-        this.i8View[Memory.unTag(_ptr1) + i] -
-          this.i8View[Memory.unTag(_ptr2) + i]
-      );
-      if (sgn) return sgn;
-    }
-    return 0;
+    return this.components.exports.memcmp(
+      Memory.unTag(_ptr1),
+      Memory.unTag(_ptr2),
+      n
+    );
   }
 }

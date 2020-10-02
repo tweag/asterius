@@ -6,7 +6,7 @@ ENV \
   LANG=C.UTF-8 \
   LC_ALL=C.UTF-8 \
   LC_CTYPE=C.UTF-8 \
-  PATH=/root/.asterius-local-install-root/bin:/root/.asterius-snapshot-install-root/bin:/root/.asterius-compiler-bin:/root/.local/bin:/root/.nvm/versions/node/v14.12.0/bin:${PATH}
+  PATH=/root/.asterius-local-install-root/bin:/root/.asterius-snapshot-install-root/bin:/root/.asterius-compiler-bin:/root/.local/bin:/root/.nvm/versions/node/v14.12.0/bin:/opt/wasi-sdk/bin:${PATH}
 
 RUN \
   apt update && \
@@ -21,8 +21,15 @@ RUN \
     libffi-dev \
     libgmp-dev \
     libncurses-dev \
+    libtinfo5 \
     python3-minimal \
     zlib1g-dev && \
+  curl \
+    -L \
+    -o /tmp/wasi-sdk.deb \
+    https://github.com/WebAssembly/wasi-sdk/releases/download/wasi-sdk-11/wasi-sdk_11.0_amd64_ubuntu20.04.deb && \
+  dpkg -i /tmp/wasi-sdk.deb && \
+  rm /tmp/wasi-sdk.deb && \
   cp \
     /etc/skel/.bash_logout \
     /etc/skel/.bashrc \

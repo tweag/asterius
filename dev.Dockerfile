@@ -7,7 +7,7 @@ ENV \
   LANG=C.UTF-8 \
   LC_ALL=C.UTF-8 \
   LC_CTYPE=C.UTF-8 \
-  PATH=/root/.local/bin:/root/.nvm/versions/node/v14.12.0/bin:${PATH}
+  PATH=/root/.local/bin:/root/.nvm/versions/node/v14.12.0/bin:/opt/wasi-sdk/bin:${PATH}
 
 RUN \
   apt update && \
@@ -23,6 +23,7 @@ RUN \
     libffi-dev \
     libgmp-dev \
     libncurses-dev \
+    libtinfo5 \
     openssh-client \
     python3-pip \
     ripgrep \
@@ -30,6 +31,12 @@ RUN \
     xdg-utils \
     zlib1g-dev \
     zstd && \
+  curl \
+    -L \
+    -o /tmp/wasi-sdk.deb \
+    https://github.com/WebAssembly/wasi-sdk/releases/download/wasi-sdk-11/wasi-sdk_11.0_amd64_ubuntu20.04.deb && \
+  dpkg -i /tmp/wasi-sdk.deb && \
+  rm /tmp/wasi-sdk.deb && \
   apt autoremove --purge -y && \
   apt clean && \
   rm -rf -v /var/lib/apt/lists/* && \

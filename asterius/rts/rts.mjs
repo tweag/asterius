@@ -74,24 +74,11 @@ export async function newAsteriusInstance(req) {
     __asterius_fs = new FS(__asterius_components),
     __asterius_logger = new EventLogManager(),
     __asterius_tracer = new Tracer(__asterius_logger, __asterius_symbol_table),
-    __asterius_wasm_instance = null,
-    __asterius_wasm_table = new WebAssembly.Table({
-      element: "anyfunc",
-      initial: __asterius_table_base.value + req.tableSlots
-    }),
     __asterius_static_mblocks = Math.ceil(
       (__asterius_memory_base.value + req.staticBytes) /
         rtsConstants.mblock_size
     ),
-    __asterius_wasm_memory = new WebAssembly.Memory({
-      // The storage manager will allocate 2 mblocks right away (for
-      // unpinned/pinned heap). Hence, we add 2 to avoid having to resize the
-      // wasm linear memory immediately (in case gcThreshold is small).
-      initial:
-        Math.max(__asterius_static_mblocks + 2, req.gcThreshold) *
-        (rtsConstants.mblock_size / rtsConstants.pageSize),
-    }),
-    __asterius_memory = new Memory(),
+    __asterius_memory = new Memory(__asterius_components),
     __asterius_memory_trap = new MemoryTrap(
       __asterius_logger,
       __asterius_symbol_table,
@@ -152,6 +139,7 @@ export async function newAsteriusInstance(req) {
   __asterius_scheduler.exports = __asterius_exports;
 
   __asterius_components.memory = __asterius_memory;
+  __asterius_components.exports = __asterius_exports;
 
   function __asterius_show_I64(x) {
     return `0x${x.toString(16).padStart(8, "0")}`;
@@ -176,12 +164,6 @@ export async function newAsteriusInstance(req) {
     req.jsffiFactory(__asterius_jsffi_instance),
     {
       Math: Math,
-      WasmTable: {
-        table: __asterius_wasm_table
-      },
-      WasmMemory: {
-        memory: __asterius_wasm_memory
-      },
       env: {
         __memory_base: __asterius_memory_base,
         __table_base: __asterius_table_base
@@ -242,10 +224,11 @@ export async function newAsteriusInstance(req) {
     if (req.pic) {
       i.exports.__wasm_apply_relocs();
     }
-    __asterius_wasm_instance = i;
-    __asterius_memory.init(__asterius_wasm_memory, __asterius_static_mblocks);
+
+    Object.assign(__asterius_exports, i.exports);
+
+    __asterius_memory.init(i.exports.memory, __asterius_static_mblocks);
     __asterius_heapalloc.init();
-    __asterius_bytestring_cbits.memory = __asterius_memory;
     __asterius_scheduler.setGC(__asterius_gc);
 
     for (const [f, off, a, r, i] of req.exportsStaticOffsets) {
@@ -262,7 +245,6 @@ export async function newAsteriusInstance(req) {
       );
     }
 
-    Object.assign(__asterius_exports, __asterius_wasm_instance.exports);
     __asterius_exports.hs_init();
 
     return Object.assign(__asterius_jsffi_instance, {
