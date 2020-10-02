@@ -4,6 +4,7 @@ import os
 import shutil
 import subprocess
 import sys
+import time
 
 # CONSTANTS
 # #############################################################################
@@ -30,7 +31,6 @@ def findProgram(progName):
 # Find the (absolute addresses of the) needed executables (or die trying..)
 ahc  = findProgram("ahc-link")
 ghc  = findProgram("ghc")
-time = findProgram("time")
 node = findProgram("node")
 
 # UTILITIES
@@ -120,13 +120,12 @@ def compileTestFile(testdir, compiler):
   proc.wait()
   os.chdir(current_directory)
 
-  print(proc.returncode)
   if not (proc.returncode == 0):
     sys.exit("Non-zero exit code for test {0}, using compiler {1}!".format(testdir, compiler))
 
 # #############################################################################
 
-def runTestFile(testdir, testname, compiler, mode):
+def runTestFile(testdir, category, testname, compiler, mode):
   assert (compiler in valid_compilers)
   assert (mode in valid_modes)
 
@@ -152,6 +151,9 @@ def runTestFile(testdir, testname, compiler, mode):
   # Switch to the test directory
   current_directory = os.getcwd()
   os.chdir(testdir)
+
+  start = time.time() # Time before execution
+
   # Run the test
   proc = subprocess.Popen(
     command,
@@ -163,23 +165,17 @@ def runTestFile(testdir, testname, compiler, mode):
   proc.wait()
   stdoutfilehandle.flush()
   stderrfilehandle.flush()
+
+  end = time.time() # Time after execution
+
   # Return to the previous directory
   os.chdir(current_directory)
 
-  print(proc.returncode)
   if not (proc.returncode == 0):
     sys.exit("Non-zero exit code for {0}!".format(testdir))
 
-# #############################################################################
-
-def runAndTimeTest(category, testname, compiler, mode):
-  time_parameters = [
-    time,
-    "--format",
-    "{0},{1},{2},{3},%E,%U,%S".format(category, testname, compiler, mode),
-    "--output=../../aggregate.txt",
-    "--append"
-    ]
+  with open(os.path.join(working_directory, "TIMES.txt"), "a+") as timesfile:
+    timesfile.write("{0},{1},{2},{3},{4}\n".format(category, testname, compiler, mode, end - start))
 
 # Would be nice..
 #   $(which time) --format "%E,%U,%S" --output=asdftest --append du -h ~
@@ -192,8 +188,9 @@ def main(mode):
     for testname in os.listdir(category_path):
       testdir = os.path.join(category_path, testname)
       if os.path.isdir(testdir):
-        compileTestFile(testdir, "ahc") # PARAMETERIZE
-        runTestFile(testdir, testname, "ahc", mode)
+        for compiler in valid_compilers:
+          compileTestFile(testdir, compiler)
+          runTestFile(testdir, category, testname, compiler, mode)
 
 # CLEANUP
 # #############################################################################
@@ -234,7 +231,8 @@ def cleanup():
     "./real/compress/Lzw",
     "./real/maillist/runtime_files/fast.tex",
     "./real/maillist/runtime_files/norm.tex",
-    "./real/maillist/runtime_files/slow.tex"
+    "./real/maillist/runtime_files/slow.tex",
+    "./TIMES.txt"
     ]
 
   for filename in explicit_removals:
@@ -248,9 +246,8 @@ if __name__ == "__main__":
     sys.exit("Too few arguments")
   elif sys.argv[1] == "clean":
     cleanup()
-  elif sys.argv[1] == "fast":
+  elif sys.argv[1] in valid_modes:
     cleanup() # cleanup first
-    main("fast")
-
+    main(sys.argv[1])
 
 
