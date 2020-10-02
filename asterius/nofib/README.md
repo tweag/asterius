@@ -1,3 +1,4 @@
+
 # NoFib: Haskell Benchmark Suite (GEORGE's NOTES)
 
 This folder contains a selection of tests taken from [GHC's `nofib` testsuite](https://gitlab.haskell.org/ghc/nofib).
@@ -10,44 +11,37 @@ Differences compared to the original `nofib`:
 * The `gc`, `parallel`, and `smp` subdirectories are omitted.
 * Every test lives at the same level (arbitrary nesting complicates things for no benefit).
 * We do not use a Makefile-based system to build the tests.
-* TODO: Mention all differences here.
+* Removed test `shootout/reverse-complement` (too big inputs and outputs, used c program to generate them)
 
 ## Executing the Tests
-
+To remove all material from previous executions, just run:
 ```bash
-make distclean                             # Remove any obsolete files to ensure recompilation of all tests.
-time ./run.sh FAST ghc 2>&1 | tee log-ghc  # run each test in FAST mode, using $(which ghc)
-make clean                                 # remove object files but leave .stdout and .stderr
-time ./run.sh FAST ahc 2>&1 | tee log-ahc  # run each test in FAST mode, using $(which ahc-link)
-./stdoutdiff.sh 2>&1 | tee log-comp        # Compare (TODO: subject to change)
+python3 script.py cleanup #
 ```
 
-## Current Failures
-
+To run the tests, type the following:
+```bash
+python3 script.py <MODE>
 ```
-1   | real/eff-S        : I gave up on this one
-1   | shootout/pidigits : I gave up on this one
-----+------------------------------------------
-111 | TOTAL RUN
-    +------------------------------------------
-    | 100 PASSED
-    +------------------------------------------
-    |  11 FAILED
-    |   * real/eff-VS			| Wrong Output (empty)
-    |   * real/maillist			| Wrong Output (empty)
-    |   * real/pic			| JS Stacktrace        <== possibly relevant: https://github.com/nodejs/node/issues/3171
-    |   * real/scs			| JS Stacktrace
-    |   * real/symalg			| Wrong Output (incomplete)
-    |   * shootout/binary-trees		| Wrong Output (incomplete)
-    |   * shootout/fannkuch-redux	| JS Stacktrace
-    |   * shootout/k-nucleotide		| Wrong Output (empty)
-    |   * shootout/n-body		| Wrong Output (empty)
-    |   * spectral/cichelli		| Wrong Output (empty)
-    |   * spectral/primetest		| Wrong Output (empty)
-----+------------------------------------------
+where `<MODE>` is one of `fast`, `norm`, or `slow`. This should create a `TIMES.txt` file, whose content is in the following CSV format:
+```
+category, testname, compiler, mode, duration (in seconds)
+```
+For example, it contains entries like the following:
+```
+imaginary,primes,ghc,fast,0.23458600044250488
+imaginary,primes,ahc,fast,1.422548770904541
+imaginary,tak,ghc,fast,0.08010053634643555
+imaginary,tak,ahc,fast,1.0395824909210205
+...
 ```
 
 ## Current Failures (Details)
+
+```
+shootout/pidigits     (unknown reason)
+shootout/k-nucleotide (unknown reason)
+```
 
 ### JavaScript heap out of memory
 ```
@@ -107,61 +101,5 @@ shootout/fannkuch-redux
   10: 0xd1ba0b v8::internal::Factory::NewFillerObject(int, bool, v8::internal::AllocationType, v8::internal::AllocationOrigin) [/usr/bin/node]
   11: 0x104bdaf v8::internal::Runtime_AllocateInYoungGeneration(int, unsigned long*, v8::internal::Isolate*) [/usr/bin/node]
   12: 0x13a5a99  [/usr/bin/node]
-
-------------------------------------------------------------------------------+
 ```
-
-### Ongoing Investigation
-
-```
-real/symalg
-  NO VISIBLE ERROR.
-
-shootout/k-nucleotide
-  NO VISIBLE ERROR.
-
-spectral/cichelli
-  NO VISIBLE ERROR.
-
-spectral/primetest
-  NO VISIBLE ERROR.
-
-real/eff-VS:
-  file:///home/skull/tweag/asterius-alt/asterius/nofib/real/eff-VS/rts.memory.mjs:118
-      this.memory.grow(n);
-```
-
-### Missing functions (bugs)
-```
-real/maillist:
-  Main: JSException "RuntimeError: unreachable
-      at wasm-function[714]:0x2251f
-      at wasm-function[3235]:0xa8707
-      at wasm-function[3236]:0xa8734
-      at Scheduler.tick (file:///home/skull/tweag/asterius-alt/asterius/nofib/real/maillist/rts.scheduler.mjs:346:22)
-      at Immediate.<anonymous> (file:///home/skull/tweag/asterius-alt/asterius/nofib/real/maillist/rts.scheduler.mjs:381:29)
-      at processImmediate (internal/timers.js:456:21)"
-
-shootout/binary-trees
-  Main: JSException "RuntimeError: unreachable
-      at wasm-function[108]:0x6e91
-      at wasm-function[4070]:0xd77de
-      at wasm-function[4071]:0xd780b
-      at Scheduler.tick (file:///home/skull/tweag/asterius-alt/asterius/nofib/shootout/binary-trees/rts.scheduler.mjs:346:22)
-      at Immediate.<anonymous> (file:///home/skull/tweag/asterius-alt/asterius/nofib/shootout/binary-trees/rts.scheduler.mjs:381:29)
-      at processImmediate (internal/timers.js:456:21)"
-
-shootout/n-body
-  Main: JSException "RuntimeError: unreachable
-      at wasm-function[41]:0x3fe7
-      at wasm-function[4102]:0xd96f5
-      at wasm-function[4103]:0xd9722
-      at Scheduler.tick (file:///home/skull/tweag/asterius-alt/asterius/nofib/shootout/n-body/rts.scheduler.mjs:346:22)
-      at Immediate.<anonymous> (file:///home/skull/tweag/asterius-alt/asterius/nofib/shootout/n-body/rts.scheduler.mjs:381:29)
-      at processImmediate (internal/timers.js:456:21)"
-```
-
-## Other Notes
-
-* Removed test `shootout/reverse-complement` (too big inputs and outputs, used c program to generate them)
 
