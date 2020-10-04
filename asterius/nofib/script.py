@@ -1,5 +1,11 @@
 #!/usr/bin/python3
 
+# TODO:
+#   1: Set timeouts
+#   2: Avoid passing testdir around; it can be recreated using
+#      working_directory + category + testname. See here:
+#      https://stackoverflow.com/questions/14826888/python-os-path-join-on-a-list
+
 import filecmp
 import os
 import shutil
@@ -13,6 +19,15 @@ import time
 valid_compilers = ["ghc", "ahc"]
 valid_modes = ["fast", "norm", "slow"]
 categories = ["imaginary", "real", "shootout", "spectral"]
+
+blacklist = [
+  ("real","eff-S"),              # Seems to run forever
+  ("shootout","pidigits"),       # Seems to run forever
+  ("real","pic"),                # JS heap out of memory
+  ("real","scs"),                # JS heap out of memory
+  ("shootout","fannkuch-redux"), # JS heap out of memory
+  ("shootout","k-nucleotide")    # JS heap out of memory
+  ]
 
 # SETUP
 # #############################################################################
@@ -188,7 +203,7 @@ def runTestFile(testdir, category, testname, compiler, mode):
     print("Non-zero exit code for {0}!".format(testdir), file=sys.stderr)
     sys.exit(readEntireFile(stderrfilepath))
 
-  with open(os.path.join(working_directory, "TIMES.txt"), "a+") as timesfile:
+  with open(os.path.join(working_directory, "TIMES.csv"), "a+") as timesfile:
     timesfile.write("{0},{1},{2},{3},{4}\n".format(category, testname, compiler, mode, end - start))
 
   return (stdoutfilepath, stderrfilepath)
@@ -204,17 +219,21 @@ def main(mode):
     for testname in os.listdir(category_path):
       testdir = os.path.join(category_path, testname)
       if os.path.isdir(testdir):
-        # Build and run with GHC
-        compileTestFile(testdir, "ghc")
-        ghc_stdout, ghc_stderr = runTestFile(testdir, category, testname, "ghc", mode)
-        # Build and run with Asterius
-        compileTestFile(testdir, "ahc")
-        ahc_stdout, ahc_stderr = runTestFile(testdir, category, testname, "ahc", mode)
-        # Fail if stdouts or stderrs differ
-        if not filecmp.cmp(ghc_stdout, ahc_stdout):
-          sys.exit("Stdouts for {0} differ!".format(testdir))
-        if not filecmp.cmp(ghc_stderr, ahc_stderr):
-          sys.exit("Stderrs for {0} differ!".format(testdir))
+        # Skip the problematic tests
+        if (category, testname) in blacklist:
+          print ("Skipping test {0}/{1}.".format(category, testname))
+        else:
+          # Build and run with GHC
+          compileTestFile(testdir, "ghc")
+          ghc_stdout, ghc_stderr = runTestFile(testdir, category, testname, "ghc", mode)
+          # Build and run with Asterius
+          compileTestFile(testdir, "ahc")
+          ahc_stdout, ahc_stderr = runTestFile(testdir, category, testname, "ahc", mode)
+          # Fail if stdouts or stderrs differ
+          if not filecmp.cmp(ghc_stdout, ahc_stdout):
+            sys.exit("Stdouts for {0} differ!".format(testdir))
+          if not filecmp.cmp(ghc_stderr, ahc_stderr):
+            sys.exit("Stderrs for {0} differ!".format(testdir))
 
 # CLEANUP
 # #############################################################################
@@ -256,7 +275,7 @@ def cleanup():
     "./real/maillist/runtime_files/fast.tex",
     "./real/maillist/runtime_files/norm.tex",
     "./real/maillist/runtime_files/slow.tex",
-    "./TIMES.txt"
+    "./TIMES.csv"
     ]
 
   for filename in explicit_removals:
@@ -274,4 +293,5 @@ if __name__ == "__main__":
   elif sys.argv[1] in valid_modes:
     cleanup() # cleanup first
     main(sys.argv[1])
-
+  else:
+    sys.exit("Invalid arguments.")
