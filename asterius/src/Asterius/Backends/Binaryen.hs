@@ -23,6 +23,7 @@ module Asterius.Backends.Binaryen
   )
 where
 
+import Asterius.Backends.Binaryen.CheckOverlapDataSegment
 import Asterius.Builtins
 import Asterius.EDSL (mkDynamicDataAddress, mkDynamicFunctionAddress)
 import qualified Asterius.Internals.Arena as A
@@ -702,6 +703,7 @@ marshalModule static_bytes pic_on verbose_err tail_calls ss_off_map fn_off_map h
     bs <- genLibC defLibCOpts {globalBase = static_bytes `roundup` 0x10000}
     BS.unsafeUseAsCStringLen bs $
         \(p, l) -> Binaryen.Module.read p (fromIntegral l)
+  checkOverlapDataSegment m
   Binaryen.setFeatures m
     $ foldl1' (.|.)
     $ [Binaryen.tailCall | tail_calls]
@@ -740,6 +742,7 @@ marshalModule static_bytes pic_on verbose_err tail_calls ss_off_map fn_off_map h
         Just tbl_import -> marshalTableImport m tbl_import
         _ -> pure ()
       marshalMemorySegments memoryMBlocks memorySegments
+      lift $ checkOverlapDataSegment m
       case memoryImport of
         Just mem_import -> marshalMemoryImport m mem_import
         _ -> pure ()
