@@ -700,7 +700,7 @@ marshalModule ::
   IO Binaryen.Module
 marshalModule static_bytes pic_on verbose_err tail_calls ss_off_map fn_off_map hs_mod@Module {..} = do
   m <- do
-    bs <- genLibC defLibCOpts {globalBase = static_bytes `roundup` 0x10000}
+    bs <- genLibC defLibCOpts {globalBase = (fromIntegral defaultMemoryBase + static_bytes) `roundup` 0x10000}
     BS.unsafeUseAsCStringLen bs $
         \(p, l) -> Binaryen.Module.read p (fromIntegral l)
   checkOverlapDataSegment m
