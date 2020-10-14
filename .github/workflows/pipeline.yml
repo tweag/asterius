@@ -387,7 +387,7 @@ jobs:
       - name: build
         run: |
           mkdir -p ~/.config/containers
-          echo "cgroup_manager=\"cgroupfs\"" > ~/.config/containers/libpod.conf
+          echo "cgroup_manager=\"cgroupfs\"" > ~/.config/containers/containers.conf
           podman build \
             --file $ASTERIUS_IMAGE.Dockerfile \
             --label "gitrev=$(git rev-parse HEAD)" \
