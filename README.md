@@ -77,7 +77,7 @@ We have [documentation](https://asterius.netlify.app/) and blog posts:
 
 - [Fibonacci compiles end-to-end: Haskell to WebAssembly via
   GHC](https://www.tweag.io/posts/2018-05-29-hello-asterius.html)
-- [Haskell WebAssembly calling JavaScedript and back
+- [Haskell WebAssembly calling JavaScript and back
   again](https://www.tweag.io/posts/2018-09-12-asterius-ffi.html)
 - [Asterius GHC WebAssembly backend reaches
   TodoMVC](https://www.tweag.io/posts/2018-12-20-asterius-todomvc.html)
