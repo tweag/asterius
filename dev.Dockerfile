@@ -7,7 +7,8 @@ ENV \
   LANG=C.UTF-8 \
   LC_ALL=C.UTF-8 \
   LC_CTYPE=C.UTF-8 \
-  PATH=/root/.local/bin:/root/.nvm/versions/node/v14.13.1/bin:/opt/wasi-sdk/bin:${PATH}
+  PATH=/root/.local/bin:/root/.nvm/versions/node/v14.13.1/bin:${PATH} \
+  WASI_SDK_PATH=/opt/wasi-sdk
 
 RUN \
   apt update && \
