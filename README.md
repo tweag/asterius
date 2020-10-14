@@ -77,12 +77,14 @@ We have [documentation](https://asterius.netlify.app/) and blog posts:
 
 - [Fibonacci compiles end-to-end: Haskell to WebAssembly via
   GHC](https://www.tweag.io/posts/2018-05-29-hello-asterius.html)
-- [Haskell WebAssembly calling JavaScript and back
+- [Haskell WebAssembly calling JavaScedript and back
   again](https://www.tweag.io/posts/2018-09-12-asterius-ffi.html)
 - [Asterius GHC WebAssembly backend reaches
   TodoMVC](https://www.tweag.io/posts/2018-12-20-asterius-todomvc.html)
 - [Haskell art in your browser with
   Asterius](https://www.tweag.io/posts/2019-12-19-asterius-diagrams.html)
+- [Edge computing with Servant on
+  Cloudflare](https://www.tweag.io/blog/2020-10-09-asterius-cloudflare-worker/)
 
 Also checkout the [HIW 2018 lightning
 talk](https://icfp18.sigplan.org/details/hiw-2018-papers/6/Lightning-talk-Asterius-Bringing-Haskell-to-WebAssembly),
