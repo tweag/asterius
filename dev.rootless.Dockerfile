@@ -67,8 +67,8 @@ RUN \
     xdg-utils \
     zlib1g-dev \
     zstd && \
-  sudo mkdir -p /opt/wasi-sdk && \
-  (curl -L https://github.com/TerrorJack/wasi-sdk/releases/download/201014/wasi-sdk-11.5g3cbd9d212e9a-linux.tar.gz | sudo tar xz -C /opt/wasi-sdk --strip-components=1) && \
+  sudo mkdir -p ${WASI_SDK_PATH} && \
+  (curl -L https://github.com/TerrorJack/wasi-sdk/releases/download/201014/wasi-sdk-11.5g3cbd9d212e9a-linux.tar.gz | sudo tar xz -C ${WASI_SDK_PATH} --strip-components=1) && \
   sudo apt autoremove --purge -y && \
   sudo apt clean && \
   sudo rm -rf -v \
