@@ -742,7 +742,7 @@ marshalModule static_bytes pic_on verbose_err tail_calls ss_off_map fn_off_map h
         Just tbl_import -> marshalTableImport m tbl_import
         _ -> pure ()
       marshalMemorySegments memoryMBlocks memorySegments
-      lift $ checkOverlapDataSegment m
+      unless pic_on $ lift $ checkOverlapDataSegment m
       case memoryImport of
         Just mem_import -> marshalMemoryImport m mem_import
         _ -> pure ()
