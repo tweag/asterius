@@ -12,6 +12,7 @@ import Asterius.BuildInfo
 import qualified Asterius.BuildInfo as A
 import Asterius.Internals.Temp
 import qualified Data.ByteString as BS
+import Distribution.Simple.Utils
 import System.Directory
 import System.Environment.Blank
 import System.FilePath
@@ -28,15 +29,12 @@ defLibCOpts =
     { globalBase = error "globalBase not set",
       exports =
         [ "aligned_alloc",
-          "calloc",
           "free",
-          "malloc",
+          "strlen",
           "memchr",
-          "memcmp",
           "memcpy",
           "memmove",
-          "realloc",
-          "strlen"
+          "memcmp"
         ]
     }
 
@@ -56,9 +54,10 @@ genLibC LibCOpts {..} = do
     let o_path = tmpdir </> "libc.wasm"
     callProcess (wasi_sdk </> "bin" </> "clang") $
       [ "--sysroot=" <> wasi_sdk </> "share" </> "wasi-sysroot",
-        "-Wl,--compress-relocations"
+        "-Wl,--compress-relocations",
+        "-Wl,--allow-undefined"
       ]
-        <> ["-Wl,--export=" <> f | f <- exports]
+        <> ["-Wl,--export=" <> f | f <- ordNub exports]
         <> [ "-Wl,--export-table",
              "-Wl,--growable-table",
              "-Wl,--global-base=" <> show globalBase,

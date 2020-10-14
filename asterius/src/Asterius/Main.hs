@@ -316,6 +316,7 @@ ahcDistMain logger task (final_m, report) = do
       (tailCalls task)
       (staticsOffsetMap report)
       (functionOffsetMap report)
+      (usedCCalls report)
       final_m
   when (optimizeLevel task > 0 || shrinkLevel task > 0) $ do
     logger "[INFO] Running binaryen optimization"

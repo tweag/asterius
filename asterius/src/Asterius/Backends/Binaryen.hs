@@ -696,11 +696,12 @@ marshalModule ::
   Bool ->
   SM.SymbolMap Word32 ->
   SM.SymbolMap Word32 ->
+  [String] ->
   Module ->
   IO Binaryen.Module
-marshalModule static_bytes pic_on verbose_err tail_calls ss_off_map fn_off_map hs_mod@Module {..} = do
+marshalModule static_bytes pic_on verbose_err tail_calls ss_off_map fn_off_map used_ccalls hs_mod@Module {..} = do
   m <- do
-    bs <- genLibC defLibCOpts {globalBase = (fromIntegral defaultMemoryBase + static_bytes) `roundup` 0x400}
+    bs <- genLibC defLibCOpts {globalBase = (fromIntegral defaultMemoryBase + static_bytes) `roundup` 0x400, exports = exports defLibCOpts <> used_ccalls}
     BS.unsafeUseAsCStringLen bs $
         \(p, l) -> Binaryen.Module.read p (fromIntegral l)
   checkOverlapDataSegment m
