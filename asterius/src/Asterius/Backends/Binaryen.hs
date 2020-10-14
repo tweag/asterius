@@ -22,6 +22,7 @@ module Asterius.Backends.Binaryen
   )
 where
 
+import Asterius.Backends.Binaryen.CheckOverlapDataSegment
 import Asterius.Builtins
 import Asterius.EDSL (mkDynamicDataAddress, mkDynamicFunctionAddress)
 import qualified Asterius.Internals.Arena as A
@@ -715,7 +716,7 @@ marshalModule pic_on verbose_err tail_calls ss_off_map fn_off_map hs_mod@Module 
       marshalFunctionTable m tableSlots functionTable
       marshalTableImport m tableImport
       marshalMemorySegments memoryMBlocks memorySegments
-      marshalMemoryImport m memoryImport
+      lift $ checkOverlapDataSegment m
     lim_segs <- marshalBS a "limit-segments"
     (lim_segs_p, _) <- marshalV a [lim_segs]
     Binaryen.Module.runPasses m lim_segs_p 1
