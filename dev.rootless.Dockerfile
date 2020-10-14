@@ -42,7 +42,7 @@ ENV \
   LANG=C.UTF-8 \
   LC_ALL=C.UTF-8 \
   LC_CTYPE=C.UTF-8 \
-  PATH=/home/${USERNAME}/.local/bin:/home/${USERNAME}/.nvm/versions/node/v14.12.0/bin:${PATH}
+  PATH=/home/${USERNAME}/.local/bin:/home/${USERNAME}/.nvm/versions/node/v14.13.1/bin:${PATH}
 
 RUN \
   sudo apt update && \
@@ -74,7 +74,7 @@ RUN \
 
 RUN \
   (curl https://raw.githubusercontent.com/nvm-sh/nvm/v0.36.0/install.sh | bash) && \
-  bash -c ". ~/.nvm/nvm.sh && nvm install 14.12.0" && \
+  bash -c ". ~/.nvm/nvm.sh && nvm install 14.13.1" && \
   echo "eval \"\$(direnv hook bash)\"" >> ~/.bashrc && \
   mkdir -p ~/.local/bin && \
   curl -L https://github.com/commercialhaskell/stack/releases/download/v2.5.0.1/stack-2.5.0.1-linux-x86_64-bin -o ~/.local/bin/stack && \

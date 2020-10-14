@@ -83,6 +83,8 @@ We have [documentation](https://asterius.netlify.app/) and blog posts:
   TodoMVC](https://www.tweag.io/posts/2018-12-20-asterius-todomvc.html)
 - [Haskell art in your browser with
   Asterius](https://www.tweag.io/posts/2019-12-19-asterius-diagrams.html)
+- [Edge computing with Servant on
+  Cloudflare](https://www.tweag.io/blog/2020-10-09-asterius-cloudflare-worker/)
 
 Also checkout the [HIW 2018 lightning
 talk](https://icfp18.sigplan.org/details/hiw-2018-papers/6/Lightning-talk-Asterius-Bringing-Haskell-to-WebAssembly),
@@ -101,7 +103,7 @@ documentation for details.
 ## Contributors
 
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-[<img src="https://tweag.io/logo.png" height="65">](https://tweag.io)
+[<img src="./docs/tweag-logo.svg" height="65">](https://tweag.io)
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
 [<img src="https://i.imgur.com/tAag5MD.jpg" height="65">](https://iohk.io)
 

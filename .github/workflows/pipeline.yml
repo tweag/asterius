@@ -19,9 +19,9 @@ jobs:
           enable-stack: true
 
       - name: setup-node-14
-        uses: actions/setup-node@v2.1.1
+        uses: actions/setup-node@v2-beta
         with:
-          node-version: 14.12.0
+          node-version: 14.13.1
 
       - name: checkout
         uses: actions/checkout@v2
@@ -64,9 +64,9 @@ jobs:
           enable-stack: true
 
       - name: setup-node-14
-        uses: actions/setup-node@v2.1.1
+        uses: actions/setup-node@v2-beta
         with:
-          node-version: 14.12.0
+          node-version: 14.13.1
 
       - name: checkout
         uses: actions/checkout@v2
@@ -152,9 +152,9 @@ jobs:
           enable-stack: true
 
       - name: setup-node-14
-        uses: actions/setup-node@v2.1.1
+        uses: actions/setup-node@v2-beta
         with:
-          node-version: 14.12.0
+          node-version: 14.13.1
 
       - name: checkout
         uses: actions/checkout@v2
@@ -195,9 +195,9 @@ jobs:
           enable-stack: true
 
       - name: setup-node-14
-        uses: actions/setup-node@v2.1.1
+        uses: actions/setup-node@v2-beta
         with:
-          node-version: 14.12.0
+          node-version: 14.13.1
 
       - name: checkout
         uses: actions/checkout@v2
@@ -253,9 +253,9 @@ jobs:
           enable-stack: true
 
       - name: setup-node-14
-        uses: actions/setup-node@v2.1.1
+        uses: actions/setup-node@v2-beta
         with:
-          node-version: 14.12.0
+          node-version: 14.13.1
 
       - name: checkout
         uses: actions/checkout@v2
@@ -300,9 +300,9 @@ jobs:
           enable-stack: true
 
       - name: setup-node-14
-        uses: actions/setup-node@v2.1.1
+        uses: actions/setup-node@v2-beta
         with:
-          node-version: 14.12.0
+          node-version: 14.13.1
 
       - name: checkout
         uses: actions/checkout@v2
@@ -357,7 +357,7 @@ jobs:
 
       - name: gen-pkgs
         run: |
-          utils/gen-pkgs.hs lts-16.15
+          utils/gen-pkgs.hs lts-16.17
           mkdir gen-pkgs
           mv cabal.config pkgs.txt gen-pkgs
 
@@ -387,7 +387,7 @@ jobs:
       - name: build
         run: |
           mkdir -p ~/.config/containers
-          echo "cgroup_manager=\"cgroupfs\"" > ~/.config/containers/libpod.conf
+          echo "cgroup_manager=\"cgroupfs\"" > ~/.config/containers/containers.conf
           podman build \
             --file $ASTERIUS_IMAGE.Dockerfile \
             --label "gitrev=$(git rev-parse HEAD)" \
@@ -413,12 +413,12 @@ jobs:
       - name: setup-python
         uses: actions/setup-python@v2
         with:
-          python-version: 3.8.6
+          python-version: 3.9.0
 
       - name: setup-node-14
-        uses: actions/setup-node@v2.1.1
+        uses: actions/setup-node@v2-beta
         with:
-          node-version: 14.12.0
+          node-version: 14.13.1
 
       - name: setup-deps
         run: |
@@ -435,6 +435,8 @@ jobs:
         run: |
           cd docs
           sphinx-build . _build
+
+          cp tweag-logo.svg _build
 
           mkdir _build/demo
           pushd _build/demo
