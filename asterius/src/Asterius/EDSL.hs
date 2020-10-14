@@ -359,12 +359,26 @@ mkDynamicFunctionAddress off =
     `orInt64` ConstI64 (functionTag `shiftL` 32)
 
 call :: EntitySymbol -> [Expression] -> EDSL ()
-call f xs = emit Call {target = f, operands = xs, callReturnTypes = []}
+call f xs =
+  emit
+    Call
+      { target = f,
+        operands = xs,
+        callReturnTypes = [],
+        callHint = Nothing
+      }
 
 call' :: EntitySymbol -> [Expression] -> ValueType -> EDSL Expression
 call' f xs vt = do
   lr <- mutLocal vt
-  putLVal lr Call {target = f, operands = xs, callReturnTypes = [vt]}
+  putLVal
+    lr
+    Call
+      { target = f,
+        operands = xs,
+        callReturnTypes = [vt],
+        callHint = Nothing
+      }
   pure $ getLVal lr
 
 -- | Call a function with no return value

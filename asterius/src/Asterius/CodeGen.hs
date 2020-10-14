@@ -116,6 +116,11 @@ dispatchAllCmmWidth w r8 r16 r32 r64 = case w of
   GHC.W64 -> pure r64
   _ -> liftIO $ throwIO $ UnsupportedCmmWidth $ showBS w
 
+marshalForeignHint :: GHC.ForeignHint -> FFIHint
+marshalForeignHint GHC.NoHint = NoHint
+marshalForeignHint GHC.AddrHint = AddrHint
+marshalForeignHint GHC.SignedHint = SignedHint
+
 marshalCmmStatic :: GHC.CmmStatic -> CodeGen AsteriusStatic
 marshalCmmStatic st = case st of
   GHC.CmmStaticLit lit -> case lit of
@@ -1249,10 +1254,12 @@ marshalCmmPrimCall (GHC.MO_BSwap GHC.W16) [r] [x] = do
   pure
     [ UnresolvedSetLocal
         { unresolvedLocalReg = lr,
-          value = Call
+          value =
+            Call
             { target = "hs_bswap16",
               operands = [xe],
-              callReturnTypes = [I64]
+              callReturnTypes = [I64],
+              callHint = Just ([NoHint], [NoHint])
             }
         }
     ]
@@ -1262,10 +1269,12 @@ marshalCmmPrimCall (GHC.MO_BSwap GHC.W32) [r] [x] = do
   pure
     [ UnresolvedSetLocal
         { unresolvedLocalReg = lr,
-          value = Call
+          value =
+            Call
             { target = "hs_bswap32",
               operands = [xe],
-              callReturnTypes = [I64]
+              callReturnTypes = [I64],
+              callHint = Just ([NoHint], [NoHint])
             }
         }
     ]
@@ -1275,10 +1284,12 @@ marshalCmmPrimCall (GHC.MO_BSwap GHC.W64) [r] [x] = do
   pure
     [ UnresolvedSetLocal
         { unresolvedLocalReg = lr,
-          value = Call
+          value =
+            Call
             { target = "hs_bswap64",
               operands = [xe],
-              callReturnTypes = [I64]
+              callReturnTypes = [I64],
+              callHint = Just ([NoHint], [NoHint])
             }
         }
     ]
@@ -1409,7 +1420,7 @@ marshalCmmUnsafeCall ::
   [GHC.LocalReg] ->
   [GHC.CmmExpr] ->
   CodeGen [Expression]
-marshalCmmUnsafeCall p@(GHC.CmmLit (GHC.CmmLabel clbl)) f rs xs = do
+marshalCmmUnsafeCall p@(GHC.CmmLit (GHC.CmmLabel clbl)) f@(GHC.ForeignConvention _ xs_hint rs_hint _) rs xs = do
   sym <- marshalCLabel clbl
   xes <- for xs $ \x -> do
     (xe, _) <- marshalCmmExpr x
@@ -1417,27 +1428,19 @@ marshalCmmUnsafeCall p@(GHC.CmmLit (GHC.CmmLabel clbl)) f rs xs = do
   case rs of
     [] ->
       pure
-        [ case ccallResultDroppable sym of
-            [] -> Call {target = sym, operands = xes, callReturnTypes = []}
-            rts ->
-              Drop
-                { dropValue =
-                    Call
-                      { target = sym,
-                        operands = xes,
-                        callReturnTypes = rts
-                      }
-                }
+        [ Call {target = sym, operands = xes, callReturnTypes = [], callHint = Just (map marshalForeignHint xs_hint, map marshalForeignHint rs_hint)}
         ]
     [r] -> do
       (lr, vt) <- marshalCmmLocalReg r
       pure
         [ UnresolvedSetLocal
             { unresolvedLocalReg = lr,
-              value = Call
+              value =
+                Call
                 { target = sym,
                   operands = xes,
-                  callReturnTypes = [vt]
+                  callReturnTypes = [vt],
+                  callHint = Just (map marshalForeignHint xs_hint, map marshalForeignHint rs_hint)
                 }
             }
         ]

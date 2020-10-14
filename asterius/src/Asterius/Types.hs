@@ -31,6 +31,7 @@ module Asterius.Types
     FunctionType (..),
     UnaryOp (..),
     BinaryOp (..),
+    FFIHint (..),
     Expression (..),
     Function (..),
     FunctionImport (..),
@@ -366,6 +367,12 @@ data GlobalType
       }
   deriving (Eq, Ord, Show, Data)
 
+data FFIHint
+  = NoHint
+  | AddrHint
+  | SignedHint
+  deriving (Show, Data)
+
 data Expression
   = Block
       { name :: BS.ByteString,
@@ -392,7 +399,8 @@ data Expression
   | Call
       { target :: EntitySymbol,
         operands :: [Expression],
-        callReturnTypes :: [ValueType]
+        callReturnTypes :: [ValueType],
+        callHint :: Maybe ([FFIHint], [FFIHint])
       }
   | CallImport
       { target' :: BS.ByteString,
@@ -698,6 +706,8 @@ $(genNFData ''GlobalType)
 
 $(genNFData ''Global)
 
+$(genNFData ''FFIHint)
+
 $(genNFData ''Expression)
 
 $(genNFData ''Function)
@@ -771,6 +781,8 @@ $(genBinary ''Mutability)
 $(genBinary ''GlobalType)
 
 $(genBinary ''Global)
+
+$(genBinary ''FFIHint)
 
 $(genBinary ''Expression)
 
