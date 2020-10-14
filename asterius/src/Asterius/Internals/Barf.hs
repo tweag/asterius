@@ -23,14 +23,16 @@ barf msg vts =
         [ Call
             { target = "barf_push",
               operands = [ConstI64 $ fromIntegral $ ord c],
-              callReturnTypes = []
+              callReturnTypes = [],
+              callHint = Nothing
             }
           | c <- CBS.unpack msg
         ]
           ++ [ Call
                  { target = "barf_throw",
                    operands = [],
-                   callReturnTypes = []
+                   callReturnTypes = [],
+                   callHint = Nothing
                  }
              ]
           ++ [Unreachable],
