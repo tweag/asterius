@@ -54,8 +54,8 @@ data Task
 defTask :: Task
 defTask = Task
   { target = Node,
-    optimizeLevel = 0,
-    shrinkLevel = 0,
+    optimizeLevel = 4,
+    shrinkLevel = 2,
     inputHS = error "Asterius.Main.parseTask: missing inputHS",
     outputDirectory = error "Asterius.Main.parseTask: missing outputDirectory",
     outputBaseName = error "Asterius.Main.parseTask: missing outputBaseName",
