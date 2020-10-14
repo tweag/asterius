@@ -22,6 +22,7 @@ RUN \
     libgmp-dev \
     libncurses-dev \
     libtinfo5 \
+    libxml2 \
     python3-minimal \
     zlib1g-dev && \
   curl \
@@ -114,4 +115,5 @@ RUN \
   alex --version && \
   cabal --version && \
   node --version && \
-  wasm-opt --version
+  wasm-opt --version && \
+  wasm-ld --version
