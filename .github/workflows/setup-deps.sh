@@ -19,9 +19,5 @@ curl \
 sudo dpkg -i /tmp/binaryen.deb
 rm /tmp/binaryen.deb
 
-curl \
-  -L \
-  -o /tmp/wasi-sdk.deb \
-  https://github.com/WebAssembly/wasi-sdk/releases/download/wasi-sdk-11/wasi-sdk_11.0_amd64_ubuntu20.04.deb
-sudo dpkg -i /tmp/wasi-sdk.deb
-rm /tmp/wasi-sdk.deb
+sudo mkdir -p /opt/wasi-sdk
+curl -L https://github.com/TerrorJack/wasi-sdk/releases/download/201014/wasi-sdk-11.5g3cbd9d212e9a-linux.tar.gz | sudo tar xz -C /opt/wasi-sdk --strip-components=1
