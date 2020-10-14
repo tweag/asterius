@@ -436,6 +436,8 @@ jobs:
           cd docs
           sphinx-build . _build
 
+          cp tweag-logo.svg _build
+
           mkdir _build/demo
           pushd _build/demo
 
