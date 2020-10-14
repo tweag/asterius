@@ -43,6 +43,7 @@ needed in the local environment:
 * `cabal` (at least `v3.0.0.0`)
 * `node`, `npm` (at least `v12`)
 * `g++`, `python3` (may be required by `node-gyp`)
+* `wasi-sdk` (the `WASI_SDK_PATH` environment variable is required)
 
 ### Building `asterius`
 

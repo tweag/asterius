@@ -6,7 +6,8 @@ ENV \
   LANG=C.UTF-8 \
   LC_ALL=C.UTF-8 \
   LC_CTYPE=C.UTF-8 \
-  PATH=/root/.asterius-local-install-root/bin:/root/.asterius-snapshot-install-root/bin:/root/.asterius-compiler-bin:/root/.local/bin:/root/.nvm/versions/node/v14.13.1/bin:${PATH}
+  PATH=/root/.asterius-local-install-root/bin:/root/.asterius-snapshot-install-root/bin:/root/.asterius-compiler-bin:/root/.local/bin:/root/.nvm/versions/node/v14.13.1/bin:${PATH} \
+  WASI_SDK_PATH=/opt/wasi-sdk
 
 RUN \
   apt update && \
@@ -21,8 +22,12 @@ RUN \
     libffi-dev \
     libgmp-dev \
     libncurses-dev \
+    libtinfo5 \
+    libxml2 \
     python3-minimal \
     zlib1g-dev && \
+  mkdir -p ${WASI_SDK_PATH} && \
+  (curl -L https://github.com/TerrorJack/wasi-sdk/releases/download/201014/wasi-sdk-11.5g3cbd9d212e9a-linux.tar.gz | tar xz -C ${WASI_SDK_PATH} --strip-components=1) && \
   cp \
     /etc/skel/.bash_logout \
     /etc/skel/.bashrc \
@@ -107,4 +112,5 @@ RUN \
   alex --version && \
   cabal --version && \
   node --version && \
-  wasm-opt --version
+  wasm-opt --version && \
+  wasm-ld --version

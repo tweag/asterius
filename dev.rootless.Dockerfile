@@ -42,7 +42,8 @@ ENV \
   LANG=C.UTF-8 \
   LC_ALL=C.UTF-8 \
   LC_CTYPE=C.UTF-8 \
-  PATH=/home/${USERNAME}/.local/bin:/home/${USERNAME}/.nvm/versions/node/v14.13.1/bin:${PATH}
+  PATH=/home/${USERNAME}/.local/bin:/home/${USERNAME}/.nvm/versions/node/v14.13.1/bin:${PATH} \
+  WASI_SDK_PATH=/opt/wasi-sdk
 
 RUN \
   sudo apt update && \
@@ -58,6 +59,7 @@ RUN \
     libffi-dev \
     libgmp-dev \
     libncurses-dev \
+    libtinfo5 \
     openssh-client \
     python3-pip \
     ripgrep \
@@ -65,6 +67,8 @@ RUN \
     xdg-utils \
     zlib1g-dev \
     zstd && \
+  sudo mkdir -p ${WASI_SDK_PATH} && \
+  (curl -L https://github.com/TerrorJack/wasi-sdk/releases/download/201014/wasi-sdk-11.5g3cbd9d212e9a-linux.tar.gz | sudo tar xz -C ${WASI_SDK_PATH} --strip-components=1) && \
   sudo apt autoremove --purge -y && \
   sudo apt clean && \
   sudo rm -rf -v \

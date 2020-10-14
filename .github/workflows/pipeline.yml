@@ -94,6 +94,8 @@ jobs:
 
       - name: test
         run: |
+          export WASI_SDK_PATH=/opt/wasi-sdk
+
           stack test asterius:fib --test-arguments="$ASTERIUS_WITH_PIC"
           stack test asterius:jsffi --test-arguments="$ASTERIUS_WITH_PIC"
           stack test asterius:array --test-arguments="$ASTERIUS_WITH_PIC"
@@ -173,6 +175,7 @@ jobs:
 
       - name: ghc-testsuite
         run: |
+          export WASI_SDK_PATH=/opt/wasi-sdk
           export GHCRTS=-N2
           stack test asterius:ghc-testsuite --test-arguments="-j2 --timeout=300s" || true
 
@@ -219,6 +222,7 @@ jobs:
 
       - name: profile
         run: |
+          export WASI_SDK_PATH=/opt/wasi-sdk
           . ./.envrc
 
           mkdir /tmp/asterius-profile
@@ -321,6 +325,7 @@ jobs:
 
       - name: test-cabal
         run: |
+          export WASI_SDK_PATH=/opt/wasi-sdk
           . ./.envrc
           pushd ghc-toolkit/boot-libs
 
