@@ -413,7 +413,7 @@ jobs:
       - name: setup-python
         uses: actions/setup-python@v2
         with:
-          python-version: 3.8.6
+          python-version: 3.9.0
 
       - name: setup-node-14
         uses: actions/setup-node@v2-beta
