@@ -34,9 +34,8 @@ maintained by [Tweag I/O](https://tweag.io/).
 
 # Contributors
 
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-[<img src="https://tweag.io/logo.png" height="65">](https://tweag.io)
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+[<img src="./tweag-logo.svg" height="65">](https://tweag.io)
+
 [<img src="https://i.imgur.com/tAag5MD.jpg" height="65">](https://iohk.io)
 
 Asterius is maintained by [Tweag I/O](https://tweag.io/).

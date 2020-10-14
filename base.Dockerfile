@@ -6,7 +6,7 @@ ENV \
   LANG=C.UTF-8 \
   LC_ALL=C.UTF-8 \
   LC_CTYPE=C.UTF-8 \
-  PATH=/root/.asterius-local-install-root/bin:/root/.asterius-snapshot-install-root/bin:/root/.asterius-compiler-bin:/root/.local/bin:/root/.nvm/versions/node/v14.12.0/bin:/opt/wasi-sdk/bin:${PATH}
+  PATH=/root/.asterius-local-install-root/bin:/root/.asterius-snapshot-install-root/bin:/root/.asterius-compiler-bin:/root/.local/bin:/root/.nvm/versions/node/v14.13.1/bin:/opt/wasi-sdk/bin:${PATH}
 
 RUN \
   apt update && \
@@ -40,7 +40,7 @@ WORKDIR /root
 
 RUN \
   (curl https://raw.githubusercontent.com/nvm-sh/nvm/v0.36.0/install.sh | bash) && \
-  bash -c ". ~/.nvm/nvm.sh && nvm install 14.12.0" && \
+  bash -c ". ~/.nvm/nvm.sh && nvm install 14.13.1" && \
   npm config set unsafe-perm true && \
   npm install -g \
     @cloudflare/wrangler \
