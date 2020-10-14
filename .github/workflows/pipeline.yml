@@ -19,9 +19,9 @@ jobs:
           enable-stack: true
 
       - name: setup-node-14
-        uses: actions/setup-node@v2.1.1
+        uses: actions/setup-node@v2-beta
         with:
-          node-version: 14.12.0
+          node-version: 14.13.1
 
       - name: checkout
         uses: actions/checkout@v2
@@ -64,9 +64,9 @@ jobs:
           enable-stack: true
 
       - name: setup-node-14
-        uses: actions/setup-node@v2.1.1
+        uses: actions/setup-node@v2-beta
         with:
-          node-version: 14.12.0
+          node-version: 14.13.1
 
       - name: checkout
         uses: actions/checkout@v2
@@ -152,9 +152,9 @@ jobs:
           enable-stack: true
 
       - name: setup-node-14
-        uses: actions/setup-node@v2.1.1
+        uses: actions/setup-node@v2-beta
         with:
-          node-version: 14.12.0
+          node-version: 14.13.1
 
       - name: checkout
         uses: actions/checkout@v2
@@ -195,9 +195,9 @@ jobs:
           enable-stack: true
 
       - name: setup-node-14
-        uses: actions/setup-node@v2.1.1
+        uses: actions/setup-node@v2-beta
         with:
-          node-version: 14.12.0
+          node-version: 14.13.1
 
       - name: checkout
         uses: actions/checkout@v2
@@ -253,9 +253,9 @@ jobs:
           enable-stack: true
 
       - name: setup-node-14
-        uses: actions/setup-node@v2.1.1
+        uses: actions/setup-node@v2-beta
         with:
-          node-version: 14.12.0
+          node-version: 14.13.1
 
       - name: checkout
         uses: actions/checkout@v2
@@ -300,9 +300,9 @@ jobs:
           enable-stack: true
 
       - name: setup-node-14
-        uses: actions/setup-node@v2.1.1
+        uses: actions/setup-node@v2-beta
         with:
-          node-version: 14.12.0
+          node-version: 14.13.1
 
       - name: checkout
         uses: actions/checkout@v2
@@ -416,9 +416,9 @@ jobs:
           python-version: 3.8.6
 
       - name: setup-node-14
-        uses: actions/setup-node@v2.1.1
+        uses: actions/setup-node@v2-beta
         with:
-          node-version: 14.12.0
+          node-version: 14.13.1
 
       - name: setup-deps
         run: |
