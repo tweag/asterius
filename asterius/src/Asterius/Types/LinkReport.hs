@@ -17,7 +17,8 @@ data LinkReport
         infoTableOffsetSet :: [Word32],
         tableSlots, staticBytes :: Int,
         sptEntries :: SymbolMap (Word64, Word64),
-        bundledFFIMarshalState :: FFIMarshalState
+        bundledFFIMarshalState :: FFIMarshalState,
+        usedCCalls :: [String]
       }
   deriving (Show)
 

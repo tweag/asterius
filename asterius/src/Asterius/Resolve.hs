@@ -16,6 +16,7 @@ import Asterius.Builtins
 import Asterius.JSFFI
 import Asterius.MemoryTrap
 import Asterius.Passes.DataOffsetTable
+import Asterius.Passes.FindCCall
 import Asterius.Passes.FunctionOffsetTable
 import Asterius.Passes.GCSections
 import Asterius.Types
@@ -24,6 +25,7 @@ import qualified Asterius.Types.SymbolSet as SS
 import Asterius.Types.LinkReport
 import Control.DeepSeq
 import qualified Data.Map.Lazy as LM
+import Data.String
 import Foreign
 import Language.Haskell.GHC.Toolkit.Constants
 
@@ -122,7 +124,10 @@ linkStart pic_on debug gc_sections store root_syms export_funcs =
         Asterius.Types.LinkReport.tableSlots = tbl_slots,
         staticBytes = static_bytes,
         sptEntries = sptMap merged_m,
-        bundledFFIMarshalState = ffiMarshalState merged_m
+        bundledFFIMarshalState = ffiMarshalState merged_m,
+        usedCCalls =
+          filter (not . (`SM.member` functionMap merged_m) . fromString) $
+            findCCall (functionMap merged_m)
       }
   )
   where
