@@ -1671,7 +1671,6 @@ serialise
 servant
 servant-JuicyPixels
 servant-auth
-servant-auth-docs
 servant-auth-server
 servant-auth-swagger
 servant-blaze
