@@ -326,7 +326,6 @@ jobs:
       - name: test-cabal
         run: |
           export WASI_SDK_PATH=/opt/wasi-sdk
-          export ASTERIUS_AHC_LD_IGNORE=1
 
           . ./.envrc
           pushd ghc-toolkit/boot-libs
@@ -338,6 +337,7 @@ jobs:
           ahc-dist --input-exe hello --run
           popd
 
+          export ASTERIUS_AHC_LD_IGNORE=1
           ahc-cabal v1-install --ghc-option=-j2 \
             Cabal
           ahc-cabal v1-install -j2 \
