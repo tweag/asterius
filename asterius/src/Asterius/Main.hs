@@ -310,11 +310,13 @@ ahcDistMain logger task (final_m, report) = do
   Binaryen.setLowMemoryUnused 1
   m_ref <-
     Binaryen.marshalModule
+      (staticBytes report)
       (pic task)
       (verboseErr task)
       (tailCalls task)
       (staticsOffsetMap report)
       (functionOffsetMap report)
+      (usedCCalls report)
       final_m
   when (optimizeLevel task > 0 || shrinkLevel task > 0) $ do
     logger "[INFO] Running binaryen optimization"

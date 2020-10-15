@@ -90,19 +90,13 @@ resolveAsteriusModule pic_is_on debug m_globals_resolved =
             )
             $ rtsFunctionExports debug,
         functionTable = func_table,
-        tableImport = TableImport
-          { externalModuleName = "WasmTable",
-            externalBaseName = "table"
-          },
+        tableImport = Nothing,
         tableSlots = table_slots,
         globalImports = rtsGlobalImports,
         globalExports = rtsGlobalExports,
         globalMap = globalsMap final_m, -- Copy as-is.
         memorySegments = segs,
-        memoryImport = MemoryImport
-          { externalModuleName = "WasmMemory",
-            externalBaseName = "memory"
-          },
+        memoryImport = Nothing,
         memoryMBlocks = initial_mblocks
       }
 

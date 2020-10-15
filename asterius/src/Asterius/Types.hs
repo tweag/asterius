@@ -564,13 +564,13 @@ data Module
         functionImports :: [FunctionImport],
         functionExports :: [FunctionExport],
         functionTable :: FunctionTable,
-        tableImport :: TableImport,
+        tableImport :: Maybe TableImport,
         tableSlots :: Int,
         globalImports :: [GlobalImport],
         globalExports :: [GlobalExport],
         globalMap :: SymbolMap Global,
         memorySegments :: [DataSegment],
-        memoryImport :: MemoryImport,
+        memoryImport :: Maybe MemoryImport,
         memoryMBlocks :: Int
       }
   deriving (Show, Data)

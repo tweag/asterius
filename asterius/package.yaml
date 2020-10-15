@@ -44,6 +44,7 @@ extra-source-files:
 
 data-files:
   - cabal/**
+  - libc/**
   - rts/**/*.mjs
   - boot-init.sh
   - boot.sh

@@ -4,6 +4,7 @@
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE StrictData #-}
+{-# LANGUAGE TupleSections #-}
 {-# OPTIONS_GHC -Wno-overflowed-literals #-}
 
 -- |
@@ -29,13 +30,18 @@ import qualified Asterius.Internals.Arena as A
 import Asterius.Internals.Barf
 import Asterius.Internals.MagicNumber
 import Asterius.Internals.Marshal
+import Asterius.JSGen.LibC
+import Asterius.Passes.CCall
 import Asterius.Types
 import qualified Asterius.Types.SymbolMap as SM
 import Asterius.TypesConv
 import qualified Binaryen
+import qualified Binaryen.Export
 import qualified Binaryen.Expression
 import qualified Binaryen.Expression as Binaryen
+import qualified Binaryen.ExternalKind as Binaryen
 import qualified Binaryen.Features as Binaryen
+import qualified Binaryen.Function
 import qualified Binaryen.Index as Binaryen
 import qualified Binaryen.Module
 import qualified Binaryen.Module as Binaryen
@@ -53,6 +59,7 @@ import qualified Data.ByteString.Unsafe as BS
 import Data.Foldable
 import Data.List
 import qualified Data.Map.Strict as M
+import Data.Maybe
 import qualified Data.Set as Set
 import Data.Traversable
 import Foreign hiding
@@ -243,7 +250,11 @@ marshalFunctionType FunctionType {..} = do
 
 -- | Environment used during marshaling of Asterius' types to Binaryen.
 data MarshalEnv = MarshalEnv
-  { -- | The 'A.Arena' for allocating temporary buffers.
+  { -- | Info about exported functions in the libc module, indexed by external name.
+    envLibCFuncInfo :: M.Map BS.ByteString (BS.ByteString, FunctionType),
+    -- | Internal names of exported functions in the libc module.
+    envLibCFuncNames :: Set.Set BS.ByteString,
+    -- | The 'A.Arena' for allocating temporary buffers.
     envArena :: A.Arena,
     -- | Whether the @pic@ extension is on.
     envIsPicOn :: Bool,
@@ -290,7 +301,10 @@ askModuleRef :: CodeGen Binaryen.Module
 askModuleRef = reader envModuleRef
 
 marshalExpression :: Expression -> CodeGen Binaryen.Expression
-marshalExpression e = case e of
+marshalExpression e' = do
+ libc_func_info <- asks envLibCFuncInfo
+ let e = handleCCall libc_func_info e'
+ case e of
   Block {..} -> do
     bs <- forM bodys marshalExpression
     rts <- marshalReturnTypes blockReturnTypes
@@ -332,7 +346,8 @@ marshalExpression e = case e of
   Call {..} -> do
     verbose_err <- isVerboseErrOn
     fn_off_map <- askFunctionsOffsetMap
-    if  | target `SM.member` fn_off_map -> do
+    libc_func_names <- asks envLibCFuncNames
+    if  | target `SM.member` fn_off_map || entityName target `Set.member` libc_func_names -> do
           os <-
             mapM
               marshalExpression
@@ -591,7 +606,7 @@ marshalFunctionTable m tbl_slots FunctionTable {..} = do
     (fnp, fnl) <- marshalV a func_name_ptrs
     Binaryen.setFunctionTable
       m
-      (fromIntegral tbl_slots)
+      (fromIntegral defaultTableBase + fromIntegral tbl_slots)
       (-1)
       fnp
       (fromIntegral fnl)
@@ -675,23 +690,33 @@ marshalGlobal k Global {..} = do
     Binaryen.addGlobal m ptr ty mut e
 
 marshalModule ::
+  Int ->
   Bool ->
   Bool ->
   Bool ->
   SM.SymbolMap Word32 ->
   SM.SymbolMap Word32 ->
+  [String] ->
   Module ->
   IO Binaryen.Module
-marshalModule pic_on verbose_err tail_calls ss_off_map fn_off_map hs_mod@Module {..} = do
-  m <- Binaryen.Module.create
+marshalModule static_bytes pic_on verbose_err tail_calls ss_off_map fn_off_map used_ccalls hs_mod@Module {..} = do
+  m <- do
+    bs <- genLibC defLibCOpts {globalBase = (fromIntegral defaultMemoryBase + static_bytes) `roundup` 0x400, exports = exports defLibCOpts <> used_ccalls}
+    BS.unsafeUseAsCStringLen bs $
+        \(p, l) -> Binaryen.Module.read p (fromIntegral l)
+  checkOverlapDataSegment m
   Binaryen.setFeatures m
     $ foldl1' (.|.)
     $ [Binaryen.tailCall | tail_calls]
       <> [Binaryen.mvp]
   A.with $ \a -> do
+    libc_func_names <- binaryenModuleExportNames m
+    libc_func_info <- fmap M.fromList $ for libc_func_names $ \(in_name, ext_name) -> (ext_name,) . (in_name,) <$> binaryenFunctionType m in_name
     let env =
           MarshalEnv
-            { envArena = a,
+              { envLibCFuncInfo = libc_func_info,
+              envLibCFuncNames = Set.fromList $ map fst libc_func_names,
+              envArena = a,
               envIsPicOn = pic_on,
               envIsVerboseErrOn = verbose_err,
               envAreTailCallsOn = tail_calls,
@@ -714,10 +739,14 @@ marshalModule pic_on verbose_err tail_calls ss_off_map fn_off_map hs_mod@Module 
       forM_ globalImports $ marshalGlobalImport m
       forM_ globalExports $ marshalGlobalExport m
       marshalFunctionTable m tableSlots functionTable
-      marshalTableImport m tableImport
+      case tableImport of
+        Just tbl_import -> marshalTableImport m tbl_import
+        _ -> pure ()
       marshalMemorySegments memoryMBlocks memorySegments
       unless pic_on $ lift $ checkOverlapDataSegment m
-      marshalMemoryImport m memoryImport
+      case memoryImport of
+        Just mem_import -> marshalMemoryImport m mem_import
+        _ -> pure ()
     lim_segs <- marshalBS a "limit-segments"
     (lim_segs_p, _) <- marshalV a [lim_segs]
     Binaryen.Module.runPasses m lim_segs_p 1
@@ -781,3 +810,52 @@ serializeModuleSExpr m =
 
 setColorsEnabled :: Bool -> IO ()
 setColorsEnabled b = Binaryen.setColorsEnabled . toEnum . fromEnum $ b
+
+binaryenTypeToValueType :: Binaryen.Type -> ValueType
+binaryenTypeToValueType ty =
+  case lookup
+    ty
+    [ (Binaryen.int32, I32),
+      (Binaryen.int64, I64),
+      (Binaryen.float32, F32),
+      (Binaryen.float64, F64)
+    ] of
+    Just r -> r
+    _ -> error "binaryenTypeToValueType"
+
+binaryenExpandType :: Binaryen.Type -> IO [Binaryen.Type]
+binaryenExpandType tys = do
+  n <- fromIntegral <$> Binaryen.Type.arity tys
+  case n of
+    0 -> pure []
+    _ -> allocaArray n $ \p -> do
+            Binaryen.Type.expand tys p
+            peekArray n p
+
+binaryenFunctionType :: Binaryen.Module -> BS.ByteString -> IO FunctionType
+binaryenFunctionType m in_name = do
+  f <- BS.useAsCString in_name $ \p -> Binaryen.getFunction m p
+  args_tys <-
+    (map binaryenTypeToValueType <$>)
+      . binaryenExpandType
+      =<< Binaryen.Function.getParams f
+  res_tys <-
+    (map binaryenTypeToValueType <$>)
+      . binaryenExpandType
+      =<< Binaryen.Function.getResults f
+  pure FunctionType {paramTypes = args_tys, returnTypes = res_tys}
+
+binaryenModuleExportNames ::
+  Binaryen.Module -> IO [(BS.ByteString, BS.ByteString)]
+binaryenModuleExportNames m = do
+  n <- Binaryen.getNumExports m
+  fmap catMaybes $
+    for [0 .. n - 1] $ \i -> do
+      e <- Binaryen.getExportByIndex m (fromIntegral i)
+      k <- Binaryen.Export.getKind e
+      if k == Binaryen.externalFunction
+        then do
+          in_name <- BS.packCString =<< Binaryen.Export.getValue e
+          ext_name <- BS.packCString =<< Binaryen.Export.getName e
+          pure $ Just (in_name, ext_name)
+        else pure Nothing
