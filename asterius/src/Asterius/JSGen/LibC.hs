@@ -12,6 +12,7 @@ import Asterius.BuildInfo
 import qualified Asterius.BuildInfo as A
 import Asterius.Internals.Temp
 import qualified Data.ByteString as BS
+import Distribution.Simple.CCompiler
 import Distribution.Simple.Utils
 import System.Directory
 import System.Environment.Blank
@@ -46,10 +47,7 @@ genLibC LibCOpts {..} = do
       Just p -> pure p
       _ -> fail "WASI_SDK_PATH not set"
   let cbits_dir = dataDir </> "libc"
-  cbits <-
-    map (cbits_dir </>)
-      . filter ((== ".c") . takeExtension)
-      <$> listDirectory cbits_dir
+  cbits <- map (cbits_dir </>) . filter isC <$> listDirectory cbits_dir
   withTempDir "asterius" $ \tmpdir -> do
     let o_path = tmpdir </> "libc.wasm"
     callProcess (wasi_sdk </> "bin" </> "clang") $
@@ -69,3 +67,6 @@ genLibC LibCOpts {..} = do
            ]
         <> cbits
     BS.readFile o_path
+
+isC :: FilePath -> Bool
+isC = (== Just (C, True)) . filenameCDialect
