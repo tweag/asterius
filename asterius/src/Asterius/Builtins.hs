@@ -157,7 +157,6 @@ rtsAsteriusModule opts =
     <> printF64Function opts
     <> assertEqI64Function opts
     <> debugBelch2Function opts
-    <> memchrFunction opts
     <> memcpyFunction opts
     <> memsetFunction opts
     <> memcmpFunction opts
@@ -419,15 +418,6 @@ rtsFunctionImports debug =
              functionType = FunctionType
                { paramTypes = [F64, F64],
                  returnTypes = []
-               }
-           },
-         FunctionImport
-           { internalName = "__asterius_memchr",
-             externalModuleName = "Memory",
-             externalBaseName = "memchr",
-             functionType = FunctionType
-               { paramTypes = [F64, F64, F64],
-                 returnTypes = [F64]
                }
            },
          FunctionImport
@@ -1322,17 +1312,6 @@ debugBelch2Function _ = runEDSL "debugBelch2" $ do
   callImport
     "__asterius_debugBelch2"
     [convertUInt64ToFloat64 fmt, convertUInt64ToFloat64 str]
-
-memchrFunction :: BuiltinsOptions -> AsteriusModule
-memchrFunction _ = runEDSL "memchr" $ do
-  setReturnTypes [I64]
-  [ptr, val, num] <- params [I64, I64, I64]
-  p <-
-    callImport'
-      "__asterius_memchr"
-      (map convertUInt64ToFloat64 [ptr, val, num])
-      F64
-  emit $ truncUFloat64ToInt64 p
 
 memcpyFunction :: BuiltinsOptions -> AsteriusModule
 memcpyFunction _ = runEDSL "memcpy" $ do

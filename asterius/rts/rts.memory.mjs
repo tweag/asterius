@@ -223,12 +223,6 @@ export class Memory {
     }
   }
 
-  memchr(_ptr, val, num) {
-    return Memory.tagData(
-      this.components.exports.memchr(Memory.unTag(_ptr), val, num)
-    );
-  }
-
   memcpy(_dst, _src, n) {
     return Memory.tagData(
       this.components.exports.memcpy(Memory.unTag(_dst), Memory.unTag(_src), n)
