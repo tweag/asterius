@@ -32,7 +32,6 @@ defLibCOpts =
       exports =
         [ "aligned_alloc",
           "free",
-          "strlen",
           "memchr",
           "memcpy",
           "memmove",

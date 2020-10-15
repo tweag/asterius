@@ -208,10 +208,6 @@ export class Memory {
     return new t(this.memory.buffer, Memory.unTag(p), len);
   }
 
-  strlen(_str) {
-    return this.components.exports.strlen(Memory.unTag(_str));
-  }
-
   strLoad(_str) {
     let p = Memory.unTag(_str);
     let s = "";

@@ -156,7 +156,6 @@ rtsAsteriusModule opts =
     <> printF32Function opts
     <> printF64Function opts
     <> assertEqI64Function opts
-    <> strlenFunction opts
     <> debugBelch2Function opts
     <> memchrFunction opts
     <> memcpyFunction opts
@@ -408,15 +407,6 @@ rtsFunctionImports debug =
            { internalName = "__asterius_allocatePinned",
              externalModuleName = "HeapAlloc",
              externalBaseName = "allocatePinned",
-             functionType = FunctionType
-               { paramTypes = [F64],
-                 returnTypes = [F64]
-               }
-           },
-         FunctionImport
-           { internalName = "__asterius_strlen",
-             externalModuleName = "Memory",
-             externalBaseName = "strlen",
              functionType = FunctionType
                { paramTypes = [F64],
                  returnTypes = [F64]
@@ -1325,13 +1315,6 @@ printF64Function :: BuiltinsOptions -> AsteriusModule
 printF64Function _ = runEDSL "print_f64" $ do
   x <- param F64
   callImport "printF64" [x]
-
-strlenFunction :: BuiltinsOptions -> AsteriusModule
-strlenFunction _ = runEDSL "strlen" $ do
-  setReturnTypes [I64]
-  [str] <- params [I64]
-  len <- callImport' "__asterius_strlen" [convertUInt64ToFloat64 str] F64
-  emit $ truncUFloat64ToInt64 len
 
 debugBelch2Function :: BuiltinsOptions -> AsteriusModule
 debugBelch2Function _ = runEDSL "debugBelch2" $ do
