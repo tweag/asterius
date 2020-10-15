@@ -27,7 +27,6 @@ import Asterius.Builtins.Env
 import Asterius.Builtins.Exports
 import Asterius.Builtins.Hashable
 import Asterius.Builtins.MD5
-import Asterius.Builtins.Malloc
 import Asterius.Builtins.Math
 import Asterius.Builtins.Posix
 import Asterius.Builtins.Primitive
@@ -200,7 +199,6 @@ rtsAsteriusModule opts =
     <> md5CBits
     <> envCBits
     <> posixCBits
-    <> mallocCBits
     <> sptCBits
     <> stgPrimFloatCBits
     <> timeCBits
