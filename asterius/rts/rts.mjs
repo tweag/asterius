@@ -22,6 +22,7 @@ import { Unicode } from "./rts.unicode.mjs";
 import { Exports } from "./rts.exports.mjs";
 import { FS } from "./rts.fs.mjs";
 import { SymbolTable } from "./rts.symtable.mjs";
+import { WASI } from "./rts.wasi.mjs";
 import * as rtsConstants from "./rts.constants.mjs";
 
 export async function newAsteriusInstance(req) {
@@ -136,6 +137,7 @@ export async function newAsteriusInstance(req) {
       __asterius_info_tables,
       __asterius_symbol_table
     );
+  const __asterius_wasi = new WASI();
   __asterius_scheduler.exports = __asterius_exports;
 
   __asterius_components.memory = __asterius_memory;
@@ -164,6 +166,7 @@ export async function newAsteriusInstance(req) {
     req.jsffiFactory(__asterius_jsffi_instance),
     {
       Math: Math,
+      wasi_snapshot_preview1: modulify(__asterius_wasi),
       env: {
         __memory_base: __asterius_memory_base,
         __table_base: __asterius_table_base
