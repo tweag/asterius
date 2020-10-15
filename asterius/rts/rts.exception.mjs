@@ -176,6 +176,8 @@ export class ExceptionHelper {
     this.errorBuffer = "";
     if (f) {
       throw new WebAssembly.RuntimeError(`barf_signal: ${buf}`);
+    } else {
+      console.error(`[DEBUG] ${buf}`);
     }
   }
 }

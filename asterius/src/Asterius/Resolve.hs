@@ -19,6 +19,7 @@ import Asterius.Passes.DataOffsetTable
 import Asterius.Passes.FindCCall
 import Asterius.Passes.FunctionOffsetTable
 import Asterius.Passes.GCSections
+import Asterius.Passes.Tracing
 import Asterius.Types
 import qualified Asterius.Types.SymbolMap as SM
 import qualified Asterius.Types.SymbolSet as SS
@@ -130,7 +131,7 @@ linkStart pic_on debug gc_sections store root_syms export_funcs =
       | otherwise = fromCachedModule store
     !merged_m0_evaluated = force merged_m0
     !merged_m1
-      | debug = addMemoryTrap merged_m0_evaluated
+      | debug = traceModule $ addMemoryTrap merged_m0_evaluated
       | otherwise = merged_m0_evaluated
     (!result_m, !merged_m, !ss_off_map, !fn_off_map, !tbl_slots, !static_bytes) =
       resolveAsteriusModule pic_on debug merged_m1
