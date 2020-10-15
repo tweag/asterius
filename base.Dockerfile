@@ -113,4 +113,4 @@ RUN \
   cabal --version && \
   node --version && \
   wasm-opt --version && \
-  wasm-ld --version
+  ${WASI_SDK_PATH}/bin/wasm-ld --version
