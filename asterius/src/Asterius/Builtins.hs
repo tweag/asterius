@@ -26,7 +26,6 @@ import Asterius.Builtins.Endianness
 import Asterius.Builtins.Env
 import Asterius.Builtins.Exports
 import Asterius.Builtins.Hashable
-import Asterius.Builtins.MD5
 import Asterius.Builtins.Posix
 import Asterius.Builtins.Primitive
 import Asterius.Builtins.Scheduler
@@ -190,7 +189,6 @@ rtsAsteriusModule opts =
     <> schedulerCBits
     <> cmathCBits
     <> hashableCBits
-    <> md5CBits
     <> envCBits
     <> posixCBits
     <> sptCBits
