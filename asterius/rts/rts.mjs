@@ -18,7 +18,6 @@ import { GC } from "./rts.gc.mjs";
 import { ExceptionHelper } from "./rts.exception.mjs";
 import { Messages } from "./rts.messages.mjs";
 import { FloatCBits } from "./rts.float.mjs";
-import { Unicode } from "./rts.unicode.mjs";
 import { Exports } from "./rts.exports.mjs";
 import { FS } from "./rts.fs.mjs";
 import { SymbolTable } from "./rts.symtable.mjs";
@@ -122,7 +121,6 @@ export async function newAsteriusInstance(req) {
     ),
     __asterius_float_cbits = new FloatCBits(__asterius_memory),
     __asterius_messages = new Messages(__asterius_memory, __asterius_fs),
-    __asterius_unicode = new Unicode(),
     __asterius_exports = new Exports(
       __asterius_memory,
       __asterius_reentrancy_guard,
@@ -200,7 +198,6 @@ export async function newAsteriusInstance(req) {
       StablePtr: modulify(__asterius_stableptr_manager),
       StableName: modulify(__asterius_stablename_manager),
       StaticPtr: modulify(__asterius_staticptr_manager),
-      Unicode: modulify(__asterius_unicode),
       Tracing: modulify(__asterius_tracer),
       Exports: {
         newHaskellCallback: (sp, arg_tag, ret_tag, io, oneshot) => {

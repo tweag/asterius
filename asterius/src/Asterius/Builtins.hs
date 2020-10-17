@@ -139,7 +139,6 @@ rtsAsteriusModule opts =
             (\(func_sym, (_, func)) -> (func_sym, func))
             ( byteStringCBits
                 <> floatCBits
-                <> unicodeCBits
                 <> textCBits
             )
     }
@@ -619,7 +618,7 @@ rtsFunctionImports debug =
        )
     <> map
       (fst . snd)
-      ( byteStringCBits <> floatCBits <> unicodeCBits <> textCBits
+      ( byteStringCBits <> floatCBits <> textCBits
       )
     <> schedulerImports
     <> exportsImports
@@ -1421,30 +1420,6 @@ raiseExceptionHelperFunction _ = runEDSL "raiseExceptionHelper" $ do
         (map convertUInt64ToFloat64 args)
         F64
   emit frame_type
-
--- Note that generateRTSWrapper will treat all our numbers as signed, not
--- unsigned.   This is OK for ASCII code, since the ints we have will not be
--- larger than 2^15.  However, for larger numbers, it would "overflow", and
--- would treat large unsigned  numbers as negative signed numbers.
-unicodeCBits :: [(EntitySymbol, (FunctionImport, Function))]
-unicodeCBits =
-  map
-    ( \(func_sym, param_vts, ret_vts) ->
-        ( mkEntitySymbol func_sym,
-          generateRTSWrapper "Unicode" func_sym param_vts ret_vts
-        )
-    )
-    [ ("u_gencat", [I64], [I64]),
-      ("u_iswalpha", [I64], [I64]),
-      ("u_iswalnum", [I64], [I64]),
-      ("u_iswupper", [I64], [I64]),
-      ("u_iswlower", [I64], [I64]),
-      ("u_towlower", [I64], [I64]),
-      ("u_towupper", [I64], [I64]),
-      ("u_towtitle", [I64], [I64]),
-      ("u_iswcntrl", [I64], [I64]),
-      ("u_iswprint", [I64], [I64])
-    ]
 
 suspendThreadFunction :: BuiltinsOptions -> AsteriusModule
 suspendThreadFunction _ = runEDSL "suspendThread" $ do
