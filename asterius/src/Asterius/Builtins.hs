@@ -25,7 +25,6 @@ import Asterius.Builtins.CMath
 import Asterius.Builtins.Endianness
 import Asterius.Builtins.Env
 import Asterius.Builtins.Exports
-import Asterius.Builtins.Hashable
 import Asterius.Builtins.Math
 import Asterius.Builtins.Posix
 import Asterius.Builtins.Primitive
@@ -190,7 +189,6 @@ rtsAsteriusModule opts =
     <> sparksCBits
     <> schedulerCBits
     <> cmathCBits
-    <> hashableCBits
     <> envCBits
     <> posixCBits
     <> sptCBits
