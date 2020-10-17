@@ -15,7 +15,6 @@ import { TimeCBits } from "./rts.time.mjs";
 import { GC } from "./rts.gc.mjs";
 import { ExceptionHelper } from "./rts.exception.mjs";
 import { Messages } from "./rts.messages.mjs";
-import { FloatCBits } from "./rts.float.mjs";
 import { Exports } from "./rts.exports.mjs";
 import { FS } from "./rts.fs.mjs";
 import { SymbolTable } from "./rts.symtable.mjs";
@@ -115,7 +114,6 @@ export async function newAsteriusInstance(req) {
       req.yolo,
       req.gcThreshold
     ),
-    __asterius_float_cbits = new FloatCBits(__asterius_memory),
     __asterius_messages = new Messages(__asterius_memory, __asterius_fs),
     __asterius_exports = new Exports(
       __asterius_memory,
@@ -180,8 +178,6 @@ export async function newAsteriusInstance(req) {
       },
       posix: modulify(new (req.targetSpecificModule.posix)(__asterius_memory, rtsConstants)),
       time: modulify(__asterius_time_cbits),
-      // cannot name this float since float is a keyword.
-      floatCBits: modulify(__asterius_float_cbits),
       GC: modulify(__asterius_gc),
       ExceptionHelper: modulify(__asterius_exception_helper),
       HeapAlloc: modulify(__asterius_heapalloc),

@@ -128,12 +128,7 @@ rtsAsteriusModule opts =
                   globalInit = ConstI64 invalidAddress
                 }
             )
-          ],
-      functionMap =
-        SM.fromList $
-          map
-            (\(func_sym, (_, func)) -> (func_sym, func))
-            floatCBits
+          ]
     }
     <> hsInitFunction opts
     <> wasmApplyRelocsFunction opts
@@ -605,9 +600,6 @@ rtsFunctionImports debug =
                   ]
            else []
        )
-    <> map
-      (fst . snd)
-      floatCBits
     <> schedulerImports
     <> exportsImports
     <> envImports
@@ -701,73 +693,6 @@ rtsGlobalExports = mempty
 
 emitErrorMessage :: [ValueType] -> BS.ByteString -> Expression
 emitErrorMessage vts ev = Barf {barfMessage = ev, barfReturnTypes = vts}
-
-floatCBits :: [(EntitySymbol, (FunctionImport, Function))]
-floatCBits =
-  map
-    ( \(func_sym, param_vts, ret_vts) ->
-        ( mkEntitySymbol func_sym,
-          generateRTSWrapper "floatCBits" func_sym param_vts ret_vts
-        )
-    )
-    [ ("isFloatNegativeZero", [F32], [I64]),
-      ("isDoubleNegativeZero", [F64], [I64]),
-      ("isFloatNaN", [F32], [I64]),
-      ("isDoubleNaN", [F64], [I64]),
-      ("isFloatFinite", [F32], [I64]),
-      ("isDoubleFinite", [F64], [I64]),
-      ("isFloatDenormalized", [F32], [I64]),
-      ("isDoubleDenormalized", [F64], [I64]),
-      ("isFloatInfinite", [F32], [I64]),
-      ("isDoubleInfinite", [F64], [I64]),
-      ("rintDouble", [F64], [F64]),
-      ("rintFloat", [F32], [F32])
-    ]
-
-generateRTSWrapper ::
-  BS.ByteString ->
-  BS.ByteString ->
-  [ValueType] ->
-  [ValueType] ->
-  (FunctionImport, Function)
-generateRTSWrapper mod_sym func_sym param_vts ret_vts =
-  ( FunctionImport
-      { internalName = "__asterius_" <> func_sym,
-        externalModuleName = mod_sym,
-        externalBaseName = func_sym,
-        functionType = FunctionType
-          { paramTypes = map fst xs,
-            returnTypes = fst ret
-          }
-      },
-    Function
-      { functionType = FunctionType
-          { paramTypes = param_vts,
-            returnTypes = ret_vts
-          },
-        varTypes = [],
-        body = snd
-          ret
-          CallImport
-            { target' = "__asterius_" <> func_sym,
-              operands = map snd xs,
-              callImportReturnTypes = fst ret
-            }
-      }
-  )
-  where
-    xs =
-      zipWith
-        ( \i vt -> case vt of
-            I64 ->
-              (F64, convertSInt64ToFloat64 GetLocal {index = i, valueType = I64})
-            _ -> (vt, GetLocal {index = i, valueType = vt})
-        )
-        [0 ..]
-        param_vts
-    ret = case ret_vts of
-      [I64] -> ([F64], truncSFloat64ToInt64)
-      _ -> (ret_vts, id)
 
 generateWrapperFunction :: EntitySymbol -> Function -> Function
 generateWrapperFunction func_sym Function {functionType = FunctionType {..}} =
