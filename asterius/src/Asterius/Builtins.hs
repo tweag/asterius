@@ -138,7 +138,6 @@ rtsAsteriusModule opts =
             (\(func_sym, (_, func)) -> (func_sym, func))
             ( floatCBits
                 <> unicodeCBits
-                <> textCBits
             )
     }
     <> hsInitFunction opts
@@ -544,7 +543,7 @@ rtsFunctionImports debug =
        )
     <> map
       (fst . snd)
-      ( floatCBits <> unicodeCBits <> textCBits
+      ( floatCBits <> unicodeCBits
       )
     <> schedulerImports
     <> exportsImports
@@ -639,20 +638,6 @@ rtsGlobalExports = mempty
 
 emitErrorMessage :: [ValueType] -> BS.ByteString -> Expression
 emitErrorMessage vts ev = Barf {barfMessage = ev, barfReturnTypes = vts}
-
-textCBits :: [(EntitySymbol, (FunctionImport, Function))]
-textCBits =
-  map
-    ( \(func_sym, param_vts, ret_vts) ->
-        ( mkEntitySymbol func_sym,
-          generateRTSWrapper "text" func_sym param_vts ret_vts
-        )
-    )
-    [ ("_hs_text_memcpy", [I64, I64, I64, I64, I64], []),
-      ("_hs_text_memcmp", [I64, I64, I64, I64, I64], [I64]),
-      ("_hs_text_decode_utf8", [I64, I64, I64, I64], [I64]),
-      ("_hs_text_encode_utf8", [I64, I64, I64, I64], [])
-    ]
 
 floatCBits :: [(EntitySymbol, (FunctionImport, Function))]
 floatCBits =

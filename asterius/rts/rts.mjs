@@ -11,7 +11,6 @@ import { StableNameManager } from "./rts.stablename.mjs";
 import { StaticPtrManager } from "./rts.staticptr.mjs";
 import { Scheduler } from "./rts.scheduler.mjs";
 import { IntegerManager } from "./rts.integer.mjs";
-import { TextCBits } from "./rts.text.mjs";
 import { TimeCBits } from "./rts.time.mjs";
 import { GC } from "./rts.gc.mjs";
 import { ExceptionHelper } from "./rts.exception.mjs";
@@ -104,7 +103,6 @@ export async function newAsteriusInstance(req) {
       __asterius_stableptr_manager
     ),
     __asterius_integer_manager = new IntegerManager(),
-    __asterius_text_cbits = new TextCBits(__asterius_memory),
     __asterius_time_cbits = new TimeCBits(__asterius_memory, req.targetSpecificModule),
     __asterius_gc = new GC(
       __asterius_memory,
@@ -182,7 +180,6 @@ export async function newAsteriusInstance(req) {
         write: (fd, buf, count) => __asterius_fs.write(fd, buf, count)
       },
       posix: modulify(new (req.targetSpecificModule.posix)(__asterius_memory, rtsConstants)),
-      text: modulify(__asterius_text_cbits),
       time: modulify(__asterius_time_cbits),
       // cannot name this float since float is a keyword.
       floatCBits: modulify(__asterius_float_cbits),
