@@ -21,7 +21,6 @@ where
 
 import Asterius.Builtins.Barf
 import Asterius.Builtins.Blackhole
-import Asterius.Builtins.CMath
 import Asterius.Builtins.Endianness
 import Asterius.Builtins.Env
 import Asterius.Builtins.Exports
@@ -32,7 +31,6 @@ import Asterius.Builtins.Scheduler
 import Asterius.Builtins.SM
 import Asterius.Builtins.SPT
 import Asterius.Builtins.Sparks
-import Asterius.Builtins.StgPrimFloat
 import Asterius.Builtins.Time
 import Asterius.EDSL
 import Asterius.Internals
@@ -188,11 +186,9 @@ rtsAsteriusModule opts =
     <> generateWrapperModule smCBits
     <> sparksCBits
     <> schedulerCBits
-    <> cmathCBits
     <> envCBits
     <> posixCBits
     <> sptCBits
-    <> stgPrimFloatCBits
     <> timeCBits
     <> primitiveCBits
     <> mathCBits
@@ -724,10 +720,8 @@ floatCBits =
       ("isDoubleDenormalized", [F64], [I64]),
       ("isFloatInfinite", [F32], [I64]),
       ("isDoubleInfinite", [F64], [I64]),
-      ("__decodeFloat_Int", [I64, I64, F32], []),
       ("rintDouble", [F64], [F64]),
-      ("rintFloat", [F32], [F32]),
-      ("__decodeDouble_2Int", [I64, I64, I64, I64, F64], [])
+      ("rintFloat", [F32], [F32])
     ]
 
 generateRTSWrapper ::

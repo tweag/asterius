@@ -54,6 +54,7 @@ genLibC LibCOpts {..} = do
   withTempDir "asterius" $ \tmpdir -> do
     let common_opts =
           [ "--sysroot=" <> wasi_sdk </> "share" </> "wasi-sysroot",
+            "-I" <> cish_dir,
             "-I" <> (A.dataDir </> ".boot" </> "asterius_lib" </> "include"),
             "-flto",
             "-O3"
