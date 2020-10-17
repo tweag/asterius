@@ -136,8 +136,7 @@ rtsAsteriusModule opts =
         SM.fromList $
           map
             (\(func_sym, (_, func)) -> (func_sym, func))
-            ( byteStringCBits
-                <> floatCBits
+            ( floatCBits
                 <> textCBits
             )
     }
@@ -616,7 +615,7 @@ rtsFunctionImports debug =
        )
     <> map
       (fst . snd)
-      ( byteStringCBits <> floatCBits <> textCBits
+      ( floatCBits <> textCBits
       )
     <> schedulerImports
     <> exportsImports
@@ -711,30 +710,6 @@ rtsGlobalExports = mempty
 
 emitErrorMessage :: [ValueType] -> BS.ByteString -> Expression
 emitErrorMessage vts ev = Barf {barfMessage = ev, barfReturnTypes = vts}
-
-byteStringCBits :: [(EntitySymbol, (FunctionImport, Function))]
-byteStringCBits =
-  map
-    ( \(func_sym, param_vts, ret_vts) ->
-        ( mkEntitySymbol func_sym,
-          generateRTSWrapper "bytestring" func_sym param_vts ret_vts
-        )
-    )
-    [ ("fps_reverse", [I64, I64, I64], []),
-      ("fps_intersperse", [I64, I64, I64, I64], []),
-      ("fps_maximum", [I64, I64], [I64]),
-      ("fps_minimum", [I64, I64], [I64]),
-      ("fps_count", [I64, I64, I64], [I64]),
-      ("fps_memcpy_offsets", [I64, I64, I64, I64, I64], [I64]),
-      ("_hs_bytestring_int_dec", [I64, I64], [I64]),
-      ("_hs_bytestring_long_long_int_dec", [I64, I64], [I64]),
-      ("_hs_bytestring_uint_dec", [I64, I64], [I64]),
-      ("_hs_bytestring_long_long_uint_dec", [I64, I64], [I64]),
-      ("_hs_bytestring_int_dec_padded9", [I64, I64], []),
-      ("_hs_bytestring_long_long_int_dec_padded18", [I64, I64], []),
-      ("_hs_bytestring_uint_hex", [I64, I64], [I64]),
-      ("_hs_bytestring_long_long_uint_hex", [I64, I64], [I64])
-    ]
 
 textCBits :: [(EntitySymbol, (FunctionImport, Function))]
 textCBits =
