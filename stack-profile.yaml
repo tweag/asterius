@@ -6,10 +6,13 @@ build:
 
 resolver: lts-16.17
 extra-deps:
-  - binaryen-0.0.4.0
+  - https://github.com/tweag/haskell-binaryen/archive/wip-bundle-binaryen.tar.gz
   - url: https://github.com/tweag/inline-js/archive/6982abc9d3f71715c62f33b45ee8edf77e725dc3.tar.gz
     subdirs:
       - inline-js-core
+flags:
+  binaryen:
+    system-binaryen: true
 packages:
   - asterius
   - ghc-toolkit
