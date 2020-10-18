@@ -15,7 +15,7 @@ jobs:
         uses: actions/setup-haskell@v1
         with:
           cabal-version: 3.2.0.0
-          stack-version: 2.3.3
+          stack-version: 2.5.1
           enable-stack: true
 
       - name: setup-node-14
@@ -60,7 +60,7 @@ jobs:
         uses: actions/setup-haskell@v1
         with:
           cabal-version: 3.2.0.0
-          stack-version: 2.3.3
+          stack-version: 2.5.1
           enable-stack: true
 
       - name: setup-node-14
@@ -150,7 +150,7 @@ jobs:
         uses: actions/setup-haskell@v1
         with:
           cabal-version: 3.2.0.0
-          stack-version: 2.3.3
+          stack-version: 2.5.1
           enable-stack: true
 
       - name: setup-node-14
@@ -194,7 +194,7 @@ jobs:
         uses: actions/setup-haskell@v1
         with:
           cabal-version: 3.2.0.0
-          stack-version: 2.3.3
+          stack-version: 2.5.1
           enable-stack: true
 
       - name: setup-node-14
@@ -253,7 +253,7 @@ jobs:
         uses: actions/setup-haskell@v1
         with:
           cabal-version: 3.2.0.0
-          stack-version: 2.3.3
+          stack-version: 2.5.1
           enable-stack: true
 
       - name: setup-node-14
@@ -300,7 +300,7 @@ jobs:
         uses: actions/setup-haskell@v1
         with:
           cabal-version: 3.2.0.0
-          stack-version: 2.3.3
+          stack-version: 2.5.1
           enable-stack: true
 
       - name: setup-node-14
@@ -355,7 +355,7 @@ jobs:
       - name: setup-haskell
         uses: actions/setup-haskell@v1
         with:
-          stack-version: 2.3.3
+          stack-version: 2.5.1
           enable-stack: true
           stack-no-global: true
 
