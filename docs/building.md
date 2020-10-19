@@ -38,7 +38,7 @@ artifacts, and we include them in the
 In addition to regular GHC dependencies, these dependencies are
 needed in the local environment:
 
-* `binaryen` (at least `version_97`)
+* `binaryen` (at least `version_98`)
 * `automake`, `autoconf` (required by `ahc-boot`)
 * `cabal` (at least `v3.0.0.0`)
 * `node`, `npm` (at least `v12`)

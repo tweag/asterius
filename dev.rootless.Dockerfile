@@ -42,7 +42,7 @@ ENV \
   LANG=C.UTF-8 \
   LC_ALL=C.UTF-8 \
   LC_CTYPE=C.UTF-8 \
-  PATH=/home/${USERNAME}/.local/bin:/home/${USERNAME}/.nvm/versions/node/v14.13.1/bin:${PATH} \
+  PATH=/home/${USERNAME}/.local/bin:/home/${USERNAME}/.nvm/versions/node/v14.14.0/bin:${PATH} \
   WASI_SDK_PATH=/opt/wasi-sdk
 
 RUN \
@@ -78,10 +78,10 @@ RUN \
 
 RUN \
   (curl https://raw.githubusercontent.com/nvm-sh/nvm/v0.36.0/install.sh | bash) && \
-  bash -c ". ~/.nvm/nvm.sh && nvm install 14.13.1" && \
+  bash -c ". ~/.nvm/nvm.sh && nvm install 14.14.0" && \
   echo "eval \"\$(direnv hook bash)\"" >> ~/.bashrc && \
   mkdir -p ~/.local/bin && \
-  curl -L https://github.com/commercialhaskell/stack/releases/download/v2.5.0.1/stack-2.5.0.1-linux-x86_64-bin -o ~/.local/bin/stack && \
+  curl -L https://github.com/commercialhaskell/stack/releases/download/v2.5.1/stack-2.5.1-linux-x86_64-bin -o ~/.local/bin/stack && \
   chmod +x ~/.local/bin/stack && \
   curl -L https://downloads.haskell.org/~cabal/cabal-install-3.2.0.0/cabal-install-3.2.0.0-x86_64-unknown-linux.tar.xz | tar xJ -C ~/.local/bin 'cabal' && \
   npm install -g \
