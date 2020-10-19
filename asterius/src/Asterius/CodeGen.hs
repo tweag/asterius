@@ -18,7 +18,6 @@ module Asterius.CodeGen
 where
 
 import Asterius.Builtins
-import Asterius.CodeGen.Droppable
 import Asterius.EDSL
 import Asterius.Internals
 import Asterius.Internals.Name
