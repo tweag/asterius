@@ -5,6 +5,11 @@ export class WASI {
     Object.freeze(this);
   }
 
+  clock_res_get(id, resolution_p) {
+    this.components.memory.i64Store(resolution_p, 1);
+    return 0;
+  }
+
   clock_time_get(id, precision, time_p) {
     switch (id) {
       case 1: {

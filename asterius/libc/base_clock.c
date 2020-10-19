@@ -1,7 +1,7 @@
 #include <time.h>
 #include "HsFFI.h"
 
-int ghczuwrapperZC0ZCbaseZCSystemziCPUTimeziPosixziClockGetTimeZCclockzugetres(clockid_t clk_id, struct timespec *res) {
+int ghczuwrapperZC1ZCbaseZCSystemziCPUTimeziPosixziClockGetTimeZCclockzugetres(clockid_t clk_id, struct timespec *res) {
   return clock_getres(clk_id, res);
 }
 
