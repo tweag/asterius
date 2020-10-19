@@ -31,7 +31,6 @@ import Asterius.Builtins.Scheduler
 import Asterius.Builtins.SM
 import Asterius.Builtins.SPT
 import Asterius.Builtins.Sparks
-import Asterius.Builtins.Time
 import Asterius.EDSL
 import Asterius.Internals
 import Asterius.Internals.MagicNumber
@@ -184,7 +183,6 @@ rtsAsteriusModule opts =
     <> envCBits
     <> posixCBits
     <> sptCBits
-    <> timeCBits
     <> primitiveCBits
     <> mathCBits
     <> endiannessCBits
@@ -605,7 +603,6 @@ rtsFunctionImports debug =
     <> envImports
     <> posixImports
     <> sptImports
-    <> timeImports
     <> primitiveImports
     <> barfImports
 

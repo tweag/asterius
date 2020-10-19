@@ -129,7 +129,7 @@ export async function newAsteriusInstance(req) {
       __asterius_info_tables,
       __asterius_symbol_table
     );
-  const __asterius_wasi = new WASI();
+  const __asterius_wasi = new WASI(__asterius_components);
   __asterius_scheduler.exports = __asterius_exports;
 
   __asterius_components.memory = __asterius_memory;

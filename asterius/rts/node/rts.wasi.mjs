@@ -1,5 +1,26 @@
 export class WASI {
-  constructor() {}
+  constructor(components) {
+    this.components = components;
+    this.epoch = process.hrtime.bigint();
+    Object.freeze(this);
+  }
+
+  clock_time_get(id, precision, time_p) {
+    switch (id) {
+      case 1: {
+        this.components.memory.i64Store(
+          time_p,
+          process.hrtime.bigint() - this.epoch
+        );
+        return 0;
+      }
+      default: {
+        throw new WebAssembly.RuntimeError(
+          `clock_time_get: unsupported clock id ${id}`
+        );
+      }
+    }
+  }
 
   fd_close() {
     throw new WebAssembly.RuntimeError(`Unsupported wasi interface: fd_close`);
