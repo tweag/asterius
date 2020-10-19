@@ -1,9 +1,12 @@
-resolver: lts-16.17
+resolver: lts-16.18
 extra-deps:
-  - binaryen-0.0.4.0
-  - url: https://github.com/tweag/inline-js/archive/6982abc9d3f71715c62f33b45ee8edf77e725dc3.tar.gz
+  - binaryen-0.0.5.0
+  - url: https://github.com/tweag/inline-js/archive/26c89ec30039445d6b3735cb58fda91b38400375.tar.gz
     subdirs:
       - inline-js-core
+flags:
+  binaryen:
+    system-binaryen: true
 packages:
   - asterius
   - ghc-toolkit
