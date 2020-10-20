@@ -42,7 +42,7 @@ RUN \
   npm config set unsafe-perm true && \
   npm install -g \
     @cloudflare/wrangler \
-    webpack@next \
+    webpack \
     webpack-cli && \
   mkdir -p ~/.local/bin && \
   curl -L https://github.com/commercialhaskell/stack/releases/download/v2.5.1/stack-2.5.1-linux-x86_64-bin -o ~/.local/bin/stack && \

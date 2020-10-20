@@ -57,7 +57,7 @@ RUN \
   npm install -g \
     @cloudflare/wrangler \
     0x \
-    webpack@next \
+    webpack \
     webpack-cli && \
   pip3 install \
     recommonmark \
