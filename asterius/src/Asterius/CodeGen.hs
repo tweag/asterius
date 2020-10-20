@@ -760,6 +760,12 @@ marshalCmmPrimCall GHC.MO_F64_Acos [r] [x] =
   marshalCmmUnMathPrimCall "acos" F64 r x
 marshalCmmPrimCall GHC.MO_F64_Atan [r] [x] =
   marshalCmmUnMathPrimCall "atan" F64 r x
+marshalCmmPrimCall GHC.MO_F64_Asinh [r] [x] =
+  marshalCmmUnMathPrimCall "asinh" F64 r x
+marshalCmmPrimCall GHC.MO_F64_Acosh [r] [x] =
+  marshalCmmUnMathPrimCall "acosh" F64 r x
+marshalCmmPrimCall GHC.MO_F64_Atanh [r] [x] =
+  marshalCmmUnMathPrimCall "atanh" F64 r x
 marshalCmmPrimCall GHC.MO_F64_Log [r] [x] =
   marshalCmmUnMathPrimCall "log" F64 r x
 marshalCmmPrimCall GHC.MO_F64_Exp [r] [x] =
@@ -789,6 +795,12 @@ marshalCmmPrimCall GHC.MO_F32_Acos [r] [x] =
   marshalCmmUnMathPrimCall "acos" F32 r x
 marshalCmmPrimCall GHC.MO_F32_Atan [r] [x] =
   marshalCmmUnMathPrimCall "atan" F32 r x
+marshalCmmPrimCall GHC.MO_F32_Asinh [r] [x] =
+  marshalCmmUnMathPrimCall "asinh" F32 r x
+marshalCmmPrimCall GHC.MO_F32_Acosh [r] [x] =
+  marshalCmmUnMathPrimCall "acosh" F32 r x
+marshalCmmPrimCall GHC.MO_F32_Atanh [r] [x] =
+  marshalCmmUnMathPrimCall "atanh" F32 r x
 marshalCmmPrimCall GHC.MO_F32_Log [r] [x] =
   marshalCmmUnMathPrimCall "log" F32 r x
 marshalCmmPrimCall GHC.MO_F32_Exp [r] [x] =
