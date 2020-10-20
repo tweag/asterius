@@ -27,7 +27,6 @@ import Asterius.Builtins.Env
 import Asterius.Builtins.Exports
 import Asterius.Builtins.Hashable
 import Asterius.Builtins.MD5
-import Asterius.Builtins.Math
 import Asterius.Builtins.Posix
 import Asterius.Builtins.Primitive
 import Asterius.Builtins.Scheduler
@@ -200,7 +199,6 @@ rtsAsteriusModule opts =
     <> stgPrimFloatCBits
     <> timeCBits
     <> primitiveCBits
-    <> mathCBits
     <> endiannessCBits
     <> barfCBits
 
@@ -249,39 +247,6 @@ generateRtsAsteriusDebugModule opts =
 rtsFunctionImports :: Bool -> [FunctionImport]
 rtsFunctionImports debug =
   [ FunctionImport
-      { internalName = "__asterius_" <> op <> "_" <> showBS ft,
-        externalModuleName = "Math",
-        externalBaseName = op,
-        functionType = FunctionType {paramTypes = [ft], returnTypes = [ft]}
-      }
-    | ft <- [F32, F64],
-      op <-
-        [ "sin",
-          "cos",
-          "tan",
-          "sinh",
-          "cosh",
-          "tanh",
-          "asin",
-          "acos",
-          "atan",
-          "log",
-          "exp"
-        ]
-  ]
-    <> [ FunctionImport
-           { internalName = "__asterius_" <> op <> "_" <> showBS ft,
-             externalModuleName = "Math",
-             externalBaseName = op,
-             functionType = FunctionType
-               { paramTypes = [ft, ft],
-                 returnTypes = [ft]
-               }
-           }
-         | ft <- [F32, F64],
-           op <- ["pow"]
-       ]
-    <> [ FunctionImport
            { internalName = "__asterius_newStablePtr",
              externalModuleName = "StablePtr",
              externalBaseName = "newStablePtr",
