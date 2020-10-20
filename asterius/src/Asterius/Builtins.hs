@@ -159,7 +159,6 @@ rtsAsteriusModule opts =
     <> strlenFunction opts
     <> debugBelch2Function opts
     <> memchrFunction opts
-    <> memcpyFunction opts
     <> memsetFunction opts
     <> memcmpFunction opts
     <> threadPausedFunction opts
@@ -438,15 +437,6 @@ rtsFunctionImports debug =
              functionType = FunctionType
                { paramTypes = [F64, F64, F64],
                  returnTypes = [F64]
-               }
-           },
-         FunctionImport
-           { internalName = "__asterius_memcpy",
-             externalModuleName = "Memory",
-             externalBaseName = "memcpy",
-             functionType = FunctionType
-               { paramTypes = [F64, F64, F64],
-                 returnTypes = []
                }
            },
          FunctionImport
@@ -1350,13 +1340,6 @@ memchrFunction _ = runEDSL "memchr" $ do
       (map convertUInt64ToFloat64 [ptr, val, num])
       F64
   emit $ truncUFloat64ToInt64 p
-
-memcpyFunction :: BuiltinsOptions -> AsteriusModule
-memcpyFunction _ = runEDSL "memcpy" $ do
-  setReturnTypes [I64]
-  [dst, src, n] <- params [I64, I64, I64]
-  callImport "__asterius_memcpy" $ map convertUInt64ToFloat64 [dst, src, n]
-  emit dst
 
 memsetFunction :: BuiltinsOptions -> AsteriusModule
 memsetFunction _ = runEDSL "memset" $ do

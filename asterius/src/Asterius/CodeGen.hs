@@ -857,15 +857,16 @@ marshalCmmPrimCall GHC.MO_WriteBarrier _ _ = pure []
 marshalCmmPrimCall GHC.MO_Touch _ _ = pure []
 marshalCmmPrimCall (GHC.MO_Prefetch_Data _) _ _ = pure []
 marshalCmmPrimCall (GHC.MO_Memcpy _) [] [_dst, _src, _n] = do
-  dst <- marshalAndCastCmmExpr _dst F64
-  src <- marshalAndCastCmmExpr _src F64
-  n <- marshalAndCastCmmExpr _n F64
+  dst <- marshalAndCastCmmExpr _dst I32
+  src <- marshalAndCastCmmExpr _src I32
+  n <- marshalAndCastCmmExpr _n I32
   pure
-    [ CallImport
-        { target' = "__asterius_memcpy",
+    [ Drop { dropValue = Call
+        { target = "memcpy",
           operands = [dst, src, n],
-          callImportReturnTypes = []
-        }
+          callReturnTypes = [I32],
+          callHint = Just ([AddrHint, AddrHint, NoHint], [AddrHint])
+        }}
     ]
 marshalCmmPrimCall (GHC.MO_Memset _) [] [_dst, _c, _n] = do
   dst <- marshalAndCastCmmExpr _dst F64
