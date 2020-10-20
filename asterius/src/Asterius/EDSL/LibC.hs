@@ -12,3 +12,12 @@ memcpy dst src n =
       callReturnTypes = [],
       callHint = Just ([AddrHint, AddrHint, NoHint], [AddrHint])
     }
+
+memmove :: Expression -> Expression -> Expression -> Expression
+memmove dst src n =
+  Call
+    { target = "memmove",
+      operands = [dst, src, n],
+      callReturnTypes = [],
+      callHint = Just ([AddrHint, AddrHint, NoHint], [AddrHint])
+    }

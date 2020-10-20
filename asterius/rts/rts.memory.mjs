@@ -239,12 +239,6 @@ export class Memory {
     );
   }
 
-  memmove(_dst, _src, n) {
-    return Memory.tagData(
-      this.components.exports.memmove(Memory.unTag(_dst), Memory.unTag(_src), n)
-    );
-  }
-
   memset(_dst, c, n, size = 1) {
     // We only allow 1, 2, 4, 8. Any other size should get a runtime error.
     const ty = {

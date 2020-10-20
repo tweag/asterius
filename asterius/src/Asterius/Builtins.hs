@@ -440,15 +440,6 @@ rtsFunctionImports debug =
                }
            },
          FunctionImport
-           { internalName = "__asterius_memmove",
-             externalModuleName = "Memory",
-             externalBaseName = "memmove",
-             functionType = FunctionType
-               { paramTypes = [F64, F64, F64],
-                 returnTypes = []
-               }
-           },
-         FunctionImport
            { internalName = "__asterius_memset",
              externalModuleName = "Memory",
              externalBaseName = "memset",
