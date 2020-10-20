@@ -51,9 +51,7 @@ mkImport ext_mod_name ext_base_name fn_type =
 -- functions do not use them.
 primitiveImports :: [FunctionImport]
 primitiveImports =
-  [ mkImport "Memory" "memcpy" $
-      FunctionType {paramTypes = [F64, F64, F64], returnTypes = []},
-    mkImport "Memory" "memmove" $
+  [ mkImport "Memory" "memmove" $
       FunctionType {paramTypes = [F64, F64, F64], returnTypes = []},
     mkImport "Memory" "memset" $
       FunctionType {paramTypes = [F64, F64, F64, F64], returnTypes = []},
@@ -90,8 +88,8 @@ primitiveMemcpy = runEDSL "hsprimitive_memcpy" $ do
   [dst, doff, src, soff, len] <- params [I64, I64, I64, I64, I64]
   let arg1 = dst `addInt64` doff
       arg2 = src `addInt64` soff
-  callImport "__asterius_Memory_memcpy" $
-    map convertUInt64ToFloat64 [arg1, arg2, len]
+  emit $ memcpy arg1 arg2 len
+  emit arg1
 
 -- | @void hsprimitive_memmove(void *dst, ptrdiff_t doff, void *src, ptrdiff_t soff, size_t len)@
 primitiveMemmove :: AsteriusModule

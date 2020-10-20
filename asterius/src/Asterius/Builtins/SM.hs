@@ -38,15 +38,11 @@ growStack = runEDSL "growStack" $ do
       next_stack_obj
         `addInt64` next_stack_obj_size
         `subInt64` prev_stack_used
-  _ <-
-    call'
-      "memcpy"
-      [next_stack_obj, prev_stack_obj, constI64 offset_StgStack_stack]
-      I64
+  emit $ memcpy next_stack_obj prev_stack_obj (constI64 offset_StgStack_stack)
   storeI32 next_stack_obj offset_StgStack_stack_size
     $ wrapInt64
     $ (next_stack_obj_size `subInt64` constI64 offset_StgStack_stack)
       `divUInt64` constI64 8
   storeI64 next_stack_obj offset_StgStack_sp next_sp
-  _ <- call' "memcpy" [next_sp, prev_sp, prev_stack_used] I64
+  emit $ memcpy next_sp prev_sp prev_stack_used
   emit next_stack_obj
