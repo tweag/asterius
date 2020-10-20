@@ -56,9 +56,7 @@ primitiveImports =
     mkImport "Memory" "memsetFloat32" $
       FunctionType {paramTypes = [F64, F32, F64], returnTypes = []},
     mkImport "Memory" "memsetFloat64" $
-      FunctionType {paramTypes = [F64, F64, F64], returnTypes = []},
-    mkImport "Memory" "memcmp" $
-      FunctionType {paramTypes = [F64, F64, F64], returnTypes = [F64]}
+      FunctionType {paramTypes = [F64, F64, F64], returnTypes = []}
   ]
 
 -- -------------------------------------------------------------------------
@@ -102,13 +100,8 @@ primitiveMemmove = runEDSL "hsprimitive_memmove" $ do
 primitiveMemcmp :: AsteriusModule
 primitiveMemcmp = runEDSL "hsprimitive_memcmp" $ do
   setReturnTypes [I64]
-  args <- params [I64, I64, I64]
-  truncSFloat64ToInt64
-    <$> callImport'
-      "__asterius_Memory_memcmp"
-      (map convertUInt64ToFloat64 args)
-      F64
-    >>= emit
+  [lhs, rhs, n] <- params [I64, I64, I64]
+  emit $ extendSInt32 $ memcmp lhs rhs n
 
 -- | @void hsprimitive_memset_XXX (XXX *p, ptrdiff_t off, size_t n, XXX x)@
 mkPrimitiveMemsetUInt ::

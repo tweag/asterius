@@ -885,11 +885,7 @@ marshalCmmPrimCall (GHC.MO_Memcmp _) [_cres] [_ptr1, _ptr2, _n] = do
   pure
     [ UnresolvedSetLocal
         { unresolvedLocalReg = cres,
-          value = CallImport
-            { target' = "__asterius_memcmp",
-              operands = [ptr1, ptr2, n],
-              callImportReturnTypes = [I32]
-            }
+          value = memcmp ptr1 ptr2 n
         }
     ]
 marshalCmmPrimCall (GHC.MO_PopCnt GHC.W64) [r] [x] =

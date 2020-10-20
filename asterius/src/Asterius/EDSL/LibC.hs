@@ -4,6 +4,15 @@ module Asterius.EDSL.LibC where
 
 import Asterius.Types
 
+memcmp :: Expression -> Expression -> Expression -> Expression
+memcmp lhs rhs n =
+  Call
+    { target = "memcmp",
+      operands = [lhs, rhs, n],
+      callReturnTypes = [I32],
+      callHint = Just ([AddrHint, AddrHint, NoHint], [SignedHint])
+    }
+
 memcpy :: Expression -> Expression -> Expression -> Expression
 memcpy dst src n =
   Call

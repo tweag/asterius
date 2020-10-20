@@ -269,12 +269,4 @@ export class Memory {
     const buf = this.expose(_dst, n, Float64Array);
     buf.fill(c);
   }
-
-  memcmp(_ptr1, _ptr2, n) {
-    return this.components.exports.memcmp(
-      Memory.unTag(_ptr1),
-      Memory.unTag(_ptr2),
-      n
-    );
-  }
 }
