@@ -239,12 +239,6 @@ export class Memory {
     );
   }
 
-  memmove(_dst, _src, n) {
-    return Memory.tagData(
-      this.components.exports.memmove(Memory.unTag(_dst), Memory.unTag(_src), n)
-    );
-  }
-
   memset(_dst, c, n, size = 1) {
     // We only allow 1, 2, 4, 8. Any other size should get a runtime error.
     const ty = {
@@ -274,13 +268,5 @@ export class Memory {
   memsetFloat64(_dst, c, n) {
     const buf = this.expose(_dst, n, Float64Array);
     buf.fill(c);
-  }
-
-  memcmp(_ptr1, _ptr2, n) {
-    return this.components.exports.memcmp(
-      Memory.unTag(_ptr1),
-      Memory.unTag(_ptr2),
-      n
-    );
   }
 }

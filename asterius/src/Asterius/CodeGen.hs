@@ -857,51 +857,29 @@ marshalCmmPrimCall GHC.MO_WriteBarrier _ _ = pure []
 marshalCmmPrimCall GHC.MO_Touch _ _ = pure []
 marshalCmmPrimCall (GHC.MO_Prefetch_Data _) _ _ = pure []
 marshalCmmPrimCall (GHC.MO_Memcpy _) [] [_dst, _src, _n] = do
-  dst <- marshalAndCastCmmExpr _dst F64
-  src <- marshalAndCastCmmExpr _src F64
-  n <- marshalAndCastCmmExpr _n F64
-  pure
-    [ CallImport
-        { target' = "__asterius_memcpy",
-          operands = [dst, src, n],
-          callImportReturnTypes = []
-        }
-    ]
+  dst <- marshalAndCastCmmExpr _dst I64
+  src <- marshalAndCastCmmExpr _src I64
+  n <- marshalAndCastCmmExpr _n I64
+  pure [memcpy dst src n]
 marshalCmmPrimCall (GHC.MO_Memset _) [] [_dst, _c, _n] = do
-  dst <- marshalAndCastCmmExpr _dst F64
-  c <- marshalAndCastCmmExpr _c F64
-  n <- marshalAndCastCmmExpr _n F64
-  pure
-    [ CallImport
-        { target' = "__asterius_memset",
-          operands = [dst, c, n],
-          callImportReturnTypes = []
-        }
-    ]
+  dst <- marshalAndCastCmmExpr _dst I64
+  c <- marshalAndCastCmmExpr _c I64
+  n <- marshalAndCastCmmExpr _n I64
+  pure [memset dst c n]
 marshalCmmPrimCall (GHC.MO_Memmove _) [] [_dst, _src, _n] = do
-  dst <- marshalAndCastCmmExpr _dst F64
-  src <- marshalAndCastCmmExpr _src F64
-  n <- marshalAndCastCmmExpr _n F64
-  pure
-    [ CallImport
-        { target' = "__asterius_memmove",
-          operands = [dst, src, n],
-          callImportReturnTypes = []
-        }
-    ]
+  dst <- marshalAndCastCmmExpr _dst I64
+  src <- marshalAndCastCmmExpr _src I64
+  n <- marshalAndCastCmmExpr _n I64
+  pure [memmove dst src n]
 marshalCmmPrimCall (GHC.MO_Memcmp _) [_cres] [_ptr1, _ptr2, _n] = do
   cres <- marshalTypedCmmLocalReg _cres I32
-  ptr1 <- marshalAndCastCmmExpr _ptr1 F64
-  ptr2 <- marshalAndCastCmmExpr _ptr2 F64
-  n <- marshalAndCastCmmExpr _n F64
+  ptr1 <- marshalAndCastCmmExpr _ptr1 I64
+  ptr2 <- marshalAndCastCmmExpr _ptr2 I64
+  n <- marshalAndCastCmmExpr _n I64
   pure
     [ UnresolvedSetLocal
         { unresolvedLocalReg = cres,
-          value = CallImport
-            { target' = "__asterius_memcmp",
-              operands = [ptr1, ptr2, n],
-              callImportReturnTypes = [I32]
-            }
+          value = memcmp ptr1 ptr2 n
         }
     ]
 marshalCmmPrimCall (GHC.MO_PopCnt GHC.W64) [r] [x] =

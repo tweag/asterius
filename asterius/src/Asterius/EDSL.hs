@@ -70,6 +70,7 @@ module Asterius.EDSL
     switchI64,
     module Asterius.EDSL.BinaryOp,
     module Asterius.EDSL.UnaryOp,
+    module Asterius.EDSL.LibC,
     notInt64,
     nandInt64,
     symbol,
@@ -88,6 +89,7 @@ module Asterius.EDSL
 where
 
 import Asterius.EDSL.BinaryOp
+import Asterius.EDSL.LibC
 import Asterius.EDSL.UnaryOp
 import Asterius.Internals
 import Asterius.Internals.MagicNumber
