@@ -7,7 +7,7 @@ ENV \
   LANG=C.UTF-8 \
   LC_ALL=C.UTF-8 \
   LC_CTYPE=C.UTF-8 \
-  PATH=/root/.local/bin:/root/.nvm/versions/node/v14.14.0/bin:${PATH} \
+  PATH=/root/.local/bin:/root/.nvm/versions/node/v15.0.0/bin:${PATH} \
   WASI_SDK_PATH=/opt/wasi-sdk
 
 RUN \
@@ -47,7 +47,7 @@ WORKDIR /root
 
 RUN \
   (curl https://raw.githubusercontent.com/nvm-sh/nvm/v0.36.0/install.sh | bash) && \
-  bash -c ". ~/.nvm/nvm.sh && nvm install 14.14.0" && \
+  bash -c ". ~/.nvm/nvm.sh && nvm install 15.0.0" && \
   echo "eval \"\$(direnv hook bash)\"" >> ~/.bashrc && \
   mkdir -p ~/.local/bin && \
   curl -L https://github.com/commercialhaskell/stack/releases/download/v2.5.1/stack-2.5.1-linux-x86_64-bin -o ~/.local/bin/stack && \

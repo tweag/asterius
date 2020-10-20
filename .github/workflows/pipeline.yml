@@ -18,10 +18,10 @@ jobs:
           stack-version: 2.5.1
           enable-stack: true
 
-      - name: setup-node-14
+      - name: setup-node-15
         uses: actions/setup-node@v2-beta
         with:
-          node-version: 14.14.0
+          node-version: 15.0.0
 
       - name: checkout
         uses: actions/checkout@v2
@@ -63,10 +63,10 @@ jobs:
           stack-version: 2.5.1
           enable-stack: true
 
-      - name: setup-node-14
+      - name: setup-node-15
         uses: actions/setup-node@v2-beta
         with:
-          node-version: 14.14.0
+          node-version: 15.0.0
 
       - name: checkout
         uses: actions/checkout@v2
@@ -153,10 +153,10 @@ jobs:
           stack-version: 2.5.1
           enable-stack: true
 
-      - name: setup-node-14
+      - name: setup-node-15
         uses: actions/setup-node@v2-beta
         with:
-          node-version: 14.14.0
+          node-version: 15.0.0
 
       - name: checkout
         uses: actions/checkout@v2
@@ -197,10 +197,10 @@ jobs:
           stack-version: 2.5.1
           enable-stack: true
 
-      - name: setup-node-14
+      - name: setup-node-15
         uses: actions/setup-node@v2-beta
         with:
-          node-version: 14.14.0
+          node-version: 15.0.0
 
       - name: checkout
         uses: actions/checkout@v2
@@ -256,10 +256,10 @@ jobs:
           stack-version: 2.5.1
           enable-stack: true
 
-      - name: setup-node-14
+      - name: setup-node-15
         uses: actions/setup-node@v2-beta
         with:
-          node-version: 14.14.0
+          node-version: 15.0.0
 
       - name: checkout
         uses: actions/checkout@v2
@@ -303,10 +303,10 @@ jobs:
           stack-version: 2.5.1
           enable-stack: true
 
-      - name: setup-node-14
+      - name: setup-node-15
         uses: actions/setup-node@v2-beta
         with:
-          node-version: 14.14.0
+          node-version: 15.0.0
 
       - name: checkout
         uses: actions/checkout@v2
@@ -422,10 +422,10 @@ jobs:
         with:
           python-version: 3.9.0
 
-      - name: setup-node-14
+      - name: setup-node-15
         uses: actions/setup-node@v2-beta
         with:
-          node-version: 14.14.0
+          node-version: 15.0.0
 
       - name: setup-deps
         run: |
