@@ -30,3 +30,12 @@ memmove dst src n =
       callReturnTypes = [],
       callHint = Just ([AddrHint, AddrHint, NoHint], [AddrHint])
     }
+
+memset :: Expression -> Expression -> Expression -> Expression
+memset dst c n =
+  Call
+    { target = "memset",
+      operands = [dst, c, n],
+      callReturnTypes = [],
+      callHint = Just ([AddrHint, NoHint, NoHint], [AddrHint])
+    }

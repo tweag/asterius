@@ -865,13 +865,7 @@ marshalCmmPrimCall (GHC.MO_Memset _) [] [_dst, _c, _n] = do
   dst <- marshalAndCastCmmExpr _dst F64
   c <- marshalAndCastCmmExpr _c F64
   n <- marshalAndCastCmmExpr _n F64
-  pure
-    [ CallImport
-        { target' = "__asterius_memset",
-          operands = [dst, c, n],
-          callImportReturnTypes = []
-        }
-    ]
+  pure [memset dst c n]
 marshalCmmPrimCall (GHC.MO_Memmove _) [] [_dst, _src, _n] = do
   dst <- marshalAndCastCmmExpr _dst I64
   src <- marshalAndCastCmmExpr _src I64
