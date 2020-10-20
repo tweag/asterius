@@ -693,11 +693,16 @@ marshalCmmUnMathPrimCall op vt r x = do
   pure
     [ UnresolvedSetLocal
         { unresolvedLocalReg = lr,
-          value = CallImport
-            { target' = "__asterius_" <> op <> "_" <> showBS vt,
-              operands = [xe],
-              callImportReturnTypes = [vt]
-            }
+          value =
+            Call
+              { target =
+                  mkEntitySymbol $
+                    op
+                      <> (if vt == F32 then "f" else ""),
+                operands = [xe],
+                callReturnTypes = [vt],
+                callHint = Just ([NoHint], [NoHint])
+              }
         }
     ]
 
@@ -715,11 +720,16 @@ marshalCmmBinMathPrimCall op vt r x y = do
   pure
     [ UnresolvedSetLocal
         { unresolvedLocalReg = lr,
-          value = CallImport
-            { target' = "__asterius_" <> op <> "_" <> showBS vt,
-              operands = [xe, ye],
-              callImportReturnTypes = [vt]
-            }
+          value =
+            Call
+              { target =
+                  mkEntitySymbol $
+                    op
+                      <> (if vt == F32 then "f" else ""),
+                operands = [xe, ye],
+                callReturnTypes = [vt],
+                callHint = Just ([NoHint, NoHint], [NoHint])
+              }
         }
     ]
 
