@@ -165,7 +165,6 @@ export async function newAsteriusInstance(req) {
   const importObject = Object.assign(
     req.jsffiFactory(__asterius_jsffi_instance),
     {
-      Math: Math,
       wasi_snapshot_preview1: modulify(__asterius_wasi),
       env: {
         __memory_base: __asterius_memory_base,
