@@ -19,33 +19,23 @@ barfImports =
         functionType = FunctionType {paramTypes = [F64], returnTypes = []}
       },
     FunctionImport
-      { internalName = "__asterius_barf_push",
+      { internalName = "barf_push",
         externalModuleName = "ExceptionHelper",
         externalBaseName = "barf_push",
-        functionType = FunctionType {paramTypes = [F64], returnTypes = []}
+        functionType = FunctionType {paramTypes = [I32], returnTypes = []}
       },
     FunctionImport
-      { internalName = "__asterius_barf_throw",
+      { internalName = "barf_signal",
         externalModuleName = "ExceptionHelper",
-        externalBaseName = "barf_throw",
-        functionType = FunctionType {paramTypes = [], returnTypes = []}
+        externalBaseName = "barf_signal",
+        functionType = FunctionType {paramTypes = [I32], returnTypes = []}
       }
   ]
 
 barfCBits :: AsteriusModule
-barfCBits = barfFunction <> barfPushFunction <> barfThrowFunction
+barfCBits = barfFunction
 
 barfFunction :: AsteriusModule
 barfFunction = runEDSL "barf" $ do
   s <- param I64
   callImport "__asterius_barf" [convertUInt64ToFloat64 s]
-
-barfPushFunction :: AsteriusModule
-barfPushFunction = runEDSL "barf_push" $ do
-  s <- param I64
-  callImport "__asterius_barf_push" [convertUInt64ToFloat64 s]
-
-barfThrowFunction :: AsteriusModule
-barfThrowFunction = runEDSL "barf_throw" $ do
-  _ <- params []
-  callImport "__asterius_barf_throw" []
