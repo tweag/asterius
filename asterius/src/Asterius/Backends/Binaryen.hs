@@ -55,6 +55,7 @@ import Control.Monad
 import Control.Monad.Cont
 import Control.Monad.Reader
 import qualified Data.ByteString as BS
+import qualified Data.ByteString.Char8 as CBS
 import qualified Data.ByteString.Unsafe as BS
 import Data.Foldable
 import Data.List
@@ -700,8 +701,14 @@ marshalModule ::
   Module ->
   IO Binaryen.Module
 marshalModule static_bytes pic_on verbose_err tail_calls ss_off_map fn_off_map used_ccalls hs_mod@Module {..} = do
+  let exports_keep = exports defLibCOpts
   m <- do
-    bs <- genLibC defLibCOpts {globalBase = (fromIntegral defaultMemoryBase + static_bytes) `roundup` 0x400, exports = exports defLibCOpts <> used_ccalls}
+    bs <-
+      genLibC
+        defLibCOpts
+          { globalBase = (fromIntegral defaultMemoryBase + static_bytes) `roundup` 0x400,
+            exports = exports_keep <> used_ccalls
+          }
     BS.unsafeUseAsCStringLen bs $
         \(p, l) -> Binaryen.Module.read p (fromIntegral l)
   checkOverlapDataSegment m
@@ -711,6 +718,11 @@ marshalModule static_bytes pic_on verbose_err tail_calls ss_off_map fn_off_map u
       <> [Binaryen.mvp]
   A.with $ \a -> do
     libc_func_names <- binaryenModuleExportNames m
+    for_ libc_func_names $
+      \(_, ext_name) ->
+        unless (CBS.unpack ext_name `elem` exports_keep) $ do
+          p <- marshalBS a ext_name
+          Binaryen.removeExport m p
     libc_func_info <- fmap M.fromList $ for libc_func_names $ \(in_name, ext_name) -> (ext_name,) . (in_name,) <$> binaryenFunctionType m in_name
     let env =
           MarshalEnv
@@ -747,9 +759,6 @@ marshalModule static_bytes pic_on verbose_err tail_calls ss_off_map fn_off_map u
       case memoryImport of
         Just mem_import -> marshalMemoryImport m mem_import
         _ -> pure ()
-    lim_segs <- marshalBS a "limit-segments"
-    (lim_segs_p, _) <- marshalV a [lim_segs]
-    Binaryen.Module.runPasses m lim_segs_p 1
   pure m
 
 relooperAddBlock ::
