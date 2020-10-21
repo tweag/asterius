@@ -747,9 +747,6 @@ marshalModule static_bytes pic_on verbose_err tail_calls ss_off_map fn_off_map u
       case memoryImport of
         Just mem_import -> marshalMemoryImport m mem_import
         _ -> pure ()
-    lim_segs <- marshalBS a "limit-segments"
-    (lim_segs_p, _) <- marshalV a [lim_segs]
-    Binaryen.Module.runPasses m lim_segs_p 1
   pure m
 
 relooperAddBlock ::

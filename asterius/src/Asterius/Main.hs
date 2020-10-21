@@ -13,6 +13,7 @@ where
 
 import qualified Asterius.Backends.Binaryen
 import qualified Asterius.Backends.Binaryen as Binaryen
+import qualified Asterius.Backends.Binaryen.RunPass as Binaryen
 import Asterius.Binary.File
 import Asterius.Binary.NameCache
 import Asterius.BuildInfo
@@ -321,6 +322,7 @@ ahcDistMain logger task (final_m, report) = do
   when (optimizeLevel task > 0 || shrinkLevel task > 0) $ do
     logger "[INFO] Running binaryen optimization"
     Binaryen.optimize m_ref
+  Binaryen.runPass m_ref ["limit-segments"]
   when (validate task) $ do
     logger "[INFO] Validating binaryen IR"
     pass_validation <- Binaryen.validate m_ref
