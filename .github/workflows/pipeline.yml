@@ -21,7 +21,7 @@ jobs:
       - name: setup-node-15
         uses: actions/setup-node@v2-beta
         with:
-          node-version: 15.0.0
+          node-version: 15.0.1
 
       - name: checkout
         uses: actions/checkout@v2
@@ -66,7 +66,7 @@ jobs:
       - name: setup-node-15
         uses: actions/setup-node@v2-beta
         with:
-          node-version: 15.0.0
+          node-version: 15.0.1
 
       - name: checkout
         uses: actions/checkout@v2
@@ -156,7 +156,7 @@ jobs:
       - name: setup-node-15
         uses: actions/setup-node@v2-beta
         with:
-          node-version: 15.0.0
+          node-version: 15.0.1
 
       - name: checkout
         uses: actions/checkout@v2
@@ -200,7 +200,7 @@ jobs:
       - name: setup-node-15
         uses: actions/setup-node@v2-beta
         with:
-          node-version: 15.0.0
+          node-version: 15.0.1
 
       - name: checkout
         uses: actions/checkout@v2
@@ -259,7 +259,7 @@ jobs:
       - name: setup-node-15
         uses: actions/setup-node@v2-beta
         with:
-          node-version: 15.0.0
+          node-version: 15.0.1
 
       - name: checkout
         uses: actions/checkout@v2
@@ -306,7 +306,7 @@ jobs:
       - name: setup-node-15
         uses: actions/setup-node@v2-beta
         with:
-          node-version: 15.0.0
+          node-version: 15.0.1
 
       - name: checkout
         uses: actions/checkout@v2
@@ -425,7 +425,7 @@ jobs:
       - name: setup-node-15
         uses: actions/setup-node@v2-beta
         with:
-          node-version: 15.0.0
+          node-version: 15.0.1
 
       - name: setup-deps
         run: |
