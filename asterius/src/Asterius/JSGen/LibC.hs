@@ -33,10 +33,7 @@ defLibCOpts =
         [ "aligned_alloc",
           "free",
           "memchr",
-          "memcmp",
           "memcpy",
-          "memmove",
-          "memset",
           "strlen"
         ]
     }
