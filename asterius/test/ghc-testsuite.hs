@@ -137,10 +137,16 @@ runTestCase l_opts tlref TestCase {..} = catch m h
           ( newSession
               defaultConfig
                 { nodeExtraArgs =
-                    [ "--experimental-wasm-bigint"
-                      | "--debug" `elem` l_opts
+                    [ "--experimental-modules",
+                      "--experimental-wasi-unstable-preview1",
+                      "--experimental-wasm-bigint",
+                      "--experimental-wasm-return-call",
+                      "--no-wasm-bounds-checks",
+                      "--no-wasm-stack-checks",
+                      "--unhandled-rejections=strict",
+                      "--wasm-lazy-compilation",
+                      "--wasm-lazy-validation"
                     ]
-                      <> ["--experimental-wasm-return-call"]
                 }
           )
           killSession
