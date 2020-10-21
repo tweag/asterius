@@ -1,15 +1,21 @@
+import wasi from "wasi";
+
 export class WASI {
-  constructor() {}
-
-  fd_close() {
-    throw new WebAssembly.RuntimeError(`Unsupported wasi interface: fd_close`);
+  constructor(progName) {
+    this.wasi = new wasi.WASI({
+      args: [progName],
+      env: process.env,
+      preopens: { "/": "/" },
+      returnOnExit: true,
+    });
+    Object.freeze(this);
   }
 
-  fd_seek() {
-    throw new WebAssembly.RuntimeError(`Unsupported wasi interface: fd_seek`);
+  get wasiImport() {
+    return this.wasi.wasiImport;
   }
 
-  fd_write() {
-    throw new WebAssembly.RuntimeError(`Unsupported wasi interface: fd_write`);
+  initialize(i) {
+    this.wasi.initialize(i);
   }
 }

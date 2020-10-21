@@ -13,6 +13,7 @@ where
 
 import qualified Asterius.Backends.Binaryen
 import qualified Asterius.Backends.Binaryen as Binaryen
+import qualified Asterius.Backends.Binaryen.RunPass as Binaryen
 import Asterius.Binary.File
 import Asterius.Binary.NameCache
 import Asterius.BuildInfo
@@ -99,15 +100,14 @@ parseTask args = case err_msgs of
              in if i >= 0 && i <= 2
                   then t {shrinkLevel = i}
                   else error "Shrink level must be [0..2]",
-          bool_opt "debug" $
-            \t ->
-              t
-                { optimizeLevel = 0,
-                  shrinkLevel = 0,
-                  debug = True,
-                  outputIR = True,
-                  verboseErr = True
-                },
+          bool_opt "debug" $ \t ->
+            t
+              { optimizeLevel = 0,
+                shrinkLevel = 0,
+                debug = True,
+                outputIR = True,
+                verboseErr = True
+              },
           bool_opt "output-ir" $ \t -> t {outputIR = True},
           bool_opt "run" $ \t -> t {run = True},
           bool_opt "verbose-err" $ \t -> t {verboseErr = True},
@@ -159,11 +159,13 @@ genOffsetInfoTables sym_set =
 genReq :: Task -> LinkReport -> Builder
 genReq task LinkReport {..} =
   mconcat
-    [ -- import target-specific module
-      "import targetSpecificModule from './default.mjs';\n",
+    -- import target-specific module
+    [ "import targetSpecificModule from './default.mjs';\n",
       -- export request object
       "export default {",
-      "jsffiFactory: ",
+      "progName: ",
+      stringUtf8 $ show $ takeBaseName $ inputHS task,
+      ", jsffiFactory: ",
       generateFFIImportObjectFactory bundledFFIMarshalState,
       ", exportsStaticOffsets: ",
       genExportStaticObj bundledFFIMarshalState staticsOffsetMap,
@@ -172,7 +174,9 @@ genReq task LinkReport {..} =
       ", staticsOffsetTable: ",
       genStaticsOffsetTableDict ss_off_map,
       if debug task
-        then mconcat [", offsetInfoTables: ", genOffsetInfoTables infoTableOffsetSet]
+        then
+          mconcat
+            [", offsetInfoTables: ", genOffsetInfoTables infoTableOffsetSet]
         else mempty,
       ", sptOffsetEntries: ",
       genSPT staticsOffsetMap sptEntries,
@@ -196,9 +200,7 @@ genReq task LinkReport {..} =
       "};\n"
     ]
   where
-    all_roots =
-      SS.fromList (extraRootSymbols task)
-        <> rtsUsedSymbols
+    all_roots = SS.fromList (extraRootSymbols task) <> rtsUsedSymbols
     fn_off_map = SM.restrictKeys functionOffsetMap all_roots
     ss_off_map = SM.restrictKeys staticsOffsetMap all_roots
 
@@ -290,7 +292,8 @@ ahcDistMain ::
   (String -> IO ()) -> Task -> (Asterius.Types.Module, LinkReport) -> IO ()
 ahcDistMain logger task (final_m, report) = do
   let out_wasm = outputDirectory task </> outputBaseName task <.> "wasm"
-      out_wasm_lib = outputDirectory task </> outputBaseName task <.> "wasm.mjs"
+      out_wasm_lib =
+        outputDirectory task </> outputBaseName task <.> "wasm.mjs"
       out_req = outputDirectory task </> outputBaseName task <.> "req.mjs"
       out_entry = outputDirectory task </> outputBaseName task <.> "mjs"
       out_js = outputDirectory task </> outputBaseName task <.> "js"
@@ -321,6 +324,7 @@ ahcDistMain logger task (final_m, report) = do
   when (optimizeLevel task > 0 || shrinkLevel task > 0) $ do
     logger "[INFO] Running binaryen optimization"
     Binaryen.optimize m_ref
+  Binaryen.runPass m_ref ["limit-segments"]
   when (validate task) $ do
     logger "[INFO] Validating binaryen IR"
     pass_validation <- Binaryen.validate m_ref
@@ -386,19 +390,19 @@ ahcDistMain logger task (final_m, report) = do
     builderWriteFile out_html $ genHTML task
   when (target task == Node && run task) $
     withCurrentDirectory (takeDirectory out_wasm) $
-      if bundle task
-        then do
-          logger $ "[INFO] Running " <> out_js
-          callProcess "node" $
-            ["--experimental-wasm-bigint" | debug task]
-              <> ["--experimental-wasm-return-call" | tailCalls task]
-              <> [takeFileName out_js]
-        else do
-          logger $ "[INFO] Running " <> out_entry
-          callProcess "node" $
-            ["--experimental-wasm-bigint" | debug task]
-              <> ["--experimental-wasm-return-call" | tailCalls task]
-              <> ["--experimental-modules", takeFileName out_entry]
+      do
+        let script
+              | bundle task = out_js
+              | otherwise = out_entry
+        logger $ "[INFO] Running " <> script
+        callProcess "node" $
+          [ "--experimental-modules",
+            "--experimental-wasi-unstable-preview1",
+            "--experimental-wasm-bigint",
+            "--experimental-wasm-return-call",
+            "--unhandled-rejections=strict",
+            takeFileName script
+          ]
 
 ahcLinkMain :: Task -> IO ()
 ahcLinkMain task = do

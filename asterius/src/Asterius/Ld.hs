@@ -55,8 +55,6 @@ rtsUsedSymbols :: SS.SymbolSet
 rtsUsedSymbols =
   SS.fromList
     [ "barf",
-      "barf_push",
-      "barf_throw",
       "base_AsteriusziTopHandler_runIO_closure",
       "base_AsteriusziTopHandler_runNonIO_closure",
       "base_AsteriusziTypesziJSException_mkJSException_closure",

@@ -148,19 +148,19 @@ export class ExceptionHelper {
     Asterius to report missing symbols. Instead of finding the error message to
     print in a data segment (like `barf` does), this approach accumulates it
     (character by character) into an internal buffer using `barf_push`. Then, a
-    call to `barf_throw` reads this buffer and throws the error.
+    call to `barf_signal` reads this buffer and throws the error.
 
     The related logic can be found in two places in the Asterius compiler:
 
     * In the rts builtins (`Asterius.Builtins`) module, we import `barf_push`
-      (and `barf_throw`) as `__asterius_barf_push` (and
-      `__asterius_barf_throw`), and make a `barf_push` (and `barf_throw`)
+      (and `barf_signal`) as `__asterius_barf_push` (and
+      `__asterius_barf_signal`), and make a `barf_push` (and `barf_signal`)
       function wrapper which handles the i64/f64 conversion workaround.
 
     * In `Asterius.Internals.Barf` we implement `barf`, which converts a single
       `Barf` expression to a series of calls to `barf_push`, each taking (the
       ascii code of) a single character of the error message, followed by a
-      call to `barf_throw`.
+      call to `barf_signal`.
 
     In the backend (`Asterius.Backends.Binaryen*`), when we encounter an unresolved
     symbol `sym`, if @verbose_err@ is on, we insert a `barf` call there. So
@@ -168,10 +168,16 @@ export class ExceptionHelper {
     the symbol name from the js error message.
   */
   barf_push(c) {
-      this.errorBuffer += String.fromCodePoint(c);
+    this.errorBuffer += String.fromCodePoint(c);
   }
 
-  barf_throw() {
-    throw new WebAssembly.RuntimeError(`barf_throw: ${this.errorBuffer}`);
+  barf_signal(f) {
+    const buf = this.errorBuffer;
+    this.errorBuffer = "";
+    if (f) {
+      throw new WebAssembly.RuntimeError(`barf_signal: ${buf}`);
+    } else {
+      console.error(`[DEBUG] ${buf}`);
+    }
   }
 }
