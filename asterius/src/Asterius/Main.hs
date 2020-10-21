@@ -163,7 +163,9 @@ genReq task LinkReport {..} =
     [ "import targetSpecificModule from './default.mjs';\n",
       -- export request object
       "export default {",
-      "jsffiFactory: ",
+      "progName: ",
+      stringUtf8 $ show $ takeBaseName $ inputHS task,
+      ", jsffiFactory: ",
       generateFFIImportObjectFactory bundledFFIMarshalState,
       ", exportsStaticOffsets: ",
       genExportStaticObj bundledFFIMarshalState staticsOffsetMap,

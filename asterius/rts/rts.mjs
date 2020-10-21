@@ -137,7 +137,7 @@ export async function newAsteriusInstance(req) {
       __asterius_info_tables,
       __asterius_symbol_table
     );
-  const __asterius_wasi = new WASI();
+  const __asterius_wasi = new WASI(req.progName);
   __asterius_scheduler.exports = __asterius_exports;
 
   __asterius_components.memory = __asterius_memory;
@@ -165,7 +165,7 @@ export async function newAsteriusInstance(req) {
   const importObject = Object.assign(
     req.jsffiFactory(__asterius_jsffi_instance),
     {
-      wasi_snapshot_preview1: modulify(__asterius_wasi),
+      wasi_snapshot_preview1: __asterius_wasi.wasiImport,
       env: {
         __memory_base: __asterius_memory_base,
         __table_base: __asterius_table_base
@@ -226,6 +226,8 @@ export async function newAsteriusInstance(req) {
     if (req.pic) {
       i.exports.__wasm_apply_relocs();
     }
+
+    __asterius_wasi.initialize(i);
 
     Object.assign(__asterius_exports, i.exports);
 
