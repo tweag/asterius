@@ -85,7 +85,6 @@ primitiveMemcpy = runEDSL "hsprimitive_memcpy" $ do
   let arg1 = dst `addInt64` doff
       arg2 = src `addInt64` soff
   emit $ memcpy arg1 arg2 len
-  emit arg1
 
 -- | @void hsprimitive_memmove(void *dst, ptrdiff_t doff, void *src, ptrdiff_t soff, size_t len)@
 primitiveMemmove :: AsteriusModule
@@ -94,7 +93,6 @@ primitiveMemmove = runEDSL "hsprimitive_memmove" $ do
   let arg1 = dst `addInt64` doff
       arg2 = src `addInt64` soff
   emit $ memmove arg1 arg2 len
-  emit arg1
 
 -- | @int hsprimitive_memcmp(HsWord8 *s1, HsWord8 *s2, size_t n)@
 primitiveMemcmp :: AsteriusModule
