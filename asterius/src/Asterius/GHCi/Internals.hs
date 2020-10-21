@@ -129,9 +129,13 @@ newGHCiSession = do
     newSession
       defaultConfig
         { nodeExtraArgs =
-            [ "--experimental-wasm-return-call",
+            [ "--experimental-modules",
+              "--experimental-wasi-unstable-preview1",
+              "--experimental-wasm-bigint",
+              "--experimental-wasm-return-call",
               "--no-wasm-bounds-checks",
               "--no-wasm-stack-checks",
+              "--unhandled-rejections=strict",
               "--wasm-lazy-compilation",
               "--wasm-lazy-validation",
               "--wasm-max-mem-pages=65536"
