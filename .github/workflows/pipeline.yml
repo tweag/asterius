@@ -117,14 +117,6 @@ jobs:
           stack test asterius:fib --test-arguments="--no-gc-sections $ASTERIUS_WITH_PIC"
 
           stack test asterius:fib --test-arguments="--debug $ASTERIUS_WITH_PIC" &> /dev/null
-          stack test asterius:jsffi --test-arguments="--debug $ASTERIUS_WITH_PIC" &> /dev/null
-          stack test asterius:array --test-arguments="--debug $ASTERIUS_WITH_PIC" &> /dev/null
-          stack test asterius:stableptr --test-arguments="--debug $ASTERIUS_WITH_PIC" &> /dev/null
-          stack test asterius:rtsapi --test-arguments="--debug $ASTERIUS_WITH_PIC" &> /dev/null
-          stack test asterius:teletype --test-arguments="--debug $ASTERIUS_WITH_PIC" &> /dev/null
-          # stack test asterius:bytearray --test-arguments="--debug $ASTERIUS_WITH_PIC" &> /dev/null
-          stack test asterius:bigint --test-arguments="--debug $ASTERIUS_WITH_PIC" &> /dev/null
-          stack test asterius:exception --test-arguments="--debug $ASTERIUS_WITH_PIC" &> /dev/null
 
           stack test asterius:fib --test-arguments="--tail-calls $ASTERIUS_WITH_PIC"
           stack test asterius:fib --test-arguments="--tail-calls --no-gc-sections $ASTERIUS_WITH_PIC"
