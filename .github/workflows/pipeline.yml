@@ -129,8 +129,8 @@ jobs:
           stack test asterius:fib --test-arguments="--tail-calls $ASTERIUS_WITH_PIC"
           stack test asterius:fib --test-arguments="--tail-calls --no-gc-sections $ASTERIUS_WITH_PIC"
 
-          stack test asterius:nomain --test-arguments="$ASTERIUS_WITH_PIC"
-          stack test asterius:nomain --test-arguments="--tail-calls $ASTERIUS_WITH_PIC"
+          # stack test asterius:nomain --test-arguments="$ASTERIUS_WITH_PIC"
+          # stack test asterius:nomain --test-arguments="--tail-calls $ASTERIUS_WITH_PIC"
 
           stack test asterius:th --test-arguments="$ASTERIUS_WITH_PIC"
 
