@@ -31,10 +31,11 @@ type PkgName = String
 
 type PkgVersion = String
 
-data PkgInfo = PkgInfo
-  { version :: PkgVersion,
-    flagsOff, flagsOn :: [String]
-  }
+data PkgInfo =
+  PkgInfo
+    { version :: PkgVersion
+    , flagsOff, flagsOn :: [String]
+    }
   deriving (Show)
 
 parseVersion :: String -> (PkgName, PkgVersion)
@@ -91,6 +92,11 @@ asteriusSnapshot raw_loc = do
         )
         "Rasterific"
     $ M.adjust
+        (\pkg_info ->
+          pkg_info { flagsOn = C.ordNub $ "cffi" : flagsOn pkg_info }
+        )
+        "aeson"
+    $ M.adjust
         (\pkg_info -> pkg_info
           { flagsOn = C.ordNub $ "integer-simple" : flagsOn pkg_info
           }
@@ -129,6 +135,12 @@ asteriusSnapshot raw_loc = do
           pkg_info { flagsOn = C.ordNub $ "embed-files" : flagsOn pkg_info }
         )
         "shake"
+    $ M.adjust
+        (\pkg_info -> pkg_info
+          { flagsOff = C.ordNub $ "boundschecks" : flagsOff pkg_info
+          }
+        )
+        "vector"
     $ M.unionWith const s_global s_stackage
 
 makeCabalConfig :: Snapshot -> String
