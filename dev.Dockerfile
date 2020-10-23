@@ -14,13 +14,18 @@ RUN \
   apt update && \
   apt full-upgrade -y && \
   apt install -y \
+    alex \
     automake \
     binaryen \
     build-essential \
+    c2hs \
+    cpphs \
     curl \
     direnv \
     gawk \
     git \
+    happy \
+    hlint \
     libffi-dev \
     libgmp-dev \
     libncurses-dev \
@@ -71,13 +76,8 @@ RUN \
   cd /tmp/asterius && \
   stack --no-terminal update && \
   stack --no-terminal install \
-    alex \
     brittany \
-    c2hs \
-    cpphs \
     ghcid \
-    happy \
-    hlint \
     ormolu \
     pretty-show \
     wai-app-static && \

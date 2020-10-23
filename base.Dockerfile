@@ -13,12 +13,16 @@ RUN \
   apt update && \
   apt full-upgrade -y && \
   apt install -y \
+    alex \
     automake \
     build-essential \
     binaryen \
+    c2hs \
+    cpphs \
     curl \
     gawk \
     git \
+    happy \
     libffi-dev \
     libgmp-dev \
     libncurses-dev \
@@ -56,11 +60,7 @@ RUN \
   cd ~/.asterius && \
   stack --no-terminal update && \
   stack --no-terminal build \
-    asterius \
-    alex \
-    happy \
-    c2hs \
-    cpphs && \
+    asterius && \
   ln -s $(stack path --local-install-root) ~/.asterius-local-install-root && \
   ln -s $(stack path --snapshot-install-root) ~/.asterius-snapshot-install-root && \
   ln -s $(stack path --compiler-bin) ~/.asterius-compiler-bin && \
