@@ -69,42 +69,16 @@ RUN \
     mawk && \
   apt autoremove --purge -y && \
   apt clean && \
-  find /root \( -name "*.p_hi" -o -name "*.p_o" -o -name "*_p.a" \) -type f -delete && \
-  mv \
-    /root/.asterius-local-install-root/bin \
-    /root/.asterius-local-install-root/share \
-    /tmp && \
   rm -rf -v \
-    /root/.asterius \
-    /root/.asterius-compiler-bin/../share \
     /root/.ahc-cabal \
     /root/.config \
     /root/.local/bin/stack \
     /root/.npm \
+    /root/.stack/pantry \
     /root/.stack/programs/*/*.tar.xz \
+    /tmp/* \
     /var/lib/apt/lists/* \
-    /var/tmp/* && \
-  mkdir -p $(realpath -m /root/.asterius-local-install-root) && \
-  mv \
-    /tmp/bin \
-    /tmp/share \
-    /root/.asterius-local-install-root && \
-  mv \
-    /root/.asterius-snapshot-install-root/bin \
-    /root/.asterius-snapshot-install-root/share \
-    /root/.stack/programs \
-    /tmp && \
-  rm -rf -v /root/.stack && \
-  mkdir -p $(realpath -m /root/.asterius-snapshot-install-root) && \
-  mv \
-    /tmp/bin \
-    /tmp/share \
-    /root/.asterius-snapshot-install-root && \
-  mv \
-    /tmp/programs \
-    /root/.stack && \
-  rm -rf -v \
-    /tmp/*
+    /var/tmp/*
 
 RUN \
   ahc --version && \
