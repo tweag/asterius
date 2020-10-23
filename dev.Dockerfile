@@ -66,8 +66,7 @@ RUN \
   curl -L https://downloads.haskell.org/~cabal/cabal-install-3.2.0.0/cabal-install-3.2.0.0-x86_64-unknown-linux.tar.xz | tar xJ -C ~/.local/bin 'cabal' && \
   pip3 install \
     recommonmark \
-    sphinx && \
-  mkdir /tmp/asterius
+    sphinx
 
 RUN \
   cd /tmp/asterius && \
