@@ -39,6 +39,7 @@ WORKDIR /root
 RUN \
   (curl https://raw.githubusercontent.com/nvm-sh/nvm/v0.36.0/install.sh | bash) && \
   bash -c ". ~/.nvm/nvm.sh && nvm install 15.0.1" && \
+  npm config set user root && \
   npm config set unsafe-perm true && \
   npm install -g \
     @cloudflare/wrangler \
