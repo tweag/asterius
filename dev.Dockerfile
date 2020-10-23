@@ -58,7 +58,7 @@ RUN \
   echo "eval \"\$(direnv hook bash)\"" >> ~/.bashrc && \
   (curl https://raw.githubusercontent.com/nvm-sh/nvm/v0.36.0/install.sh | bash) && \
   bash -i -c "nvm install ${NODE_VER}" && \
-  patch ~/.nvm/versions/node/v${NODE_VER}/lib/node_modules/npm/node_modules/@npmcli/promise-spawn/index.js ~/.asterius/utils/promise-spawn.patch && \
+  patch ~/.nvm/versions/node/v${NODE_VER}/lib/node_modules/npm/node_modules/@npmcli/promise-spawn/index.js /tmp/asterius/utils/promise-spawn.patch && \
   bash -i -c "npm install -g --unsafe-perm=true --allow-root @cloudflare/wrangler webpack webpack-cli" && \
   mkdir -p ~/.local/bin && \
   curl -L https://github.com/commercialhaskell/stack/releases/download/v2.5.1/stack-2.5.1-linux-x86_64-bin -o ~/.local/bin/stack && \
