@@ -5,7 +5,7 @@ module Asterius.UTF8
 where
 
 import Asterius.Types
-import qualified Data.ByteString.Internal as BS
+import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy.Internal as LBS
 import qualified Data.ByteString.Unsafe as BS
 import Foreign
@@ -28,7 +28,10 @@ utf8FromJSString s = do
   let l = lengthOfJSString s
   case l of
     0 -> pure mempty
-    _ -> BS.createUptoN (l * 3) $ \p -> js_utf8_from_str s p (l * 3)
+    _ -> do
+      p <- mallocBytes (l * 3)
+      l' <- js_utf8_from_str s p (l * 3)
+      BS.unsafePackCStringLen (p, l')
 
 foreign import javascript unsafe "''"
   js_str_empty :: JSString

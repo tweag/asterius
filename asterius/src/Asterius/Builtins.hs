@@ -25,8 +25,6 @@ import Asterius.Builtins.CMath
 import Asterius.Builtins.Endianness
 import Asterius.Builtins.Env
 import Asterius.Builtins.Exports
-import Asterius.Builtins.Hashable
-import Asterius.Builtins.MD5
 import Asterius.Builtins.Posix
 import Asterius.Builtins.Primitive
 import Asterius.Builtins.Scheduler
@@ -136,10 +134,8 @@ rtsAsteriusModule opts =
         SM.fromList $
           map
             (\(func_sym, (_, func)) -> (func_sym, func))
-            ( byteStringCBits
-                <> floatCBits
+            ( floatCBits
                 <> unicodeCBits
-                <> textCBits
             )
     }
     <> hsInitFunction opts
@@ -191,8 +187,6 @@ rtsAsteriusModule opts =
     <> sparksCBits
     <> schedulerCBits
     <> cmathCBits
-    <> hashableCBits
-    <> md5CBits
     <> envCBits
     <> posixCBits
     <> sptCBits
@@ -545,7 +539,7 @@ rtsFunctionImports debug =
        )
     <> map
       (fst . snd)
-      ( byteStringCBits <> floatCBits <> unicodeCBits <> textCBits
+      ( floatCBits <> unicodeCBits
       )
     <> schedulerImports
     <> exportsImports
@@ -640,44 +634,6 @@ rtsGlobalExports = mempty
 
 emitErrorMessage :: [ValueType] -> BS.ByteString -> Expression
 emitErrorMessage vts ev = Barf {barfMessage = ev, barfReturnTypes = vts}
-
-byteStringCBits :: [(EntitySymbol, (FunctionImport, Function))]
-byteStringCBits =
-  map
-    ( \(func_sym, param_vts, ret_vts) ->
-        ( mkEntitySymbol func_sym,
-          generateRTSWrapper "bytestring" func_sym param_vts ret_vts
-        )
-    )
-    [ ("fps_reverse", [I64, I64, I64], []),
-      ("fps_intersperse", [I64, I64, I64, I64], []),
-      ("fps_maximum", [I64, I64], [I64]),
-      ("fps_minimum", [I64, I64], [I64]),
-      ("fps_count", [I64, I64, I64], [I64]),
-      ("fps_memcpy_offsets", [I64, I64, I64, I64, I64], [I64]),
-      ("_hs_bytestring_int_dec", [I64, I64], [I64]),
-      ("_hs_bytestring_long_long_int_dec", [I64, I64], [I64]),
-      ("_hs_bytestring_uint_dec", [I64, I64], [I64]),
-      ("_hs_bytestring_long_long_uint_dec", [I64, I64], [I64]),
-      ("_hs_bytestring_int_dec_padded9", [I64, I64], []),
-      ("_hs_bytestring_long_long_int_dec_padded18", [I64, I64], []),
-      ("_hs_bytestring_uint_hex", [I64, I64], [I64]),
-      ("_hs_bytestring_long_long_uint_hex", [I64, I64], [I64])
-    ]
-
-textCBits :: [(EntitySymbol, (FunctionImport, Function))]
-textCBits =
-  map
-    ( \(func_sym, param_vts, ret_vts) ->
-        ( mkEntitySymbol func_sym,
-          generateRTSWrapper "text" func_sym param_vts ret_vts
-        )
-    )
-    [ ("_hs_text_memcpy", [I64, I64, I64, I64, I64], []),
-      ("_hs_text_memcmp", [I64, I64, I64, I64, I64], [I64]),
-      ("_hs_text_decode_utf8", [I64, I64, I64, I64], [I64]),
-      ("_hs_text_encode_utf8", [I64, I64, I64, I64], [])
-    ]
 
 floatCBits :: [(EntitySymbol, (FunctionImport, Function))]
 floatCBits =

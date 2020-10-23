@@ -73,12 +73,6 @@ ahc-cabal act-as-setup --build-type=Simple -- build -j --builddir=$ASTERIUS_TMP_
 ahc-cabal act-as-setup --build-type=Simple -- install --builddir=$ASTERIUS_TMP_DIR/dist/ghci
 popd
 
-pushd text
-ahc-cabal act-as-setup --build-type=Simple -- configure --builddir=$ASTERIUS_TMP_DIR/dist/text $ASTERIUS_CONFIGURE_OPTIONS
-ahc-cabal act-as-setup --build-type=Simple -- build -j --builddir=$ASTERIUS_TMP_DIR/dist/text
-ahc-cabal act-as-setup --build-type=Simple -- install --builddir=$ASTERIUS_TMP_DIR/dist/text
-popd
-
 ahc-cabal v1-install $ASTERIUS_CONFIGURE_OPTIONS \
   aeson \
   parsec
