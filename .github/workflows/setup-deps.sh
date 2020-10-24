@@ -4,7 +4,7 @@ set -eu
 
 npm install -g \
   @cloudflare/wrangler \
-  webpack@next \
+  webpack \
   webpack-cli
 
 sudo apt install -y \

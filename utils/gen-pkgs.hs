@@ -1,11 +1,12 @@
 #!/usr/bin/env stack
 {-
-  stack --resolver lts-16.18 script
+  stack --resolver lts-16.19 script
     --package Cabal
     --package containers
     --package pantry
     --package process
     --package text
+    --package time
 -}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE StrictData #-}
@@ -15,6 +16,8 @@
 import           Data.List
 import qualified Data.Map.Strict               as M
 import qualified Data.Text                     as T
+import           Data.Time
+import           Data.Time.Format.ISO8601
 import qualified Distribution.Simple.Utils     as C
 import qualified Distribution.Types.GenericPackageDescription
                                                as C
@@ -31,11 +34,10 @@ type PkgName = String
 
 type PkgVersion = String
 
-data PkgInfo =
-  PkgInfo
-    { version :: PkgVersion
-    , flagsOff, flagsOn :: [String]
-    }
+data PkgInfo = PkgInfo
+  { version :: PkgVersion,
+    flagsOff, flagsOn :: [String]
+  }
   deriving (Show)
 
 parseVersion :: String -> (PkgName, PkgVersion)
@@ -143,9 +145,13 @@ asteriusSnapshot raw_loc = do
         "vector"
     $ M.unionWith const s_global s_stackage
 
-makeCabalConfig :: Snapshot -> String
-makeCabalConfig s =
-  "constraints:\n  "
+makeCabalConfig :: Snapshot -> IO String
+makeCabalConfig s = do
+  t <- getCurrentTime
+  pure
+    $  "index-state: "
+    <> iso8601Show t { utctDayTime = 0 }
+    <> "\n\nconstraints:\n  "
     <> intercalate
          ",\n  "
          (  mconcat
@@ -168,5 +174,5 @@ main = do
   raw_loc     <- P.resolvePaths Nothing $ P.parseRawSnapshotLocation $ T.pack
     raw_loc_s
   s_asterius <- asteriusSnapshot raw_loc
-  writeFile "cabal.config" $ makeCabalConfig s_asterius
+  writeFile "cabal.config" =<< makeCabalConfig s_asterius
   writeFile "pkgs.txt" $ makePkgList s_asterius

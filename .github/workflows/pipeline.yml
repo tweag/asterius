@@ -18,10 +18,10 @@ jobs:
           stack-version: 2.5.1
           enable-stack: true
 
-      - name: setup-node-14
+      - name: setup-node-15
         uses: actions/setup-node@v2-beta
         with:
-          node-version: 14.14.0
+          node-version: 15.0.1
 
       - name: checkout
         uses: actions/checkout@v2
@@ -63,10 +63,10 @@ jobs:
           stack-version: 2.5.1
           enable-stack: true
 
-      - name: setup-node-14
+      - name: setup-node-15
         uses: actions/setup-node@v2-beta
         with:
-          node-version: 14.14.0
+          node-version: 15.0.1
 
       - name: checkout
         uses: actions/checkout@v2
@@ -153,10 +153,10 @@ jobs:
           stack-version: 2.5.1
           enable-stack: true
 
-      - name: setup-node-14
+      - name: setup-node-15
         uses: actions/setup-node@v2-beta
         with:
-          node-version: 14.14.0
+          node-version: 15.0.1
 
       - name: checkout
         uses: actions/checkout@v2
@@ -197,10 +197,10 @@ jobs:
           stack-version: 2.5.1
           enable-stack: true
 
-      - name: setup-node-14
+      - name: setup-node-15
         uses: actions/setup-node@v2-beta
         with:
-          node-version: 14.14.0
+          node-version: 15.0.1
 
       - name: checkout
         uses: actions/checkout@v2
@@ -243,53 +243,6 @@ jobs:
           name: profile-reports
           path: /tmp/asterius-profile/reports
 
-  test-pkgs:
-    name: test-pkgs
-    needs: boot
-    runs-on: ubuntu-20.04
-    steps:
-
-      - name: setup-haskell
-        uses: actions/setup-haskell@v1
-        with:
-          cabal-version: 3.2.0.0
-          stack-version: 2.5.1
-          enable-stack: true
-
-      - name: setup-node-14
-        uses: actions/setup-node@v2-beta
-        with:
-          node-version: 14.14.0
-
-      - name: checkout
-        uses: actions/checkout@v2
-
-      - name: setup-deps
-        run: |
-          .github/workflows/setup-deps.sh
-
-      - name: download-cache
-        uses: actions/cache@v2
-        with:
-          key: cache-${{ github.sha }}
-          path: |
-            ~/.stack
-            **/.stack-work
-
-      - name: test-pkgs
-        run: |
-          . ./.envrc
-          ahc-cabal v1-update
-          ln -s ghc-toolkit/boot-libs/cabal.config cabal.config
-          ghc -O2 -threaded -rtsopts utils/test-pkgs.hs
-          utils/test-pkgs 2 pkgs.txt +RTS -N2 -H512m -I0 -qg -RTS
-
-      - name: upload-artifact
-        uses: actions/upload-artifact@v2
-        with:
-          name: pkgs.txt
-          path: pkgs.txt
-
   test-cabal:
     name: test-cabal
     needs: boot
@@ -303,10 +256,10 @@ jobs:
           stack-version: 2.5.1
           enable-stack: true
 
-      - name: setup-node-14
+      - name: setup-node-15
         uses: actions/setup-node@v2-beta
         with:
-          node-version: 14.14.0
+          node-version: 15.0.1
 
       - name: checkout
         uses: actions/checkout@v2
@@ -347,33 +300,6 @@ jobs:
 
           popd
 
-  gen-pkgs:
-    name: gen-pkgs
-    runs-on: ubuntu-20.04
-    steps:
-
-      - name: setup-haskell
-        uses: actions/setup-haskell@v1
-        with:
-          stack-version: 2.5.1
-          enable-stack: true
-          stack-no-global: true
-
-      - name: checkout
-        uses: actions/checkout@v2
-
-      - name: gen-pkgs
-        run: |
-          utils/gen-pkgs.hs lts-16.18
-          mkdir gen-pkgs
-          mv cabal.config pkgs.txt gen-pkgs
-
-      - name: upload-artifact
-        uses: actions/upload-artifact@v2
-        with:
-          name: gen-pkgs
-          path: gen-pkgs
-
   image:
     name: image-${{ matrix.image }}
     runs-on: ubuntu-20.04
@@ -393,15 +319,15 @@ jobs:
 
       - name: build
         run: |
-          mkdir -p ~/.config/containers
-          echo "cgroup_manager=\"cgroupfs\"" > ~/.config/containers/containers.conf
           podman build \
             --file $ASTERIUS_IMAGE.Dockerfile \
             --label "gitrev=$(git rev-parse HEAD)" \
             --squash \
             --tag terrorjack/asterius:$ASTERIUS_IMAGE \
             .
-          podman save terrorjack/asterius:$ASTERIUS_IMAGE | zstd -T2 -12 -o image-$ASTERIUS_IMAGE.tar.zst
+
+          podman push terrorjack/asterius:$ASTERIUS_IMAGE docker-daemon:terrorjack/asterius:$ASTERIUS_IMAGE
+          docker save terrorjack/asterius:$ASTERIUS_IMAGE | zstd -T2 -12 -o image-$ASTERIUS_IMAGE.tar.zst
 
       - name: upload-artifact
         uses: actions/upload-artifact@v2
@@ -422,10 +348,10 @@ jobs:
         with:
           python-version: 3.9.0
 
-      - name: setup-node-14
+      - name: setup-node-15
         uses: actions/setup-node@v2-beta
         with:
-          node-version: 14.14.0
+          node-version: 15.0.1
 
       - name: setup-deps
         run: |

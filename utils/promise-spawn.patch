@@ -1,0 +1,13 @@
+--- index.js
++++ index-patch.js
+@@ -15,8 +15,8 @@
+   : inferOwner(cwd).then(({uid, gid}) => promiseSpawnUid(cmd, args, {
+     ...opts,
+     cwd,
+-    uid,
+-    gid,
++    uid: undefined,
++    gid: undefined,
+   }, extra))
+ }
+ 
