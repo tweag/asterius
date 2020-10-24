@@ -393,15 +393,15 @@ jobs:
 
       - name: build
         run: |
-          mkdir -p ~/.config/containers
-          echo "cgroup_manager=\"cgroupfs\"" > ~/.config/containers/containers.conf
           podman build \
             --file $ASTERIUS_IMAGE.Dockerfile \
             --label "gitrev=$(git rev-parse HEAD)" \
             --squash \
             --tag terrorjack/asterius:$ASTERIUS_IMAGE \
             .
-          podman save terrorjack/asterius:$ASTERIUS_IMAGE | zstd -T2 -12 -o image-$ASTERIUS_IMAGE.tar.zst
+
+          podman push terrorjack/asterius:$ASTERIUS_IMAGE docker-daemon:terrorjack/asterius:$ASTERIUS_IMAGE
+          docker save terrorjack/asterius:$ASTERIUS_IMAGE | zstd -T2 -12 -o image-$ASTERIUS_IMAGE.tar.zst
 
       - name: upload-artifact
         uses: actions/upload-artifact@v2
