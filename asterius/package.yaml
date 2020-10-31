@@ -64,11 +64,11 @@ dependencies:
   - deepseq
   - directory
   - filepath
-  - ghc
+  - ghc-asterius
   - ghc-boot
   - ghc-prim
   - ghc-toolkit
-  - ghci
+  - ghci-asterius
   - inline-js-core
   - libiserv
   - mtl
