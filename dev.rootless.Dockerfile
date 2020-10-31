@@ -66,7 +66,6 @@ RUN \
     libffi-dev \
     libgmp-dev \
     libncurses-dev \
-    libtinfo5 \
     openssh-client \
     python3-pip \
     ripgrep \
@@ -75,7 +74,7 @@ RUN \
     zlib1g-dev \
     zstd && \
   sudo mkdir -p ${WASI_SDK_PATH} && \
-  (curl -L https://github.com/TerrorJack/wasi-sdk/releases/download/201014/wasi-sdk-11.5g3cbd9d212e9a-linux.tar.gz | sudo tar xz -C ${WASI_SDK_PATH} --strip-components=1) && \
+  (curl -L https://github.com/TerrorJack/wasi-sdk/releases/download/201027/wasi-sdk-11.6gc1fd249a52ea-linux.tar.gz | sudo tar xz -C ${WASI_SDK_PATH} --strip-components=1) && \
   sudo apt autoremove --purge -y && \
   sudo apt clean && \
   sudo rm -rf -v \

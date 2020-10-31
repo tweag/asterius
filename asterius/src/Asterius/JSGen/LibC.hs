@@ -53,8 +53,9 @@ genLibC LibCOpts {..} = do
     let common_opts =
           [ "--sysroot=" <> wasi_sdk </> "share" </> "wasi-sysroot",
             "-I" <> (A.dataDir </> ".boot" </> "asterius_lib" </> "include"),
+            "-Oz",
             "-flto",
-            "-O3"
+            "-Wl,--lto-O3"
           ]
     c_objs <- for cbits $ \src -> do
       o <- newTempFile tmpdir "tmp.o"
