@@ -2,13 +2,14 @@ ARG DEBIAN_FRONTEND=noninteractive
 ARG USERNAME=asterius
 ARG UID=1000
 
-FROM debian:sid-slim AS rootless
+FROM debian:sid AS rootless
 
 ARG DEBIAN_FRONTEND
 ARG USERNAME
 ARG UID
 
 RUN \
+  rm /etc/apt/apt.conf.d/docker-clean && \
   apt update && \
   apt full-upgrade -y && \
   apt install -y \
@@ -53,6 +54,7 @@ RUN \
   sudo apt install -y \
     alex \
     automake \
+    bash-completion \
     binaryen \
     build-essential \
     c2hs \
@@ -83,7 +85,6 @@ RUN \
     /var/tmp/*
 
 RUN \
-  echo "eval \"\$(direnv hook bash)\"" >> ~/.bashrc && \
   (curl https://raw.githubusercontent.com/nvm-sh/nvm/v0.36.0/install.sh | bash) && \
   bash -i -c "nvm install ${NODE_VER}" && \
   bash -i -c "npm install -g @cloudflare/wrangler webpack webpack-cli" && \
@@ -91,6 +92,8 @@ RUN \
   curl -L https://github.com/commercialhaskell/stack/releases/download/v2.5.1/stack-2.5.1-linux-x86_64-bin -o ~/.local/bin/stack && \
   chmod +x ~/.local/bin/stack && \
   curl -L https://downloads.haskell.org/~cabal/cabal-install-3.2.0.0/cabal-install-3.2.0.0-x86_64-unknown-linux.tar.xz | tar xJ -C ~/.local/bin 'cabal' && \
+  echo "eval \"\$(stack --bash-completion-script stack)\"" >> ~/.bashrc && \
+  echo "eval \"\$(direnv hook bash)\"" >> ~/.bashrc && \
   pip3 install \
     recommonmark \
     sphinx
