@@ -1,4 +1,4 @@
-FROM debian:sid-slim
+FROM debian:sid
 
 ARG DEBIAN_FRONTEND=noninteractive
 
@@ -13,11 +13,13 @@ ENV \
   WASI_SDK_PATH=/opt/wasi-sdk
 
 RUN \
+  rm /etc/apt/apt.conf.d/docker-clean && \
   apt update && \
   apt full-upgrade -y && \
   apt install -y \
     alex \
     automake \
+    bash-completion \
     binaryen \
     build-essential \
     c2hs \
@@ -31,7 +33,6 @@ RUN \
     libffi-dev \
     libgmp-dev \
     libncurses-dev \
-    libtinfo5 \
     openssh-client \
     python3-pip \
     ripgrep \
@@ -40,7 +41,7 @@ RUN \
     zlib1g-dev \
     zstd && \
   mkdir -p ${WASI_SDK_PATH} && \
-  (curl -L https://github.com/TerrorJack/wasi-sdk/releases/download/201014/wasi-sdk-11.5g3cbd9d212e9a-linux.tar.gz | tar xz -C ${WASI_SDK_PATH} --strip-components=1) && \
+  (curl -L https://github.com/TerrorJack/wasi-sdk/releases/download/201027/wasi-sdk-11.6gc1fd249a52ea-linux.tar.gz | tar xz -C ${WASI_SDK_PATH} --strip-components=1) && \
   apt autoremove --purge -y && \
   apt clean && \
   rm -rf -v /var/lib/apt/lists/* && \
@@ -55,7 +56,6 @@ WORKDIR /root
 COPY . /tmp/asterius
 
 RUN \
-  echo "eval \"\$(direnv hook bash)\"" >> ~/.bashrc && \
   (curl https://raw.githubusercontent.com/nvm-sh/nvm/v0.36.0/install.sh | bash) && \
   bash -i -c "nvm install ${NODE_VER}" && \
   patch ~/.nvm/versions/node/v${NODE_VER}/lib/node_modules/npm/node_modules/@npmcli/promise-spawn/index.js /tmp/asterius/utils/promise-spawn.patch && \
@@ -64,6 +64,8 @@ RUN \
   curl -L https://github.com/commercialhaskell/stack/releases/download/v2.5.1/stack-2.5.1-linux-x86_64-bin -o ~/.local/bin/stack && \
   chmod +x ~/.local/bin/stack && \
   curl -L https://downloads.haskell.org/~cabal/cabal-install-3.2.0.0/cabal-install-3.2.0.0-x86_64-unknown-linux.tar.xz | tar xJ -C ~/.local/bin 'cabal' && \
+  echo "eval \"\$(stack --bash-completion-script stack)\"" >> ~/.bashrc && \
+  echo "eval \"\$(direnv hook bash)\"" >> ~/.bashrc && \
   pip3 install \
     recommonmark \
     sphinx
