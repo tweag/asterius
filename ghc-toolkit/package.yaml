@@ -24,7 +24,7 @@ include-dirs:
 c-sources:
   - cbits/ghc_constants.c
 
-cc-options: -Wall -Wextra -O3 -fPIC -std=c11 -DASTERIUS
+cc-options: -Wall -Wextra -O3 -fPIC -std=c11 -DASTERIUS -UTABLES_NEXT_TO_CODE
 cpp-options: -DASTERIUS
 
 custom-setup:
