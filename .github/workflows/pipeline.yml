@@ -14,6 +14,7 @@ jobs:
       - name: setup-haskell
         uses: actions/setup-haskell@v1
         with:
+          ghc-version: 8.8.4
           cabal-version: 3.2.0.0
           stack-version: 2.5.1
           enable-stack: true
@@ -25,6 +26,20 @@ jobs:
 
       - name: checkout
         uses: actions/checkout@v2
+
+      - name: materialize
+        run: |
+          pushd $(mktemp -d)
+
+          mkdir ~/.stack
+          echo "system-ghc: true" > ~/.stack/config.yaml
+          stack update
+          $GITHUB_WORKSPACE/utils/make-packages.py
+          rm -rf ghc
+          mkdir $GITHUB_WORKSPACE/lib
+          cp -r * $GITHUB_WORKSPACE/lib
+
+          popd
 
       - name: setup-deps
         run: |
@@ -41,6 +56,7 @@ jobs:
           path: |
             ~/.stack
             **/.stack-work
+            lib
 
   test:
     name: test-${{ matrix.with-pic }}
