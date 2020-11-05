@@ -54,7 +54,8 @@ jobs:
           key: cache-${{ github.sha }}
           path: |
             ~/.stack
-            ${{ github.workspace }}
+            **/.stack-work
+            lib
 
   test:
     name: test-${{ matrix.with-pic }}
@@ -83,13 +84,17 @@ jobs:
         with:
           node-version: 15.0.1
 
+      - name: checkout
+        uses: actions/checkout@v2
+
       - name: download-cache
         uses: actions/cache@v2
         with:
           key: cache-${{ github.sha }}
           path: |
             ~/.stack
-            ${{ github.workspace }}
+            **/.stack-work
+            lib
 
       - name: setup-deps
         run: |
@@ -171,13 +176,17 @@ jobs:
         with:
           node-version: 15.0.1
 
+      - name: checkout
+        uses: actions/checkout@v2
+
       - name: download-cache
         uses: actions/cache@v2
         with:
           key: cache-${{ github.sha }}
           path: |
             ~/.stack
-            ${{ github.workspace }}
+            **/.stack-work
+            lib
 
       - name: setup-deps
         run: |
@@ -272,13 +281,17 @@ jobs:
         with:
           node-version: 15.0.1
 
+      - name: checkout
+        uses: actions/checkout@v2
+
       - name: download-cache
         uses: actions/cache@v2
         with:
           key: cache-${{ github.sha }}
           path: |
             ~/.stack
-            ${{ github.workspace }}
+            **/.stack-work
+            lib
 
       - name: setup-deps
         run: |
