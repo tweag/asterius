@@ -115,7 +115,7 @@ def patch_hadrian():
                            "Setting.hs"),
               mode="w") as h:
         h.writelines(ls)
-    shutil.copy(os.path.join(workdir, "UserSettings.hs"),
+    shutil.copy(os.path.join(os.path.dirname(__file__), "UserSettings.hs"),
                 os.path.join(ghc_repo_path, "hadrian", "UserSettings.hs"))
 
 
