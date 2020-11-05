@@ -1,4 +1,4 @@
-resolver: lts-16.11
+resolver: lts-16.20
 extra-deps:
   - binaryen-0.0.5.0
   - url: https://github.com/tweag/inline-js/archive/26c89ec30039445d6b3735cb58fda91b38400375.tar.gz
@@ -9,13 +9,17 @@ flags:
     system-binaryen: true
   ghc-asterius:
     integer-gmp: true
+ghc-options:
+  ghc-asterius: -j
 packages:
   - asterius
   - ghc-toolkit
   - lib/ghc-asterius
+  - lib/ghc-bin-asterius
   - lib/ghc-boot-asterius
   - lib/ghc-boot-th-asterius
   - lib/ghc-heap-asterius
+  - lib/ghc-pkg-asterius
   - lib/ghci-asterius
   - lib/template-haskell-asterius
   - wasm-toolkit

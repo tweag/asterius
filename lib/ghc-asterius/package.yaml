@@ -1,6 +1,0 @@
-name: ghc-asterius
-
-flags:
-  integer-gmp:
-    manual: true
-    default: false

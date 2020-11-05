@@ -18,8 +18,10 @@ template_haskell_asterius_path = os.path.join(workdir,
                                               "template-haskell-asterius")
 ghci_asterius_path = os.path.join(workdir, "ghci-asterius")
 ghc_asterius_path = os.path.join(workdir, "ghc-asterius")
+ghc_bin_asterius_path = os.path.join(workdir, "ghc-bin-asterius")
+ghc_pkg_asterius_path = os.path.join(workdir, "ghc-pkg-asterius")
 
-autogen_files = [
+ghc_autogen_files = [
     "_build/generated/ghcautoconf.h", "_build/generated/ghcplatform.h",
     "_build/generated/ghcversion.h",
     "_build/generated/GHCConstantsHaskellExports.hs",
@@ -47,6 +49,8 @@ autogen_files = [
     "_build/stage0/compiler/build/primop-vector-tys.hs-incl",
     "_build/stage0/compiler/build/primop-vector-uniques.hs-incl"
 ]
+
+ghc_pkg_autogen_files = ["_build/stage0/utils/ghc-pkg/build/Version.hs"]
 
 
 def ghc_checkout():
@@ -121,7 +125,8 @@ def make_hadrian():
 
 
 def make_autogen():
-    subprocess.run([hadrian_path, "-j"] + autogen_files,
+    subprocess.run([hadrian_path, "-j"] + ghc_autogen_files +
+                   ghc_pkg_autogen_files,
                    cwd=ghc_repo_path,
                    check=True)
 
@@ -277,6 +282,64 @@ def patch_ghc_include():
             h.write(s)
 
 
+def patch_ghc_bin_cabal():
+    shutil.move(os.path.join(ghc_bin_asterius_path, "ghc-bin.cabal"),
+                os.path.join(ghc_bin_asterius_path, "ghc-bin-asterius.cabal"))
+    with open(os.path.join(ghc_bin_asterius_path, "ghc-bin-asterius.cabal"),
+              mode="r") as h:
+        ls = []
+        for l in h.readlines():
+            if l.lower().split()[:1] == ["name:"]:
+                ls.append("name: ghc-bin-asterius\n")
+            elif l.lower().split()[:1] == ["data-files:"]:
+                pass
+            elif l.lower().split() == ["default:", "false"]:
+                ls.append("    Default: True\n")
+            elif l.lower().split() == ["executable", "ghc"]:
+                ls.append("Executable ghc-asterius\n")
+            elif l.split()[:2] == ["ghc-boot", "=="]:
+                ls.append("                   ghc-boot-asterius,\n")
+            elif l.split()[:2] == ["ghc", "=="]:
+                ls.append("                   ghc-asterius\n")
+            elif l.lower().split()[:1] == ["ghc-options:"]:
+                ls.append(l)
+                ls.append("                 -no-hs-main\n")
+            elif l.lower().split()[:2] == ["ghci", "=="]:
+                ls.append("            ghci-asterius,\n")
+            else:
+                ls.append(l)
+    with open(os.path.join(ghc_bin_asterius_path, "ghc-bin-asterius.cabal"),
+              mode="w") as h:
+        h.writelines(ls)
+
+
+def patch_ghc_bin_include():
+    with open(os.path.join(ghc_bin_asterius_path, "hschooks.c"),
+              mode="r") as h:
+        s = re.sub('#include "(\.\./)+rts/', '#include "', h.read())
+    with open(os.path.join(ghc_bin_asterius_path, "hschooks.c"),
+              mode="w") as h:
+        h.write(s)
+
+
+def patch_ghc_pkg_cabal():
+    shutil.move(os.path.join(ghc_pkg_asterius_path, "ghc-pkg.cabal"),
+                os.path.join(ghc_pkg_asterius_path, "ghc-pkg-asterius.cabal"))
+    with open(os.path.join(ghc_pkg_asterius_path, "ghc-pkg-asterius.cabal"),
+              mode="r") as h:
+        ls = []
+        for l in h.readlines():
+            if l.lower().split()[:1] == ["name:"]:
+                ls.append("Name: ghc-pkg-asterius\n")
+            elif l.lower().split() == ["executable", "ghc-pkg"]:
+                ls.append("Executable ghc-pkg-asterius\n")
+            else:
+                ls.append(l)
+    with open(os.path.join(ghc_pkg_asterius_path, "ghc-pkg-asterius.cabal"),
+              mode="w") as h:
+        h.writelines(ls)
+
+
 def make_ghc_heap_asterius():
     shutil.rmtree(ghc_heap_asterius_path, True)
     shutil.copytree(os.path.join(ghc_repo_path, "libraries", "ghc-heap"),
@@ -325,10 +388,28 @@ def make_ghc_asterius():
     os.mkdir(autogen_path)
     shutil.copy(os.path.join(ghc_repo_path, "includes", "CodeGen.Platform.hs"),
                 autogen_path)
-    for f in autogen_files:
+    for f in ghc_autogen_files:
         shutil.copy(os.path.join(ghc_repo_path, f), autogen_path)
     patch_ghc_cabal()
     patch_ghc_include()
+
+
+def make_ghc_bin_asterius():
+    shutil.rmtree(ghc_bin_asterius_path, True)
+    shutil.copytree(os.path.join(ghc_repo_path, "ghc"), ghc_bin_asterius_path)
+    shutil.copy(os.path.join(ghc_repo_path, "rts", "PosixSource.h"),
+                ghc_bin_asterius_path)
+    patch_ghc_bin_cabal()
+    patch_ghc_bin_include()
+
+
+def make_ghc_pkg_asterius():
+    shutil.rmtree(ghc_pkg_asterius_path, True)
+    shutil.copytree(os.path.join(ghc_repo_path, "utils", "ghc-pkg"),
+                    ghc_pkg_asterius_path)
+    for f in ghc_pkg_autogen_files:
+        shutil.copy(os.path.join(ghc_repo_path, f), ghc_pkg_asterius_path)
+    patch_ghc_pkg_cabal()
 
 
 if __name__ == "__main__":
@@ -343,3 +424,5 @@ if __name__ == "__main__":
     make_template_haskell_asterius()
     make_ghci_asterius()
     make_ghc_asterius()
+    make_ghc_bin_asterius()
+    make_ghc_pkg_asterius()

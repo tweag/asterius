@@ -8,7 +8,7 @@ import System.Process (callProcess)
 
 main :: IO ()
 main = do
-  Just ghcPkg <- findExecutable "ghc-pkg"
+  Just ghcPkg <- findExecutable "ghc-pkg-asterius"
   env <- getEnvironment
   traverse_ unsetEnv
     $ filter (\k -> ("GHC_" `isPrefixOf` k) || "HASKELL_" `isPrefixOf` k)
