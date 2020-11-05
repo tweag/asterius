@@ -73,6 +73,7 @@ jobs:
       - name: setup-haskell
         uses: actions/setup-haskell@v1
         with:
+          ghc-version: 8.8.4
           cabal-version: 3.2.0.0
           stack-version: 2.5.1
           enable-stack: true
@@ -160,6 +161,7 @@ jobs:
       - name: setup-haskell
         uses: actions/setup-haskell@v1
         with:
+          ghc-version: 8.8.4
           cabal-version: 3.2.0.0
           stack-version: 2.5.1
           enable-stack: true
@@ -260,6 +262,7 @@ jobs:
       - name: setup-haskell
         uses: actions/setup-haskell@v1
         with:
+          ghc-version: 8.8.4
           cabal-version: 3.2.0.0
           stack-version: 2.5.1
           enable-stack: true
