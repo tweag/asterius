@@ -53,8 +53,6 @@ RUN \
 
 WORKDIR /root
 
-COPY . /tmp/asterius
-
 RUN \
   (curl https://raw.githubusercontent.com/nvm-sh/nvm/v0.36.0/install.sh | bash) && \
   bash -i -c "nvm install ${NODE_VER}" && \
@@ -71,9 +69,8 @@ RUN \
     sphinx
 
 RUN \
-  cd /tmp/asterius && \
   stack --no-terminal update && \
-  stack --no-terminal install \
+  stack --no-terminal --resolver lts-16.20 install \
     brittany \
     ghcid \
     ormolu \

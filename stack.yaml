@@ -10,7 +10,7 @@ flags:
   ghc-asterius:
     integer-gmp: true
 ghc-options:
-  ghc-asterius: -j
+  $everything: -j
 packages:
   - asterius
   - ghc-toolkit

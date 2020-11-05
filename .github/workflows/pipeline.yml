@@ -29,15 +29,14 @@ jobs:
 
       - name: materialize
         run: |
-          pushd $(mktemp -d)
+          mkdir lib
+
+          pushd lib
 
           mkdir ~/.stack
           echo "system-ghc: true" > ~/.stack/config.yaml
-          stack update
-          $GITHUB_WORKSPACE/utils/make-packages.py
+          ../utils/make-packages.py
           rm -rf ghc
-          mkdir $GITHUB_WORKSPACE/lib
-          cp -r * $GITHUB_WORKSPACE/lib
 
           popd
 
@@ -55,8 +54,7 @@ jobs:
           key: cache-${{ github.sha }}
           path: |
             ~/.stack
-            **/.stack-work
-            lib
+            ${{ github.workspace }}
 
   test:
     name: test-${{ matrix.with-pic }}
@@ -84,20 +82,17 @@ jobs:
         with:
           node-version: 15.0.1
 
-      - name: checkout
-        uses: actions/checkout@v2
-
-      - name: setup-deps
-        run: |
-          .github/workflows/setup-deps.sh
-
       - name: download-cache
         uses: actions/cache@v2
         with:
           key: cache-${{ github.sha }}
           path: |
             ~/.stack
-            **/.stack-work
+            ${{ github.workspace }}
+
+      - name: setup-deps
+        run: |
+          .github/workflows/setup-deps.sh
 
       - name: setup-wasm-deps
         run: |
@@ -174,20 +169,17 @@ jobs:
         with:
           node-version: 15.0.1
 
-      - name: checkout
-        uses: actions/checkout@v2
-
-      - name: setup-deps
-        run: |
-          .github/workflows/setup-deps.sh
-
       - name: download-cache
         uses: actions/cache@v2
         with:
           key: cache-${{ github.sha }}
           path: |
             ~/.stack
-            **/.stack-work
+            ${{ github.workspace }}
+
+      - name: setup-deps
+        run: |
+          .github/workflows/setup-deps.sh
 
       - name: ghc-testsuite
         run: |
@@ -277,20 +269,17 @@ jobs:
         with:
           node-version: 15.0.1
 
-      - name: checkout
-        uses: actions/checkout@v2
-
-      - name: setup-deps
-        run: |
-          .github/workflows/setup-deps.sh
-
       - name: download-cache
         uses: actions/cache@v2
         with:
           key: cache-${{ github.sha }}
           path: |
             ~/.stack
-            **/.stack-work
+            ${{ github.workspace }}
+
+      - name: setup-deps
+        run: |
+          .github/workflows/setup-deps.sh
 
       - name: test-cabal
         run: |

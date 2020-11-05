@@ -75,6 +75,10 @@ dependencies:
   - transformers
   - wasm-toolkit
 
+build-tools:
+  - ghc-bin-asterius:ghc-asterius
+  - ghc-pkg-asterius:ghc-pkg-asterius
+
 internal-libraries:
   asterius-types:
     source-dirs: src-types

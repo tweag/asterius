@@ -54,9 +54,7 @@ RUN \
 
 RUN \
   cd ~/.asterius && \
-  stack --no-terminal setup && \
-  ln -s $(stack path --compiler-bin) ~/.asterius-compiler-bin && \
-  cabal update && \
+  mkdir lib && \
   cd lib && \
   ../utils/make-packages.py && \
   cd .. && \
@@ -65,6 +63,7 @@ RUN \
     asterius && \
   ln -s $(stack path --local-install-root) ~/.asterius-local-install-root && \
   ln -s $(stack path --snapshot-install-root) ~/.asterius-snapshot-install-root && \
+  ln -s $(stack path --compiler-bin) ~/.asterius-compiler-bin && \
   ahc-boot
 
 RUN \

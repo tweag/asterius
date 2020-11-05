@@ -98,12 +98,9 @@ RUN \
     recommonmark \
     sphinx
 
-COPY --chown=${UID} . /tmp/asterius
-
 RUN \
-  cd /tmp/asterius && \
   stack --no-terminal update && \
-  stack --no-terminal install \
+  stack --no-terminal --resolver lts-16.20 install \
     brittany \
     ghcid \
     ormolu \
