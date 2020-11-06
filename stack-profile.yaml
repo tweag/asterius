@@ -13,38 +13,19 @@ extra-deps:
 flags:
   binaryen:
     system-binaryen: true
+  ghc-asterius:
+    integer-gmp: true
+ghc-options:
+  $everything: -j
 packages:
   - asterius
   - ghc-toolkit
+  - lib/ghc-asterius
+  - lib/ghc-bin-asterius
+  - lib/ghc-boot-asterius
+  - lib/ghc-boot-th-asterius
+  - lib/ghc-heap-asterius
+  - lib/ghc-pkg-asterius
+  - lib/ghci-asterius
+  - lib/template-haskell-asterius
   - wasm-toolkit
-
-
-ghc-variant: asterius
-
-setup-info:
-  ghc:
-    linux64-custom-asterius-tinfo6:
-      8.8.4:
-        url: https://github.com/TerrorJack/ghc/releases/download/ghc-8.8.4-200914/ghc-8.8.4-linux64-tinfo6-200914.tar.xz
-        content-length: 157680532
-        sha256: 2c0d347a584b738c27a700e7310b93238269c890d63a3dc7bfb0802f5ca4bd3d
-    linux64-custom-asterius:
-      8.8.4:
-        url: https://github.com/TerrorJack/ghc/releases/download/ghc-8.8.4-200914/ghc-8.8.4-linux64-standard-200914.tar.xz
-        content-length: 159206192
-        sha256: dfb9f1ca6fd4fefee2b9aa8c4911fb960d40f911e580fcc79a5b83b3e987d59d
-    linux64-custom-asterius-musl:
-      8.8.4:
-        url: https://github.com/TerrorJack/ghc/releases/download/ghc-8.8.4-200914/ghc-8.8.4-linux64-musl-200914.tar.xz
-        content-length: 169439992
-        sha256: 1ac5b33a1c9b30743dd9a1873da3e24cf38d001d95a78900be00aa32bcda376b
-    macosx-custom-asterius:
-      8.8.4:
-        url: https://github.com/TerrorJack/ghc/releases/download/ghc-8.8.4-200914/ghc-8.8.4-macosx-200914.tar.xz
-        content-length: 164091296
-        sha256: fcb441b658fc96e6087a6206f63bbc8e1c2e114d3ea6ece718052ece1845e7f5
-    windows64-custom-asterius:
-      8.8.4:
-        url: https://github.com/TerrorJack/ghc/releases/download/ghc-8.8.4-200914/ghc-8.8.4-windows64-200914.tar.xz
-        content-length: 186552664
-        sha256: e76276bde64f7e90fab37225055668c2a8f801c3d3b558a15312b0ff4535acf9

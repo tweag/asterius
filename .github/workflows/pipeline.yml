@@ -212,6 +212,7 @@ jobs:
       - name: setup-haskell
         uses: actions/setup-haskell@v1
         with:
+          ghc-version: 8.8.4
           cabal-version: 3.2.0.0
           stack-version: 2.5.1
           enable-stack: true
@@ -223,6 +224,19 @@ jobs:
 
       - name: checkout
         uses: actions/checkout@v2
+
+      - name: materialize
+        run: |
+          mkdir lib
+
+          pushd lib
+
+          mkdir ~/.stack
+          echo "system-ghc: true" > ~/.stack/config.yaml
+          ../utils/make-packages.py
+          rm -rf ghc
+
+          popd
 
       - name: setup-deps
         run: |
