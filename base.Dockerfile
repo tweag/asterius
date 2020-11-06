@@ -57,6 +57,7 @@ RUN \
   mkdir lib && \
   cd lib && \
   ../utils/make-packages.py && \
+  rm -rf ghc && \
   cd .. && \
   stack --no-terminal update && \
   stack --no-terminal build \
