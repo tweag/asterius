@@ -1,6 +1,7 @@
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE StrictData #-}
+{-# LANGUAGE TemplateHaskell #-}
 
 module Language.Haskell.GHC.Toolkit.FakeGHC
   ( FakeGHCOptions (..),
@@ -15,6 +16,7 @@ import Data.Foldable
 import Data.List
 import qualified DynFlags as GHC
 import qualified GHC
+import Language.Haskell.TH.Syntax
 import qualified Plugins as GHC
 import System.Environment.Blank
 import System.FilePath
@@ -58,7 +60,7 @@ fakeGHCMain FakeGHCOptions {..} = do
               liftIO
                 $ catch
                   ( callProcess
-                      ghc
+                      hostGHC
                       ( ["--make", "-o", p, "-threaded"]
                           <> map GHC.unLoc fileish_args
                       )
@@ -68,7 +70,7 @@ fakeGHCMain FakeGHCOptions {..} = do
                     (GHC.unLoc (head fileish_args))
                     "import Distribution.Simple\nmain = defaultMain\n"
                   callProcess
-                    ghc
+                    hostGHC
                     ( ["--make", "-o", p, "-threaded"]
                         <> map GHC.unLoc fileish_args
                     )
@@ -92,3 +94,6 @@ seemsToBeCabalSetup :: FilePath -> Bool
 seemsToBeCabalSetup p = case reverse $ splitDirectories p of
   (('s' : 'e' : 't' : 'u' : 'p' : _) : "setup" : "dist" : _) -> True
   _ -> False
+
+hostGHC :: FilePath
+hostGHC = $(liftString =<< runIO getExecutablePath)
