@@ -40,6 +40,12 @@ jobs:
 
           popd
 
+      - name: upload-artifact
+        uses: actions/upload-artifact@v2
+        with:
+          name: lib
+          path: lib
+
       - name: setup-deps
         run: |
           .github/workflows/setup-deps.sh

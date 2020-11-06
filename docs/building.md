@@ -42,10 +42,13 @@ $ popd
 The `make-packages.py` script will checkout our custom GHC
 [fork](https://github.com/TerrorJack/ghc), run `hadrian` to generate some
 autogen files, and generate several Haskell packages in `lib`. A run takes ~5min
-on CI.
+on CI. This script only needs to be run once. After that, Asterius can be built
+using vanilla GHC.
 
-This script only needs to be run once. After that, Asterius can be built using
-vanilla GHC.
+If it's inconvenient to run `make-packages.py`, it's also possible to download
+the generated packages from the CI artifacts. Check the CI log of a recent
+commit, and one of the artifacts is named `lib`. Download and unzip it in the
+project root directory.
 
 ### Building `asterius`
 
