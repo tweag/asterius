@@ -63,17 +63,21 @@ dependencies:
   - deepseq
   - directory
   - filepath
-  - ghc
-  - ghc-boot
+  - ghc-asterius
+  - ghc-boot-asterius
   - ghc-prim
   - ghc-toolkit
-  - ghci
+  - ghci-asterius
   - inline-js-core
   - libiserv
   - mtl
   - process
   - transformers
   - wasm-toolkit
+
+build-tools:
+  - ghc-bin-asterius:ghc-asterius
+  - ghc-pkg-asterius:ghc-pkg-asterius
 
 internal-libraries:
   asterius-types:
@@ -88,7 +92,7 @@ library:
   dependencies:
     - asterius-types
     - binaryen
-    - template-haskell
+    - template-haskell-asterius
 
 executables:
   ahc:

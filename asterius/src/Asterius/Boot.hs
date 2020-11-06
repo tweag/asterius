@@ -36,6 +36,7 @@ import Language.Haskell.GHC.Toolkit.Orphans.Show ()
 import Language.Haskell.GHC.Toolkit.Run
   ( defaultConfig,
     ghcFlags,
+    ghcLibDir,
     runCmm,
   )
 import qualified Module as GHC
@@ -65,6 +66,7 @@ defaultBootArgs = BootArgs
        "--disable-split-objs",
        "--disable-split-sections",
        "--disable-library-stripping",
+       "--enable-deterministic",
        "--enable-relocatable",
        "-O2",
        "--prefix=" <> (bootDir defaultBootArgs </> "asterius_lib"),
@@ -130,7 +132,7 @@ bootRTSCmm BootArgs {..} =
                 "-DASTERIUS",
                 "-optc=-DASTERIUS",
                 "-I" <> obj_topdir </> "include"
-              ]
+              ], ghcLibDir = obj_topdir
           }
         cmm_files
         ( \obj_path ir@CmmIR {..} ->

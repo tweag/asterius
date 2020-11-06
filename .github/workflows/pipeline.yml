@@ -14,6 +14,7 @@ jobs:
       - name: setup-haskell
         uses: actions/setup-haskell@v1
         with:
+          ghc-version: 8.8.4
           cabal-version: 3.2.0.0
           stack-version: 2.5.1
           enable-stack: true
@@ -25,6 +26,25 @@ jobs:
 
       - name: checkout
         uses: actions/checkout@v2
+
+      - name: materialize
+        run: |
+          mkdir lib
+
+          pushd lib
+
+          mkdir ~/.stack
+          echo "system-ghc: true" > ~/.stack/config.yaml
+          ../utils/make-packages.py
+          rm -rf ghc
+
+          popd
+
+      - name: upload-artifact
+        uses: actions/upload-artifact@v2
+        with:
+          name: lib
+          path: lib
 
       - name: setup-deps
         run: |
@@ -41,6 +61,7 @@ jobs:
           path: |
             ~/.stack
             **/.stack-work
+            lib
 
   test:
     name: test-${{ matrix.with-pic }}
@@ -59,6 +80,7 @@ jobs:
       - name: setup-haskell
         uses: actions/setup-haskell@v1
         with:
+          ghc-version: 8.8.4
           cabal-version: 3.2.0.0
           stack-version: 2.5.1
           enable-stack: true
@@ -71,10 +93,6 @@ jobs:
       - name: checkout
         uses: actions/checkout@v2
 
-      - name: setup-deps
-        run: |
-          .github/workflows/setup-deps.sh
-
       - name: download-cache
         uses: actions/cache@v2
         with:
@@ -82,6 +100,11 @@ jobs:
           path: |
             ~/.stack
             **/.stack-work
+            lib
+
+      - name: setup-deps
+        run: |
+          .github/workflows/setup-deps.sh
 
       - name: setup-wasm-deps
         run: |
@@ -149,6 +172,7 @@ jobs:
       - name: setup-haskell
         uses: actions/setup-haskell@v1
         with:
+          ghc-version: 8.8.4
           cabal-version: 3.2.0.0
           stack-version: 2.5.1
           enable-stack: true
@@ -161,10 +185,6 @@ jobs:
       - name: checkout
         uses: actions/checkout@v2
 
-      - name: setup-deps
-        run: |
-          .github/workflows/setup-deps.sh
-
       - name: download-cache
         uses: actions/cache@v2
         with:
@@ -172,6 +192,11 @@ jobs:
           path: |
             ~/.stack
             **/.stack-work
+            lib
+
+      - name: setup-deps
+        run: |
+          .github/workflows/setup-deps.sh
 
       - name: ghc-testsuite
         run: |
@@ -185,64 +210,6 @@ jobs:
           name: test-report.csv
           path: asterius/test-report.csv
 
-  profile:
-    name: profile
-    runs-on: ubuntu-20.04
-    steps:
-
-      - name: setup-haskell
-        uses: actions/setup-haskell@v1
-        with:
-          cabal-version: 3.2.0.0
-          stack-version: 2.5.1
-          enable-stack: true
-
-      - name: setup-node-15
-        uses: actions/setup-node@v2-beta
-        with:
-          node-version: 15.0.1
-
-      - name: checkout
-        uses: actions/checkout@v2
-
-      - name: setup-deps
-        run: |
-          .github/workflows/setup-deps.sh
-
-      - name: boot
-        run: |
-          mv stack-profile.yaml stack.yaml
-
-          .github/workflows/boot.sh
-
-          . ./.envrc
-          cd ghc-toolkit/boot-libs
-          ahc-cabal v1-install --ghc-option=-j2 \
-            Cabal
-
-      - name: profile
-        run: |
-          export WASI_SDK_PATH=/opt/wasi-sdk
-          . ./.envrc
-
-          mkdir /tmp/asterius-profile
-          pushd /tmp/asterius-profile
-          printf "import Distribution.Simple\nmain = defaultMain\n" > Setup.hs
-          GHCRTS="-P -hy -l-au" ahc-link --input-hs Setup.hs
-          mkdir reports
-          mv \
-            *.eventlog \
-            *.hp \
-            *.prof \
-            reports
-          popd
-
-      - name: upload-artifact
-        uses: actions/upload-artifact@v2
-        with:
-          name: profile-reports
-          path: /tmp/asterius-profile/reports
-
   test-cabal:
     name: test-cabal
     needs: boot
@@ -252,6 +219,7 @@ jobs:
       - name: setup-haskell
         uses: actions/setup-haskell@v1
         with:
+          ghc-version: 8.8.4
           cabal-version: 3.2.0.0
           stack-version: 2.5.1
           enable-stack: true
@@ -264,10 +232,6 @@ jobs:
       - name: checkout
         uses: actions/checkout@v2
 
-      - name: setup-deps
-        run: |
-          .github/workflows/setup-deps.sh
-
       - name: download-cache
         uses: actions/cache@v2
         with:
@@ -275,6 +239,11 @@ jobs:
           path: |
             ~/.stack
             **/.stack-work
+            lib
+
+      - name: setup-deps
+        run: |
+          .github/workflows/setup-deps.sh
 
       - name: test-cabal
         run: |

@@ -58,7 +58,7 @@ fakeGHCMain FakeGHCOptions {..} = do
               liftIO
                 $ catch
                   ( callProcess
-                      ghc
+                      hostGHC
                       ( ["--make", "-o", p, "-threaded"]
                           <> map GHC.unLoc fileish_args
                       )
@@ -68,7 +68,7 @@ fakeGHCMain FakeGHCOptions {..} = do
                     (GHC.unLoc (head fileish_args))
                     "import Distribution.Simple\nmain = defaultMain\n"
                   callProcess
-                    ghc
+                    hostGHC
                     ( ["--make", "-o", p, "-threaded"]
                         <> map GHC.unLoc fileish_args
                     )
@@ -92,3 +92,6 @@ seemsToBeCabalSetup :: FilePath -> Bool
 seemsToBeCabalSetup p = case reverse $ splitDirectories p of
   (('s' : 'e' : 't' : 'u' : 'p' : _) : "setup" : "dist" : _) -> True
   _ -> False
+
+hostGHC :: FilePath
+hostGHC = "ghc"

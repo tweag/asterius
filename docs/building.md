@@ -2,52 +2,58 @@
 
 ## Building and using `asterius` locally
 
-Asterius is organized as a `stack` project. The main reason is: `stack` has
-builtin support for managing different sandboxed GHC installations, so it can
-automatically set up the custom GHC fork described below.
+Asterius is organized as a `stack` project at the moment. The reason is mainly
+historical: `stack` has builtin support for managing different sandboxed GHC
+installations, and we used to require a custom GHC fork to build, so using
+`stack` has been more convenient.
 
 In principle, building with `cabal` should also work, but this hasn't been
-confirmed yet. Some additional work is needed (checking in generated `.cabal`
+tested on CI yet. Some additional work is needed (checking in generated `.cabal`
 files, setting up a `cabal` project, etc) and PRs are welcome.
-
-### About the custom GHC fork
-
-Asterius is currently based on a custom GHC fork maintained
-[here](https://github.com/TerrorJack/ghc). We provide prebuilt bindists for x64
-Linux, so normally there's no need to build GHC, at least on a conventional
-`glibc`-based distro. In case the bindists don't work for some reason (do open
-an issue!), below is more information on the fork and how to build it.
-
-The fork applies a few patches on top of an upstream release branch. For
-instance, right now we're based on GHC 8.8, so our branch is `asterius-8.8`,
-adding the patches on top of the upstream `ghc-8.8` branch. See the
-[commits](https://github.com/TerrorJack/ghc/commits/asterius-8.8) for a list of
-our patches.
-
-We build several different variants of GHC bindists on CircleCI. See the
-[`circleci-ghc-bindist`](https://github.com/tweag/asterius/tree/circleci-ghc-bindist)
-branch of the `asterius` repo for the CI scripts to build GHC bindists. For now,
-the scripts are still using the `make`-based build system for better
-compatibility with `stack setup`. The build results are available as CircleCI
-artifacts, and we include them in the
-[`stack.yaml`](https://github.com/tweag/asterius/blob/master/stack.yaml) file of
-`asterius`.
 
 ### System dependencies
 
 In addition to regular GHC dependencies, these dependencies are
 needed in the local environment:
 
+* `git`
 * `binaryen` (at least `version_98`)
 * `automake`, `autoconf` (required by `ahc-boot`)
 * `cabal` (at least `v3.0.0.0`)
 * `node`, `npm` (at least `v12`)
-* `g++`, `python3` (may be required by `node-gyp`)
-* `wasi-sdk` (the `WASI_SDK_PATH` environment variable is required)
+* `python3`
+* `stack`
+* `wasi-sdk` (the `WASI_SDK_PATH` environment variable must point to the
+  installation)
+
+### Preparing the source tree
+
+After checking out, one needs to run a script to generate the in-tree private
+GHC API packages required by Asterius.
+
+```sh
+$ mkdir lib
+$ pushd lib
+$ ../utils/make-packages.py
+$ rm -rf ghc
+$ popd
+```
+
+The `make-packages.py` script will checkout our custom GHC
+[fork](https://github.com/TerrorJack/ghc), run `hadrian` to generate some
+autogen files, and generate several Haskell packages in `lib`. A run takes ~5min
+on CI. This script only needs to be run once. After that, Asterius can be built
+using vanilla GHC.
+
+If it's inconvenient to run `make-packages.py`, it's also possible to download
+the generated packages from the CI artifacts. Check the CI log of a recent
+commit, and one of the artifacts is named `lib`. Download and unzip it in the
+project root directory.
 
 ### Building `asterius`
 
-Check out the `asterius` repo, run `stack build asterius`.
+After checking out and running `make-packages.py`, simply run `stack build
+asterius` to build it.
 
 After the `asterius` package is built, run `stack exec ahc-boot` to perform
 booting. This will compile the standard libraries to WebAssembly and populate

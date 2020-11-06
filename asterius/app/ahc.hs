@@ -6,7 +6,7 @@ import System.FilePath
 
 main :: IO ()
 main = do
-  Just ghc <- findExecutable "ghc"
+  Just ghc <- findExecutable "ghc-asterius"
   fakeGHCMain $
     FakeGHCOptions
       ghc

@@ -71,9 +71,8 @@ RUN \
     sphinx
 
 RUN \
-  cd /tmp/asterius && \
   stack --no-terminal update && \
-  stack --no-terminal install \
+  stack --no-terminal --resolver lts-16.20 install \
     brittany \
     ghcid \
     ormolu \
