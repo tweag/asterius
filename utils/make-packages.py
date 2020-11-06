@@ -301,7 +301,7 @@ def patch_ghc_bin_cabal():
                 ls.append("                   ghc-boot-asterius,\n")
             elif l.split()[:2] == ["ghc", "=="]:
                 ls.append("                   ghc-asterius\n")
-            elif l.lower().split()[:1] == ["ghc-options:"]:
+            elif l.split()[:2] == ["GHC-Options:", "-Wall"]:
                 ls.append(l)
                 ls.append("                 -no-hs-main\n")
             elif l.lower().split()[:2] == ["ghci", "=="]:
