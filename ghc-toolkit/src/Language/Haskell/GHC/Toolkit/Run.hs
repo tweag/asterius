@@ -18,21 +18,20 @@ import DriverPhases
 import DriverPipeline
 import DynFlags
 import GHC
-import qualified Language.Haskell.GHC.Toolkit.BuildInfo as BI
 import Language.Haskell.GHC.Toolkit.Compiler
 import Language.Haskell.GHC.Toolkit.Hooks
 
 data Config
   = Config
       { ghcFlags :: [String],
-        ghcLibDir :: FilePath,
+        ghcLibDir :: ~FilePath,
         compiler :: Compiler
       }
 
 defaultConfig :: Config
 defaultConfig = Config
   { ghcFlags = ["-Wall", "-O"],
-    ghcLibDir = BI.ghcLibDir,
+    ghcLibDir = error "missing ghcLibDir",
     compiler = mempty
   }
 

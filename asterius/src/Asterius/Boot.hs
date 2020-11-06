@@ -36,6 +36,7 @@ import Language.Haskell.GHC.Toolkit.Orphans.Show ()
 import Language.Haskell.GHC.Toolkit.Run
   ( defaultConfig,
     ghcFlags,
+    ghcLibDir,
     runCmm,
   )
 import qualified Module as GHC
@@ -131,7 +132,7 @@ bootRTSCmm BootArgs {..} =
                 "-DASTERIUS",
                 "-optc=-DASTERIUS",
                 "-I" <> obj_topdir </> "include"
-              ]
+              ], ghcLibDir = obj_topdir
           }
         cmm_files
         ( \obj_path ir@CmmIR {..} ->

@@ -24,17 +24,7 @@ include-dirs:
 c-sources:
   - cbits/ghc_constants.c
 
-cc-options: -Wall -Wextra -O3 -fPIC -std=c11 -DASTERIUS -UTABLES_NEXT_TO_CODE
-cpp-options: -DASTERIUS
-
-custom-setup:
-  dependencies:
-    - base
-    - Cabal
-    - containers
-    - directory
-    - filepath
-    - process
+cc-options: -Wall -Wextra -DASTERIUS -UTABLES_NEXT_TO_CODE
 
 ghc-options: -Wall
 
@@ -49,6 +39,8 @@ dependencies:
 
 library:
   source-dirs: src
+  generated-other-modules:
+    - Paths_ghc_toolkit
   other-extensions:
     - DuplicateRecordFields
     - FlexibleInstances
