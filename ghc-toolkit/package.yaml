@@ -36,6 +36,7 @@ dependencies:
   - filepath
   - ghc-asterius
   - process
+  - template-haskell
 
 library:
   source-dirs: src
