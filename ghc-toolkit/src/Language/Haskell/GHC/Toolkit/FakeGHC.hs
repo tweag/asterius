@@ -1,7 +1,6 @@
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE StrictData #-}
-{-# LANGUAGE TemplateHaskell #-}
 
 module Language.Haskell.GHC.Toolkit.FakeGHC
   ( FakeGHCOptions (..),
@@ -16,7 +15,6 @@ import Data.Foldable
 import Data.List
 import qualified DynFlags as GHC
 import qualified GHC
-import Language.Haskell.TH.Syntax
 import qualified Plugins as GHC
 import System.Environment.Blank
 import System.FilePath
@@ -96,4 +94,4 @@ seemsToBeCabalSetup p = case reverse $ splitDirectories p of
   _ -> False
 
 hostGHC :: FilePath
-hostGHC = $(liftString =<< runIO getExecutablePath)
+hostGHC = "ghc"
