@@ -73,6 +73,43 @@ sync and also useful to regular Haskell developers.
 
 ## Quarterly roadmap
 
+### 2020 Q4
+
+In 2020 Q3 we mainly delivered:
+
+- PIC(Position Independent Code) support. We worked on PIC since in the
+  beginning, we thought it was a prerequisite of C/C++ support. Turned out it's
+  not, but still PIC will be useful in the future when we implement dynamic
+  linker and ghci support.
+- Initial C/C++ support, using `wasi-sdk` to compile C/C++ sources. Right now
+  this doesn't work Cabal yet, so the C/C++ sources need to be manually added to
+  `asterius/libc` to be compiled and linked. We already replaced quite some
+  legacy runtime shims with actual C code (e.g. `cbits` in `bytestring`/`text`),
+  and more will come in the future.
+
+Proper C/C++ support requires Asterius to be a proper `wasm32`-targetting cross
+GHC which is configured to use `wasi-sdk` as the underlying toolchain. The
+immediate benefits are:
+
+- Get rid of various hacks due to word size mismatch in the code emitted by
+  Asterius and `wasi-sdk`. Some packages (e.g. `integer-gmp`) are incompatible
+  with these hacks.
+- Implement proper Cabal integration and support `cbits` in user packages.
+- Improve code size and runtime performance, getting rid of the `i64`/`i32`
+  pointer casting everywhere.
+- Get rid of `BigInt` usage in the JavaScript runtime, and support running
+  generated code in Safari.
+
+Thus the goal of 2020 Q4 is finishing the 32-bit cross GHC transition. The steps
+to achieve this is roughly:
+
+- Detangle the host/wasm GHC API usage. Asterius will shift away from using
+  `ghc` of the host GHC and instead use its own stage-1 GHC API packages.
+- Fix various issues when configuring GHC to target `wasm32-wasi` and using
+  `wasi-sdk` as the toolchain.
+- Refactor the code generator and the runtime to work with the new 32-bit
+  pointer convention.
+
 ### 2020 Q3
 
 Work in 2020 Q3 is focused on:
