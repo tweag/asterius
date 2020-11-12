@@ -20,6 +20,7 @@ main = do
       <> (dataDir </> ".boot" </> "asterius_lib")
       <> "\nprogram-locations\n  ar-location: "
       <> ahcAr
+      <> "\nprogram-default-options\n  hsc2hs-options: --cross-compile"
       <> "\nwith-compiler: "
       <> ahc
       <> "\nwith-hc-pkg: "
