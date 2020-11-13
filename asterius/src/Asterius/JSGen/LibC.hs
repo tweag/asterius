@@ -54,8 +54,7 @@ genLibC LibCOpts {..} = do
           [ "--sysroot=" <> wasi_sdk </> "share" </> "wasi-sysroot",
             "-I" <> (A.dataDir </> ".boot" </> "asterius_lib" </> "include"),
             "-Oz",
-            "-flto",
-            "-Wl,--lto-O3"
+            "-flto"
           ]
     c_objs <- for cbits $ \src -> do
       o <- newTempFile tmpdir "tmp.o"
@@ -78,6 +77,7 @@ genLibC LibCOpts {..} = do
              "-Wl,--export-table",
              "-Wl,--global-base=" <> show globalBase,
              "-Wl,--growable-table",
+             "-Wl,--lto-O3",
              "-Wl,--strip-all"
            ]
         <> ["-o", result_obj]
