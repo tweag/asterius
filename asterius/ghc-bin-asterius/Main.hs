@@ -1,4 +1,4 @@
-{-# LANGUAGE CPP, NondecreasingIndentation, TupleSections #-}
+{-# LANGUAGE NondecreasingIndentation, TupleSections #-}
 {-# OPTIONS -fno-warn-incomplete-patterns -optc-DNON_POSIX_SOURCE #-}
 
 -----------------------------------------------------------------------------
@@ -25,17 +25,11 @@ import HscMain          ( newHscEnv )
 import DriverPipeline   ( oneShot, compileFile )
 import DriverMkDepend   ( doMkDependHS )
 import DriverBkp   ( doBackpack )
-#if defined(GHCI)
 import GHCi.UI          ( interactiveUI, ghciWelcomeMsg, defaultGhciSettings )
-#endif
 
 -- Frontend plugins
-#if defined(GHCI)
 import DynamicLoading   ( loadFrontendPlugin )
 import Plugins
-#else
-import DynamicLoading   ( pluginError )
-#endif
 import Module           ( ModuleName )
 
 
@@ -223,11 +217,7 @@ main' postLoadMode dflags0 args flagWarnings = do
         | strt_dot_sl && "-" `isPrefixOf` nfp = cur_dir ++ nfp
         | otherwise                           = nfp
         where
-#if defined(mingw32_HOST_OS)
-          strt_dot_sl = "./" `isPrefixOf` fp || ".\\" `isPrefixOf` fp
-#else
           strt_dot_sl = "./" `isPrefixOf` fp
-#endif
           cur_dir = '.' : [pathSeparator]
           nfp = normalise fp
     normal_fileish_paths = map (normalise_hyp . unLoc) fileish_args
@@ -272,15 +262,10 @@ main' postLoadMode dflags0 args flagWarnings = do
 
 ghciUI :: HscEnv -> DynFlags -> [(FilePath, Maybe Phase)] -> Maybe [String]
        -> Ghc ()
-#if !defined(GHCI)
-ghciUI _ _ _ _ =
-  throwGhcException (CmdLineError "not built for interactive use")
-#else
 ghciUI hsc_env dflags0 srcs maybe_expr = do
   dflags1 <- liftIO (initializePlugins hsc_env dflags0)
   _ <- GHC.setSessionDynFlags dflags1
   interactiveUI defaultGhciSettings srcs maybe_expr
-#endif
 
 -- -----------------------------------------------------------------------------
 -- Splitting arguments into source files and object files.  This is where we
@@ -522,11 +507,9 @@ isDoEvalMode :: Mode -> Bool
 isDoEvalMode (Right (Right (DoEval _))) = True
 isDoEvalMode _ = False
 
-#if defined(GHCI)
 isInteractiveMode :: PostLoadMode -> Bool
 isInteractiveMode DoInteractive = True
 isInteractiveMode _             = False
-#endif
 
 -- isInterpretiveMode: byte-code compiler involved
 isInterpretiveMode :: PostLoadMode -> Bool
@@ -753,10 +736,8 @@ showBanner :: PostLoadMode -> DynFlags -> IO ()
 showBanner _postLoadMode dflags = do
    let verb = verbosity dflags
 
-#if defined(GHCI)
    -- Show the GHCi banner
    when (isInteractiveMode _postLoadMode && verb >= 1) $ putStrLn ghciWelcomeMsg
-#endif
 
    -- Display details of the configuration in verbose mode
    when (verb >= 2) $
@@ -845,15 +826,11 @@ dumpPackagesSimple dflags = putMsg dflags (pprPackagesSimple dflags)
 -- Frontend plugin support
 
 doFrontend :: ModuleName -> [(String, Maybe Phase)] -> Ghc ()
-#if !defined(GHCI)
-doFrontend modname _ = pluginError [modname]
-#else
 doFrontend modname srcs = do
     hsc_env <- getSession
     frontend_plugin <- liftIO $ loadFrontendPlugin hsc_env modname
     frontend frontend_plugin
       (reverse $ frontendPluginOpts (hsc_dflags hsc_env)) srcs
-#endif
 
 -- -----------------------------------------------------------------------------
 -- ABI hash support
@@ -955,10 +932,5 @@ link statically.
 --
 -- Skipping the foreign call fixes this problem, and the outer GHCi
 -- should have already made this call anyway.
-#if defined(GHC_LOADED_INTO_GHCI)
-initGCStatistics :: IO ()
-initGCStatistics = return ()
-#else
 foreign import ccall safe "initGCStatistics"
   initGCStatistics :: IO ()
-#endif
