@@ -424,5 +424,5 @@ if __name__ == "__main__":
     make_template_haskell_asterius()
     make_ghci_asterius()
     make_ghc_asterius()
-    make_ghc_bin_asterius()
+    # make_ghc_bin_asterius()
     make_ghc_pkg_asterius()
