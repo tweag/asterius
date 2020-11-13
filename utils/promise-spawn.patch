@@ -1,13 +1,17 @@
 --- index.js
-+++ index-patch.js
-@@ -15,8 +15,8 @@
-   : inferOwner(cwd).then(({uid, gid}) => promiseSpawnUid(cmd, args, {
++++ index.js
+@@ -10,13 +10,9 @@
+ // 'extra' object is for decorating the error a bit more
+ const promiseSpawn = (cmd, args, opts, extra = {}) => {
+   const cwd = opts.cwd || process.cwd()
+-  const isRoot = process.getuid && process.getuid() === 0
+-  const { uid, gid } = isRoot ? inferOwner.sync(cwd) : {}
+   return promiseSpawnUid(cmd, args, {
      ...opts,
-     cwd,
+-    cwd,
 -    uid,
--    gid,
-+    uid: undefined,
-+    gid: undefined,
-   }, extra))
+-    gid
++    cwd
+   }, extra)
  }
  
