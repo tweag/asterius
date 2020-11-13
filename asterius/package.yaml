@@ -94,7 +94,7 @@ library:
     - template-haskell-asterius
 
 executables:
-  ghc-bin-asterius:
+  ghc-asterius:
     source-dirs: ghc-bin-asterius
     c-sources:
       - ghc-bin-asterius/hschooks.c
