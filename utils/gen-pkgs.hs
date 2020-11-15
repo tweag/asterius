@@ -100,6 +100,18 @@ asteriusSnapshot raw_loc = do
         "aeson"
     $ M.adjust
         (\pkg_info -> pkg_info
+          { flagsOff = C.ordNub $ "integer-gmp" : flagsOff pkg_info
+          }
+        )
+        "bitvec"
+    $ M.adjust
+        (\pkg_info -> pkg_info
+          { flagsOff = C.ordNub $ "libgmp" : flagsOff pkg_info
+          }
+        )
+        "bitvec"
+    $ M.adjust
+        (\pkg_info -> pkg_info
           { flagsOn = C.ordNub $ "integer-simple" : flagsOn pkg_info
           }
         )
