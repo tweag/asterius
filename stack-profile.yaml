@@ -21,7 +21,6 @@ packages:
   - asterius
   - ghc-toolkit
   - lib/ghc-asterius
-  - lib/ghc-bin-asterius
   - lib/ghc-boot-asterius
   - lib/ghc-boot-th-asterius
   - lib/ghc-heap-asterius
