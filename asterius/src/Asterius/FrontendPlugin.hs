@@ -74,7 +74,7 @@ frontendPlugin = makeFrontendPlugin $ do
         `GHC.gopt_set` GHC.Opt_DoStgLinting
         `GHC.gopt_set` GHC.Opt_DoCmmLinting
   pure $
-    mempty
+    Compiler
       { withHaskellIR = \GHC.ModSummary {..} ir@HaskellIR {..} obj_path -> do
           dflags <- GHC.getDynFlags
           liftIO $ do
@@ -90,16 +90,12 @@ frontendPlugin = makeFrontendPlugin $ do
                   cmm_raw <- Stream.collect cmmRaw
                   writeFile (p "dump-cmm-raw-ast") =<< prettyShow cmm_raw
                   asmPrint dflags (p "dump-cmm-raw") cmm_raw,
-        withCmmIR = \ir@CmmIR {..} obj_path -> do
-          dflags <- GHC.getDynFlags
-          let ms_mod =
-                GHC.Module GHC.rtsUnitId $ GHC.mkModuleName $
-                  takeBaseName
-                    obj_path
-          liftIO $
-            runCodeGen (marshalCmmIR ms_mod ir) dflags ms_mod >>= \case
+        withCmmIR = \dflags this_mod ir@CmmIR {..} obj_path -> do
+          ffi_mod <- getFFIModule dflags this_mod
+          runCodeGen (marshalCmmIR this_mod ir) dflags this_mod >>= \case
               Left err -> throwIO err
-              Right m -> do
+              Right m' -> do
+                let m = ffi_mod <> m'
                 putFile obj_path $ toCachedModule m
                 when is_debug $ do
                   let p = (obj_path -<.>)
