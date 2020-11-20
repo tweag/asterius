@@ -5,7 +5,6 @@ module Language.Haskell.GHC.Toolkit.Run
   ( Config,
     ghcFlags,
     ghcLibDir,
-    compiler,
     defaultConfig,
     runCmm,
   )
@@ -21,19 +20,14 @@ import GHC
 import Language.Haskell.GHC.Toolkit.Compiler
 import Language.Haskell.GHC.Toolkit.Hooks
 
-data Config
-  = Config
-      { ghcFlags :: [String],
-        ghcLibDir :: ~FilePath,
-        compiler :: Compiler
-      }
+data Config = Config
+  { ghcFlags :: [String],
+    ghcLibDir :: ~FilePath
+  }
 
 defaultConfig :: Config
-defaultConfig = Config
-  { ghcFlags = ["-Wall", "-O"],
-    ghcLibDir = error "missing ghcLibDir",
-    compiler = mempty
-  }
+defaultConfig =
+  Config {ghcFlags = ["-Wall", "-O"], ghcLibDir = error "missing ghcLibDir"}
 
 runCmm :: Config -> [FilePath] -> (FilePath -> CmmIR -> IO ()) -> GHC.Ghc ()
 runCmm Config {..} cmm_fns write_obj_cont = do
@@ -45,10 +39,10 @@ runCmm Config {..} cmm_fns write_obj_cont = do
   h <-
     liftIO $
       hooksFromCompiler
-        ( compiler
-            <> mempty
-              { withCmmIR = \ir obj_path -> liftIO $ write_obj_cont obj_path ir
-              }
+        ( Compiler
+            { withHaskellIR = \_ _ _ -> pure (),
+              withCmmIR = \_ _ ir obj_path -> liftIO $ write_obj_cont obj_path ir
+            }
         )
         (hooks dflags')
   void $
