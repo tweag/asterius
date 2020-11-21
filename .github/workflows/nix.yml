@@ -1,0 +1,39 @@
+name: nix
+
+on:
+  - push
+  - pull_request
+
+jobs:
+
+  build:
+    name: build
+    runs-on: ubuntu-20.04
+    steps:
+
+      - name: checkout
+        uses: actions/checkout@v2
+
+      - name: setup-nix
+        uses: cachix/install-nix-action@v12
+        with:
+          nix_path: nixpkgs=./nix/nixpkgs.nix
+
+      - name: setup-stack
+        run: |
+          nix-env -f ./nix/nixpkgs.nix -iA \
+            stack
+
+          mkdir ~/.stack
+          printf "nix:\n  enable: true\n" > ~/.stack/config.yaml
+
+      - name: materialize
+        run: |
+          nix-shell \
+            --run 'mkdir lib && cd lib && ../utils/make-packages.py && rm -rf ghc' \
+            https://github.com/alpmestan/ghc.nix/archive/9223342ec62a2f097e995a4cdec0434540b7c6d9.tar.gz
+
+      - name: boot
+        run: |
+          stack build --test --no-run-tests asterius
+          stack exec ahc-boot
