@@ -29,7 +29,7 @@ jobs:
       - name: setup-stack
         run: |
           nix-env -iA \
-            nixpkgs.stack
+            stack
 
           mkdir ~/.stack
           printf "nix:\n  enable: true\n" > ~/.stack/config.yaml
