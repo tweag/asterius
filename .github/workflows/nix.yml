@@ -28,7 +28,7 @@ jobs:
 
       - name: setup-stack
         run: |
-          nix-env -iA \
+          nix-env -f ./nix/nixpkgs.nix -iA \
             stack
 
           mkdir ~/.stack
