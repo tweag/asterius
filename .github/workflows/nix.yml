@@ -16,7 +16,7 @@ jobs:
 
       - name: setup-nix-path
         run: |
-          echo "NIX_PATH=$(pwd)/nix/nixpkgs.nix" >> $GITHUB_ENV
+          echo "NIX_PATH=nixpkgs=$(pwd)/nix/nixpkgs.nix" >> $GITHUB_ENV
 
       - name: setup-nix
         uses: cachix/install-nix-action@v12
