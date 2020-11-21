@@ -35,6 +35,11 @@ jobs:
       - name: materialize
         run: |
           nix-shell \
+            --arg withDocs false \
+            --arg withDwarf false \
+            --arg withNuma false \
+            --arg withDtrace false \
+            --arg withGrind false \
             --run 'mkdir lib && cd lib && ../utils/make-packages.py && rm -rf ghc' \
             https://github.com/alpmestan/ghc.nix/archive/9223342ec62a2f097e995a4cdec0434540b7c6d9.tar.gz
 
