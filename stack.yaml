@@ -26,10 +26,4 @@ packages:
 nix:
   path:
     - nixpkgs=./nix/nixpkgs.nix
-  packages:
-    - autoconf
-    - binaryen
-    - cabal-install
-    - cacert
-    - curl
-    - nodejs-14_x
+  shell-file: shell.nix
