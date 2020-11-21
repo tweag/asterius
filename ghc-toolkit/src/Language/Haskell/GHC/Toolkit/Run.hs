@@ -40,7 +40,7 @@ runCmm Config {..} cmm_fns write_obj_cont = do
     liftIO $
       hooksFromCompiler
         ( Compiler
-            { withHaskellIR = \_ _ _ -> pure (),
+            { withHaskellIR = \_ _ _ _ -> pure (),
               withCmmIR = \_ _ ir obj_path -> liftIO $ write_obj_cont obj_path ir
             }
         )

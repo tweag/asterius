@@ -1711,14 +1711,14 @@ marshalCmmDecl decl = case decl of
           Right f' -> f'
     pure $ mempty {functionMap = SM.singleton sym f}
 
-marshalHaskellIR :: GHC.Module -> HaskellIR -> CodeGen AsteriusModule
-marshalHaskellIR this_mod HaskellIR {..} = do
+marshalHaskellIR :: GHC.Module -> [GHC.SptEntry] -> CmmIR -> CodeGen AsteriusModule
+marshalHaskellIR this_mod spt_entries CmmIR {..} = do
   (dflags, _) <- ask
   let spt_map =
         SM.fromList
           [ (sym, (w0, w1))
             | GHC.SptEntry (idClosureSymbol dflags -> sym) (Fingerprint w0 w1) <-
-                sptEntries
+                spt_entries
           ]
   r <- marshalRawCmm this_mod cmmRaw
   pure r {sptMap = spt_map}

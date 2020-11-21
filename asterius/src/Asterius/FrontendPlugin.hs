@@ -29,6 +29,9 @@ import Language.Haskell.GHC.Toolkit.Orphans.Show ()
 import qualified Stream
 import System.Environment.Blank
 import System.FilePath
+import qualified Data.Map.Strict as M
+import Data.IORef
+import Data.Tuple
 
 frontendPlugin :: GHC.FrontendPlugin
 frontendPlugin = makeFrontendPlugin $ do
@@ -73,26 +76,17 @@ frontendPlugin = makeFrontendPlugin $ do
         `GHC.gopt_set` GHC.Opt_DoCoreLinting
         `GHC.gopt_set` GHC.Opt_DoStgLinting
         `GHC.gopt_set` GHC.Opt_DoCmmLinting
+  spt_entries_map_ref <- liftIO $ newIORef M.empty
   pure $
     Compiler
-      { withHaskellIR = \GHC.ModSummary {..} ir@HaskellIR {..} obj_path -> do
-          dflags <- GHC.getDynFlags
-          liftIO $ do
-            ffi_mod <- getFFIModule dflags ms_mod
-            runCodeGen (marshalHaskellIR ms_mod ir) dflags ms_mod >>= \case
-              Left err -> throwIO err
-              Right m' -> do
-                let m = ffi_mod <> m'
-                putFile obj_path $ toCachedModule m
-                when is_debug $ do
-                  let p = (obj_path -<.>)
-                  writeFile (p "dump-wasm-ast") =<< prettyShow m
-                  cmm_raw <- Stream.collect cmmRaw
-                  writeFile (p "dump-cmm-raw-ast") =<< prettyShow cmm_raw
-                  asmPrint dflags (p "dump-cmm-raw") cmm_raw,
+      { withHaskellIR = \dflags this_mod HaskellIR {cgGuts = GHC.CgGuts {..}} _ ->
+          atomicModifyIORef' spt_entries_map_ref $ \m -> (M.insert this_mod cg_spt_entries m,()),
         withCmmIR = \dflags this_mod ir@CmmIR {..} obj_path -> do
           ffi_mod <- getFFIModule dflags this_mod
-          runCodeGen (marshalCmmIR this_mod ir) dflags this_mod >>= \case
+          m_spt_entries <- atomicModifyIORef' spt_entries_map_ref $ \m -> swap $ M.updateLookupWithKey (\_ _ -> Nothing) this_mod m
+          runCodeGen (case m_spt_entries of
+            Just spt_entries -> marshalHaskellIR this_mod spt_entries ir
+            _ -> marshalCmmIR this_mod ir) dflags this_mod >>= \case
               Left err -> throwIO err
               Right m' -> do
                 let m = ffi_mod <> m'

@@ -1,6 +1,3 @@
-{-# LANGUAGE DuplicateRecordFields #-}
-{-# LANGUAGE StrictData #-}
-
 module Language.Haskell.GHC.Toolkit.Compiler
   ( HaskellIR (..),
     CmmIR (..),
@@ -14,9 +11,8 @@ import HscTypes
 import PipelineMonad
 import Stream (Stream)
 
-data HaskellIR = HaskellIR
-  { sptEntries :: [SptEntry],
-    cmmRaw :: Stream IO Cmm.RawCmmGroup ()
+newtype HaskellIR = HaskellIR
+  { cgGuts :: CgGuts
   }
 
 newtype CmmIR = CmmIR
@@ -24,6 +20,6 @@ newtype CmmIR = CmmIR
   }
 
 data Compiler = Compiler
-  { withHaskellIR :: ModSummary -> HaskellIR -> FilePath -> CompPipeline (),
+  { withHaskellIR :: DynFlags -> Module -> HaskellIR -> FilePath -> IO (),
     withCmmIR :: DynFlags -> Module -> CmmIR -> FilePath -> IO ()
   }
