@@ -19,6 +19,11 @@ jobs:
         with:
           nix_path: nixpkgs=./nix/nixpkgs.nix
 
+      - name: setup-cachix
+        uses: cachix/cachix-action@v8
+        with:
+          name: ghc-nix
+
       - name: setup-stack
         run: |
           nix-env -f ./nix/nixpkgs.nix -iA \
