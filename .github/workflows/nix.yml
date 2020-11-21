@@ -7,8 +7,14 @@ on:
 jobs:
 
   build:
-    name: build
-    runs-on: ubuntu-20.04
+    name: build-${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - ubuntu-20.04
+          - macos-10.15
     steps:
 
       - name: checkout

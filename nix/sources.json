@@ -1,4 +1,16 @@
 {
+    "binaryen": {
+        "branch": "version_98",
+        "description": "Compiler infrastructure and toolchain library for WebAssembly",
+        "homepage": "",
+        "owner": "WebAssembly",
+        "repo": "binaryen",
+        "rev": "8dfe13494b97f0204670935b9cfa7a45a4ac61ab",
+        "sha256": "1zajajpszah0q5jmn04g34xsqljnjrr3m2g0i98iwv0f9ywkb41k",
+        "type": "tarball",
+        "url": "https://github.com/WebAssembly/binaryen/archive/8dfe13494b97f0204670935b9cfa7a45a4ac61ab.tar.gz",
+        "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
+    },
     "haskell-nix": {
         "branch": "master",
         "description": "Alternative Haskell Infrastructure for Nixpkgs",
