@@ -15,6 +15,8 @@
  ("ar flags", "q"),
  ("ar supports at file", "YES"),
  ("ranlib command", "ranlib"),
+ ("otool command", "otool"),
+ ("install_name_tool command", "install_name_tool"),
  ("touch command", "touch"),
  ("dllwrap command", "/bin/false"),
  ("windres command", "/bin/false"),

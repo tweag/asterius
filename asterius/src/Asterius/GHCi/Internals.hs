@@ -469,7 +469,7 @@ asteriusHscCompileCoreExpr hsc_env srcspan ds_expr = do
       GHC.emptyCollectedCCs
       stg_binds2
       (GHC.emptyHpcInfo False)
-  raw_cmms <- GHC.cmmToRawCmm dflags (Just this_mod) cmms
+  raw_cmms <- GHC.cmmToRawCmm dflags cmms
   m <-
     runCodeGen (marshalRawCmm this_mod raw_cmms) dflags this_mod
       >>= either throwIO pure

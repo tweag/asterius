@@ -6,75 +6,41 @@ module Language.Haskell.GHC.Toolkit.Hooks
   )
 where
 
-import qualified CmmInfo as GHC
 import Control.Monad.IO.Class
-import Data.Functor
-import Data.IORef
 import qualified DriverPhases as GHC
 import qualified DriverPipeline as GHC
-import qualified DynFlags as GHC
 import qualified Hooks as GHC
 import qualified HscMain as GHC
 import qualified HscTypes as GHC
 import Language.Haskell.GHC.Toolkit.Compiler
-import qualified Module as GHC
 import qualified PipelineMonad as GHC
 
 hooksFromCompiler :: Compiler -> GHC.Hooks -> IO GHC.Hooks
-hooksFromCompiler Compiler {..} h = do
-  cmm_raw_map_ref <- newIORef GHC.emptyModuleEnv
-  let cmm_raw_ref_err = error "Language.Haskell.GHC.Toolkit.Hooks: unreachable"
-  cmm_raw_ref <- newIORef cmm_raw_ref_err
+hooksFromCompiler Compiler {..} h =
   pure
     h
-      { GHC.cmmToRawCmmHook = Just $ \dflags maybe_ms_mod cmms -> do
-          rawcmms <- GHC.cmmToRawCmm dflags maybe_ms_mod cmms
-          case maybe_ms_mod of
-            Just ms_mod -> do
-              let store :: IORef (GHC.ModuleEnv v) -> v -> IO ()
-                  store ref v = atomicModifyIORef' ref $
-                    \env -> (GHC.extendModuleEnv env ms_mod v, ())
-              store cmm_raw_map_ref rawcmms
-            _ -> writeIORef cmm_raw_ref rawcmms
-          pure rawcmms,
+      { GHC.codeOutputHook = Just $ \dflags this_mod filenm _ _ _ _ cmm_stream -> do
+          withCmmIR dflags this_mod (CmmIR cmm_stream) filenm
+          pure (filenm, (False, Nothing), []),
         GHC.runPhaseHook = Just $ \phase input_fn dflags -> case phase of
-          GHC.HscOut src_flavour _ (GHC.HscRecomp cgguts mod_summary@GHC.ModSummary {..}) ->
-            do
-              (spt_entries, obj_output_fn) <- do
-                output_fn <-
-                  GHC.phaseOutputFilename
-                    $ GHC.hscPostBackendPhase dflags src_flavour
-                    $ GHC.hscTarget dflags
-                GHC.PipeState {GHC.hsc_env = hsc_env'} <- GHC.getPipeState
-                void $ liftIO $
-                  GHC.hscGenHardCode
-                    hsc_env'
-                    cgguts
-                    mod_summary
-                    output_fn
-                GHC.setForeignOs []
-                obj_output_fn <- GHC.phaseOutputFilename GHC.StopLn
-                pure (GHC.cg_spt_entries cgguts, obj_output_fn)
-              let fetch :: IORef (GHC.ModuleEnv v) -> IO v
-                  fetch ref =
-                    atomicModifyIORef'
-                      ref
-                      ( \env ->
-                          let Just v = GHC.lookupModuleEnv env ms_mod
-                           in (GHC.delModuleEnv env ms_mod, v)
-                      )
-              ir <- liftIO $ HaskellIR spt_entries <$> fetch cmm_raw_map_ref
-              withHaskellIR mod_summary ir obj_output_fn
-              pure (GHC.RealPhase GHC.StopLn, obj_output_fn)
-          GHC.RealPhase GHC.Cmm -> do
-            void $ GHC.runPhase phase input_fn dflags
-            ir <-
+          GHC.HscOut _ _ (GHC.HscRecomp cgguts mod_summary) -> do
+            output_fn <- GHC.phaseOutputFilename GHC.StopLn
+            liftIO $
+              withHaskellIR
+                dflags
+                (GHC.ms_mod mod_summary)
+                (HaskellIR cgguts)
+                output_fn
+            GHC.PipeState {hsc_env = hsc_env} <- GHC.getPipeState
+            (_, _, _) <-
               liftIO $
-                CmmIR
-                  <$> readIORef cmm_raw_ref
-                  <* writeIORef cmm_raw_ref cmm_raw_ref_err
-            obj_output_fn <- GHC.phaseOutputFilename GHC.StopLn
-            withCmmIR ir obj_output_fn
-            pure (GHC.RealPhase GHC.StopLn, obj_output_fn)
+                GHC.hscGenHardCode hsc_env cgguts mod_summary output_fn
+            GHC.setForeignOs []
+            pure (GHC.RealPhase GHC.StopLn, output_fn)
+          GHC.RealPhase GHC.Cmm -> do
+            output_fn <- GHC.phaseOutputFilename GHC.StopLn
+            GHC.PipeState {hsc_env = hsc_env} <- GHC.getPipeState
+            liftIO $ GHC.hscCompileCmmFile hsc_env input_fn output_fn
+            pure (GHC.RealPhase GHC.StopLn, output_fn)
           _ -> GHC.runPhase phase input_fn dflags
       }

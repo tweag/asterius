@@ -7,7 +7,7 @@ import shutil
 import subprocess
 
 ghc_repo_url = "https://github.com/TerrorJack/ghc.git"
-ghc_repo_branch = "asterius-8.8"
+ghc_repo_branch = "asterius-8.8-staging"
 workdir = os.getcwd()
 ghc_repo_path = os.path.join(workdir, "ghc")
 hadrian_path = os.path.join(ghc_repo_path, "hadrian", "build.stack.sh")
