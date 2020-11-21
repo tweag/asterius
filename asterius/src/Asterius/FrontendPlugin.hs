@@ -19,19 +19,21 @@ import Asterius.TypesConv
 import Control.Exception
 import Control.Monad
 import Control.Monad.IO.Class
+import Data.IORef
+import qualified Data.Map.Strict as M
 import Data.Maybe
+import Data.Tuple
 import qualified GHC
 import qualified GhcPlugins as GHC
 import qualified Hooks as GHC
 import Language.Haskell.GHC.Toolkit.Compiler
 import Language.Haskell.GHC.Toolkit.FrontendPlugin
-import Language.Haskell.GHC.Toolkit.Orphans.Show ()
+import Language.Haskell.GHC.Toolkit.Orphans.Show
+  (
+  )
 import qualified Stream
 import System.Environment.Blank
 import System.FilePath
-import qualified Data.Map.Strict as M
-import Data.IORef
-import Data.Tuple
 
 frontendPlugin :: GHC.FrontendPlugin
 frontendPlugin = makeFrontendPlugin $ do
@@ -56,37 +58,45 @@ frontendPlugin = makeFrontendPlugin $ do
           }
   do
     dflags <- GHC.getSessionDynFlags
-    void
-      $ GHC.setSessionDynFlags
-      $ dflags
-        { GHC.settings =
-            (GHC.settings dflags)
-              { GHC.sPgm_L = unlit,
-                GHC.sPgm_l = (ahcLd, []),
-                GHC.sPgm_i = "false"
-              }
-        }
-        `GHC.gopt_set` GHC.Opt_EagerBlackHoling
-        `GHC.gopt_set` GHC.Opt_ExternalInterpreter
+    void $
+      GHC.setSessionDynFlags $
+        dflags
+          { GHC.settings =
+              (GHC.settings dflags)
+                { GHC.sPgm_L = unlit,
+                  GHC.sPgm_l = (ahcLd, []),
+                  GHC.sPgm_i = "false"
+                }
+          }
+          `GHC.gopt_set` GHC.Opt_EagerBlackHoling
+          `GHC.gopt_set` GHC.Opt_ExternalInterpreter
   when is_debug $ do
     dflags <- GHC.getSessionDynFlags
-    void
-      $ GHC.setSessionDynFlags
-      $ dflags
-        `GHC.gopt_set` GHC.Opt_DoCoreLinting
-        `GHC.gopt_set` GHC.Opt_DoStgLinting
-        `GHC.gopt_set` GHC.Opt_DoCmmLinting
+    void $
+      GHC.setSessionDynFlags $
+        dflags
+          `GHC.gopt_set` GHC.Opt_DoCoreLinting
+          `GHC.gopt_set` GHC.Opt_DoStgLinting
+          `GHC.gopt_set` GHC.Opt_DoCmmLinting
   spt_entries_map_ref <- liftIO $ newIORef M.empty
   pure $
     Compiler
-      { withHaskellIR = \dflags this_mod HaskellIR {cgGuts = GHC.CgGuts {..}} _ ->
-          atomicModifyIORef' spt_entries_map_ref $ \m -> (M.insert this_mod cg_spt_entries m,()),
+      { withHaskellIR =
+          \dflags this_mod HaskellIR {cgGuts = GHC.CgGuts {..}} _ ->
+            atomicModifyIORef' spt_entries_map_ref $
+              \m -> (M.insert this_mod cg_spt_entries m, ()),
         withCmmIR = \dflags this_mod ir@CmmIR {..} obj_path -> do
           ffi_mod <- getFFIModule dflags this_mod
-          m_spt_entries <- atomicModifyIORef' spt_entries_map_ref $ \m -> swap $ M.updateLookupWithKey (\_ _ -> Nothing) this_mod m
-          runCodeGen (case m_spt_entries of
-            Just spt_entries -> marshalHaskellIR this_mod spt_entries ir
-            _ -> marshalCmmIR this_mod ir) dflags this_mod >>= \case
+          m_spt_entries <- atomicModifyIORef' spt_entries_map_ref $
+            \m -> swap $ M.updateLookupWithKey (\_ _ -> Nothing) this_mod m
+          runCodeGen
+            ( case m_spt_entries of
+                Just spt_entries -> marshalHaskellIR this_mod spt_entries ir
+                _ -> marshalCmmIR this_mod ir
+            )
+            dflags
+            this_mod
+            >>= \case
               Left err -> throwIO err
               Right m' -> do
                 let m = ffi_mod <> m'
