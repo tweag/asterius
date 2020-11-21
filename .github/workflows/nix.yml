@@ -30,7 +30,9 @@ jobs:
       - name: setup-cachix
         uses: cachix/cachix-action@v8
         with:
-          name: ghc-nix
+          name: asterius
+          signingKey: ${{ secrets.CACHIX_SIGNING_KEY }}
+          extraPullNames: ghc-nix
 
       - name: setup-stack
         run: |
