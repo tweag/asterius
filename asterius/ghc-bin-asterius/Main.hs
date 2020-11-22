@@ -1,4 +1,5 @@
 {-# LANGUAGE CPP, NondecreasingIndentation, TupleSections #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 {-# OPTIONS -fno-warn-incomplete-patterns -optc-DNON_POSIX_SOURCE #-}
 
 -----------------------------------------------------------------------------
@@ -78,6 +79,8 @@ import Data.Maybe
 import Prelude
 
 import qualified Asterius.BuildInfo as A
+import Control.Exception
+import System.Process
 
 -----------------------------------------------------------------------------
 -- ToDo:
@@ -252,6 +255,17 @@ main' postLoadMode dflags0 args flagWarnings = do
   liftIO $ initUniqSupply (initialUnique dflags6) (uniqueIncrement dflags6)
         ---------------- Final sanity checking -----------
   liftIO $ checkOptions postLoadMode dflags6 srcs objs
+
+  liftIO $ case (normal_fileish_paths, outputFile dflags6) of
+    ([src], Just p) | (('s' : 'e' : 't' : 'u' : 'p' : _) : "setup" : "dist" : _) <- reverse (splitDirectories p) -> do
+      catch
+        (callProcess "ghc" ["--make", "-threaded", "-rtsopts", "-o", p, src])
+        ( \(_ :: IOError) -> do
+            writeFile src "import Distribution.Simple\nmain = defaultMain\n"
+            callProcess "ghc" ["--make", "-threaded", "-rtsopts", "-o", p, src]
+        )
+      exitSuccess
+    _ -> pure ()
 
   ---------------- Do the business -----------
   handleSourceError (\e -> do
