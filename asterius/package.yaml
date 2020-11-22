@@ -94,7 +94,7 @@ library:
     - template-haskell-asterius
 
 executables:
-  ghc-asterius:
+  ahc:
     source-dirs: ghc-bin-asterius
     c-sources:
       - ghc-bin-asterius/hschooks.c
@@ -111,13 +111,6 @@ executables:
       - haskeline
       - time
       - unix
-
-  ahc:
-    source-dirs: app
-    main: ahc.hs
-    ghc-options: *exe-ghc-options
-    dependencies:
-      - asterius
 
   ahc-pkg:
     source-dirs: app
