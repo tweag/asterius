@@ -5,10 +5,8 @@ import System.Directory
 import System.FilePath
 
 main :: IO ()
-main = do
-  Just ghc <- findExecutable "ghc-asterius"
+main =
   fakeGHCMain $
     FakeGHCOptions
-      ghc
       (A.dataDir </> ".boot" </> "asterius_lib")
       A.frontendPlugin

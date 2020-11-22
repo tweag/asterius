@@ -22,7 +22,7 @@ import System.Process
 
 data FakeGHCOptions
   = FakeGHCOptions
-      { ghc, ghcLibDir :: FilePath,
+      { ghcLibDir :: FilePath,
         frontendPlugin :: GHC.FrontendPlugin
       }
 
@@ -34,15 +34,11 @@ fakeGHCMain FakeGHCOptions {..} = do
       <$> getEnvironment
   for_ ks unsetEnv
   args0 <- getArgs
-  let (minusB_args, args1) = partition ("-B" `isPrefixOf`) args0
-      new_ghc_libdir = case minusB_args of
-        [minusB_arg] -> drop 2 minusB_arg
-        _ -> ghcLibDir
-  case partition (== "--make") args1 of
-    ([], _) -> callProcess ghc $ ("-B" <> new_ghc_libdir) : args1
+  case partition (== "--make") args0 of
+    ([], _) -> callProcess asteriusGHC args0
     (_, args2) ->
       GHC.defaultErrorHandler GHC.defaultFatalMessager GHC.defaultFlushOut
-        $ GHC.runGhc (Just new_ghc_libdir)
+        $ GHC.runGhc (Just ghcLibDir)
         $ do
           dflags0 <- GHC.getSessionDynFlags
           (dflags1, fileish_args, _) <-
@@ -92,6 +88,9 @@ seemsToBeCabalSetup :: FilePath -> Bool
 seemsToBeCabalSetup p = case reverse $ splitDirectories p of
   (('s' : 'e' : 't' : 'u' : 'p' : _) : "setup" : "dist" : _) -> True
   _ -> False
+
+asteriusGHC :: FilePath
+asteriusGHC = "ghc-asterius"
 
 hostGHC :: FilePath
 hostGHC = "ghc"

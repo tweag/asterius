@@ -77,6 +77,8 @@ import Data.List
 import Data.Maybe
 import Prelude
 
+import qualified Asterius.BuildInfo as A
+
 -----------------------------------------------------------------------------
 -- ToDo:
 
@@ -101,7 +103,7 @@ main = do
     argv0 <- getArgs
 
     let (minusB_args, argv1) = partition ("-B" `isPrefixOf`) argv0
-        mbMinusB | null minusB_args = Nothing
+        mbMinusB | null minusB_args = Just (A.dataDir </> ".boot" </> "asterius_lib")
                  | otherwise = Just (drop 2 (last minusB_args))
 
     let argv2 = map (mkGeneralLocated "on the commandline") argv1
