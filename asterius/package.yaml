@@ -101,6 +101,8 @@ executables:
     main: Main.hs
     default-extensions:
       - NoImplicitPrelude
+    cpp-options:
+      - -DGHCI
     ghc-options:
       - -threaded -fno-warn-name-shadowing -Wnoncanonical-monad-instances -Wnoncanonical-monoid-instances -no-hs-main
     dependencies:
