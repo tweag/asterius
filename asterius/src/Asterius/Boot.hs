@@ -16,7 +16,6 @@ import Asterius.BuildInfo
 import Asterius.Builtins
 import Asterius.CodeGen
 import Asterius.Internals
-import Asterius.Internals.Directory
 import Asterius.Internals.PrettyShow
 import Asterius.Types
 import Asterius.TypesConv
@@ -119,9 +118,8 @@ bootRTSCmm BootArgs {..} =
       obj_paths_ref <- liftIO $ newIORef []
       cmm_files <-
         liftIO
-          $ fmap (filter ((== ".cmm") . takeExtension))
-          $ listFilesRecursive
-          $ takeDirectory rts_path
+          $ map (rts_path </>) . filter ((== ".cmm") . takeExtension)
+          <$> listDirectory rts_path
       runCmm
         defaultConfig
           { ghcFlags =
