@@ -2,7 +2,7 @@ FROM debian:sid
 
 ARG DEBIAN_FRONTEND=noninteractive
 
-ARG NODE_VER=15.0.1
+ARG NODE_VER=15.2.1
 
 ENV \
   BROWSER=echo \
@@ -54,14 +54,14 @@ WORKDIR /root
 COPY . /tmp/asterius
 
 RUN \
-  (curl https://raw.githubusercontent.com/nvm-sh/nvm/v0.36.0/install.sh | bash) && \
+  (curl https://raw.githubusercontent.com/nvm-sh/nvm/v0.37.0/install.sh | bash) && \
   bash -i -c "nvm install ${NODE_VER}" && \
   patch ~/.nvm/versions/node/v${NODE_VER}/lib/node_modules/npm/node_modules/@npmcli/promise-spawn/index.js /tmp/asterius/utils/promise-spawn.patch && \
   bash -i -c "npm install -g --unsafe-perm=true --allow-root @cloudflare/wrangler webpack webpack-cli" && \
   mkdir -p ~/.local/bin && \
   curl -L https://github.com/commercialhaskell/stack/releases/download/v2.5.1/stack-2.5.1-linux-x86_64-bin -o ~/.local/bin/stack && \
   chmod +x ~/.local/bin/stack && \
-  curl -L https://downloads.haskell.org/~cabal/cabal-install-3.2.0.0/cabal-install-3.2.0.0-x86_64-unknown-linux.tar.xz | tar xJ -C ~/.local/bin 'cabal' && \
+  curl -L https://oleg.fi/cabal-install-3.4.0.0-rc4/cabal-install-3.4.0.0-x86_64-ubuntu-16.04.tar.xz | tar xJ -C ~/.local/bin --wildcards '*/cabal' && \
   echo "eval \"\$(stack --bash-completion-script stack)\"" >> ~/.bashrc && \
   echo "eval \"\$(direnv hook bash)\"" >> ~/.bashrc && \
   pip3 install \
@@ -70,7 +70,7 @@ RUN \
 
 RUN \
   stack --no-terminal update && \
-  stack --no-terminal --resolver lts-16.20 install \
+  stack --no-terminal --resolver lts-16.23 install \
     brittany \
     ghcid \
     ormolu \
