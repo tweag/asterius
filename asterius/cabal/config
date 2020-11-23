@@ -17,7 +17,7 @@ library-vanilla: True
 shared: False
 executable-dynamic: False
 profiling: False
-optimization: True
+optimization: 2
 debug-info: False
 library-for-ghci: False
 split-sections: False
