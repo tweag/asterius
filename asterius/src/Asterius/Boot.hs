@@ -108,8 +108,8 @@ bootRTSCmm BootArgs {..} = do
           "-I" <> obj_topdir </> "include",
           "-this-unit-id",
           "rts",
-          "-odir",
-          tmpdir,
+          "-o",
+          tmpdir </> takeBaseName src <.> "o",
           src
         ]
     obj_files <- map (tmpdir </>) <$> listDirectory tmpdir
