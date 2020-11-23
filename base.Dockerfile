@@ -6,8 +6,6 @@ ARG NODE_VER=15.0.1
 
 ENV \
   LANG=C.UTF-8 \
-  LC_ALL=C.UTF-8 \
-  LC_CTYPE=C.UTF-8 \
   PATH=/root/.asterius-local-install-root/bin:/root/.asterius-snapshot-install-root/bin:/root/.asterius-compiler-bin:/root/.local/bin:/root/.nvm/versions/node/v${NODE_VER}/bin:${PATH} \
   WASI_SDK_PATH=/opt/wasi-sdk
 
