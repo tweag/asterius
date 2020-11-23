@@ -11,11 +11,14 @@ import qualified BinIface as GHC
 import qualified Binary as GHC
 import Control.Exception
 import qualified IfaceEnv as GHC
+import System.Directory
+import System.FilePath
 
 putFile :: GHC.Binary a => FilePath -> a -> IO ()
 putFile p a = do
   bh <- GHC.openBinMem 1048576
   GHC.putWithUserData (const (pure ())) bh a
+  createDirectoryIfMissing True $ takeDirectory p
   GHC.writeBinMem bh p
 
 getFile :: GHC.Binary a => GHC.NameCacheUpdater -> FilePath -> IO a

@@ -1,6 +1,6 @@
 [("GCC extra via C opts", " -fwrapv -fno-builtin"),
  ("C compiler command", "gcc"),
- ("C compiler flags", ""),
+ ("C compiler flags", "-DASTERIUS"),
  ("C compiler link flags", ""),
  ("C compiler supports -no-pie", "YES"),
  ("Haskell CPP command","gcc"),

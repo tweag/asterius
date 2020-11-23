@@ -16,6 +16,7 @@ import Asterius.Internals.PrettyShow
 import Asterius.JSFFI
 import Asterius.Types
 import Asterius.TypesConv
+import qualified Config as GHC
 import Control.Exception
 import Control.Monad
 import Control.Monad.IO.Class
@@ -27,7 +28,7 @@ import qualified GHC
 import qualified GhcPlugins as GHC
 import qualified Hooks as GHC
 import Language.Haskell.GHC.Toolkit.Compiler
-import Language.Haskell.GHC.Toolkit.FrontendPlugin
+import Language.Haskell.GHC.Toolkit.Hooks
 import Language.Haskell.GHC.Toolkit.Orphans.Show
   (
   )
@@ -35,8 +36,8 @@ import qualified Stream
 import System.Environment.Blank
 import System.FilePath
 
-frontendPlugin :: GHC.FrontendPlugin
-frontendPlugin = makeFrontendPlugin $ do
+frontendPlugin :: GHC.Ghc ()
+frontendPlugin = do
   is_debug <- liftIO $ isJust <$> getEnv "ASTERIUS_DEBUG"
   do
     dflags <- GHC.getSessionDynFlags
@@ -78,33 +79,46 @@ frontendPlugin = makeFrontendPlugin $ do
           `GHC.gopt_set` GHC.Opt_DoCoreLinting
           `GHC.gopt_set` GHC.Opt_DoStgLinting
           `GHC.gopt_set` GHC.Opt_DoCmmLinting
-  spt_entries_map_ref <- liftIO $ newIORef M.empty
-  pure $
-    Compiler
-      { withHaskellIR =
-          \dflags this_mod HaskellIR {cgGuts = GHC.CgGuts {..}} _ ->
-            atomicModifyIORef' spt_entries_map_ref $
-              \m -> (M.insert this_mod cg_spt_entries m, ()),
-        withCmmIR = \dflags this_mod ir@CmmIR {..} obj_path -> do
-          ffi_mod <- getFFIModule dflags this_mod
-          m_spt_entries <- atomicModifyIORef' spt_entries_map_ref $
-            \m -> swap $ M.updateLookupWithKey (\_ _ -> Nothing) this_mod m
-          runCodeGen
-            ( case m_spt_entries of
-                Just spt_entries -> marshalHaskellIR this_mod spt_entries ir
-                _ -> marshalCmmIR this_mod ir
-            )
-            dflags
-            this_mod
-            >>= \case
-              Left err -> throwIO err
-              Right m' -> do
-                let m = ffi_mod <> m'
-                putFile obj_path $ toCachedModule m
-                when is_debug $ do
-                  let p = (obj_path -<.>)
-                  writeFile (p "dump-wasm-ast") =<< prettyShow m
-                  cmm_raw <- Stream.collect cmmRaw
-                  writeFile (p "dump-cmm-raw-ast") =<< prettyShow cmm_raw
-                  asmPrint dflags (p "dump-cmm-raw") cmm_raw
-      }
+  do
+    spt_entries_map_ref <- liftIO $ newIORef M.empty
+    dflags <- GHC.getSessionDynFlags
+    h' <-
+      liftIO $
+        hooksFromCompiler
+          ( Compiler
+              { withHaskellIR =
+                  \dflags this_mod HaskellIR {cgGuts = GHC.CgGuts {..}} _ ->
+                    atomicModifyIORef' spt_entries_map_ref $
+                      \m -> (M.insert this_mod cg_spt_entries m, ()),
+                withCmmIR = \dflags this_mod ir@CmmIR {..} obj_path -> do
+                  ffi_mod <- getFFIModule dflags this_mod
+                  m_spt_entries <- atomicModifyIORef' spt_entries_map_ref $
+                    \m -> swap $ M.updateLookupWithKey (\_ _ -> Nothing) this_mod m
+                  runCodeGen
+                    ( case m_spt_entries of
+                        Just spt_entries -> marshalHaskellIR this_mod spt_entries ir
+                        _ -> marshalCmmIR this_mod ir
+                    )
+                    dflags
+                    this_mod
+                    >>= \case
+                      Left err -> throwIO err
+                      Right m' -> do
+                        let m = ffi_mod <> m'
+                        putFile obj_path $ toCachedModule m
+                        when is_debug $ do
+                          let p = (obj_path -<.>)
+                          writeFile (p "dump-wasm-ast") =<< prettyShow m
+                          cmm_raw <- Stream.collect cmmRaw
+                          writeFile (p "dump-cmm-raw-ast") =<< prettyShow cmm_raw
+                          asmPrint dflags (p "dump-cmm-raw") cmm_raw
+              }
+          )
+          (GHC.hooks dflags)
+    void $
+      GHC.setSessionDynFlags
+        dflags
+          { GHC.integerLibrary = GHC.IntegerSimple,
+            GHC.tablesNextToCode = False,
+            GHC.hooks = h'
+          }

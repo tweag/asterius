@@ -94,13 +94,15 @@ library:
     - template-haskell-asterius
 
 executables:
-  ghc-asterius:
+  ahc:
     source-dirs: ghc-bin-asterius
     c-sources:
       - ghc-bin-asterius/hschooks.c
     main: Main.hs
     default-extensions:
       - NoImplicitPrelude
+    cpp-options:
+      - -DGHCI
     ghc-options:
       - -threaded -fno-warn-name-shadowing -Wnoncanonical-monad-instances -Wnoncanonical-monoid-instances -no-hs-main
     dependencies:
@@ -109,13 +111,6 @@ executables:
       - haskeline
       - time
       - unix
-
-  ahc:
-    source-dirs: app
-    main: ahc.hs
-    ghc-options: *exe-ghc-options
-    dependencies:
-      - asterius
 
   ahc-pkg:
     source-dirs: app
