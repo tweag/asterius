@@ -257,12 +257,8 @@ ahcLink task = do
   putStrLn $ "[INFO] Compiling " <> inputHS task <> " to WebAssembly"
   callProcess ahc $
     [ "--make",
-      "-O",
-      "-i" <> takeDirectory (inputHS task),
-      "-fexternal-interpreter",
-      "-pgml" <> ahcLd,
-      "-clear-package-db",
-      "-global-package-db"
+      "-O2",
+      "-i" <> takeDirectory (inputHS task)
     ]
       <> concat [["-no-hs-main", "-optl--no-main"] | not $ hasMain task]
       <> ["-optl--debug" | debug task]
