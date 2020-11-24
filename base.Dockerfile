@@ -2,7 +2,7 @@ FROM debian:sid-slim
 
 ARG DEBIAN_FRONTEND=noninteractive
 
-ARG NODE_VER=15.2.1
+ARG NODE_VER=15.3.0
 
 ENV \
   LANG=C.UTF-8 \
