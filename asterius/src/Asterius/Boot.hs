@@ -17,23 +17,32 @@ import Asterius.Builtins
 import Asterius.CodeGen
 import Asterius.Internals
 import Asterius.Internals.PrettyShow
-import Asterius.Internals.Temp
 import Asterius.Types
 import Asterius.TypesConv
 import Control.Exception
 import Control.Monad
-import Data.Foldable
+import Control.Monad.IO.Class
+import Data.IORef
 import Data.Maybe
+import qualified DynFlags as GHC
+import qualified GHC
 import Language.Haskell.GHC.Toolkit.BuildInfo
   ( bootLibsPath,
     sandboxGhcLibDir,
   )
+import Language.Haskell.GHC.Toolkit.Compiler
 import Language.Haskell.GHC.Toolkit.Orphans.Show ()
+import Language.Haskell.GHC.Toolkit.Run
+import qualified Module as GHC
+import qualified Stream
 import System.Directory
 import System.Environment
 import System.Exit
 import System.FilePath
+import System.IO
 import System.Process
+
+import Data.Foldable
 
 data BootArgs
   = BootArgs
@@ -93,29 +102,62 @@ bootCreateProcess args@BootArgs {..} = do
       }
 
 bootRTSCmm :: BootArgs -> IO ()
-bootRTSCmm BootArgs {..} = do
-  cmm_files <-
-    map (rts_path </>)
-      . filter ((== ".cmm") . takeExtension)
-      <$> listDirectory rts_path
-  withTempDir "asterius" $ \tmpdir -> do
-    for_ cmm_files $ \src ->
-      callProcess
-        ahc
-        [ "-c",
-          "-O2",
-          "-dcmm-lint",
-          "-I" <> obj_topdir </> "include",
-          "-this-unit-id",
-          "rts",
-          "-o",
-          tmpdir </> takeBaseName src <.> "o",
-          src
-        ]
-    obj_files <- map (tmpdir </>) <$> listDirectory tmpdir
-    let rsp_path = tmpdir </> "ar.rsp"
-    writeFile rsp_path $ unlines obj_files
-    callProcess "ahc-ar" [obj_topdir </> "rts" </> "libHSrts.a", '@' : rsp_path]
+bootRTSCmm BootArgs {..} =
+  GHC.defaultErrorHandler GHC.defaultFatalMessager GHC.defaultFlushOut
+    $ GHC.runGhc (Just obj_topdir)
+    $ do
+      dflags0 <- GHC.getSessionDynFlags
+      _ <-
+        GHC.setSessionDynFlags $
+          GHC.setGeneralFlag' GHC.Opt_SuppressTicks dflags0
+      dflags <- GHC.getSessionDynFlags
+      is_debug <- isJust <$> liftIO (lookupEnv "ASTERIUS_DEBUG")
+      obj_paths_ref <- liftIO $ newIORef []
+      cmm_files <-
+        liftIO
+          $ map (rts_path </>) . filter ((== ".cmm") . takeExtension)
+          <$> listDirectory rts_path
+      for_ cmm_files $ \cmm_file ->
+        runCmm
+          Config
+            { ghcFlags =
+                [ "-this-unit-id",
+                  "rts",
+                  "-feager-blackholing",
+                  "-dcmm-lint",
+                  "-O2",
+                  "-I" <> obj_topdir </> "include"
+                ], ghcLibDir = obj_topdir
+            }
+          [cmm_file]
+          ( \obj_path ir@CmmIR {..} ->
+              let ms_mod =
+                    ( GHC.Module GHC.rtsUnitId $ GHC.mkModuleName $
+                        takeBaseName
+                          obj_path
+                    )
+              in runCodeGen (marshalCmmIR ms_mod ir) dflags ms_mod >>= \case
+                    Left err -> throwIO err
+                    Right m -> do
+                      putFile obj_path $ toCachedModule m
+                      modifyIORef' obj_paths_ref (obj_path :)
+                      when is_debug $ do
+                        let p = (obj_path -<.>)
+                        writeFile (p "dump-wasm-ast") =<< prettyShow m
+                        cmm_raw <- Stream.collect cmmRaw
+                        writeFile (p "dump-cmm-raw-ast") =<< prettyShow cmm_raw
+                        asmPrint dflags (p "dump-cmm-raw") cmm_raw
+          )
+      liftIO $ do
+        obj_paths <- readIORef obj_paths_ref
+        tmpdir <- getTemporaryDirectory
+        (rsp_path, rsp_h) <- openTempFile tmpdir "ar.rsp"
+        hPutStr rsp_h $ unlines obj_paths
+        hClose rsp_h
+        callProcess
+          "ahc-ar"
+          [obj_topdir </> "rts" </> "libHSrts.a", '@' : rsp_path]
+        removeFile rsp_path
   where
     rts_path = bootLibsPath </> "rts"
     obj_topdir = bootDir </> "asterius_lib"
