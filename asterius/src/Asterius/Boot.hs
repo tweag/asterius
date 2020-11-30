@@ -62,7 +62,6 @@ defaultBootArgs = BootArgs
        "--disable-split-objs",
        "--disable-split-sections",
        "--disable-library-stripping",
-       "--enable-deterministic",
        "--enable-relocatable",
        "-O2",
        "--prefix=" <> (bootDir defaultBootArgs </> "asterius_lib"),

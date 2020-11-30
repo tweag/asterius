@@ -1,4 +1,7 @@
+import Asterius.FixEnv
 import Asterius.Main
 
 main :: IO ()
-main = getTask >>= ahcLinkMain
+main = do
+  fixEnv
+  getTask >>= ahcLinkMain

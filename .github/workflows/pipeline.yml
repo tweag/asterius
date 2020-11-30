@@ -264,7 +264,7 @@ jobs:
             Cabal
           ahc-cabal v1-install -j2 \
             diagrams \
-            ghc-lib \
+            hlint \
             miso
 
           popd

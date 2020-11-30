@@ -79,7 +79,6 @@ import Data.Maybe
 import Prelude
 
 import qualified Asterius.BuildInfo as A
-import qualified Asterius.FixEnv as A
 import qualified Asterius.FrontendPlugin as A
 import Control.Exception
 import System.Process
@@ -98,7 +97,6 @@ import System.Process
 
 main :: IO ()
 main = do
-   A.fixEnv
    initGCStatistics -- See Note [-Bsymbolic and hooks]
    hSetBuffering stdout LineBuffering
    hSetBuffering stderr LineBuffering
@@ -135,8 +133,6 @@ main = do
         Right postStartupMode ->
             -- start our GHC session
             GHC.runGhc mbMinusB $ do
-
-            A.frontendPlugin
 
             dflags <- GHC.getSessionDynFlags
 
@@ -248,6 +244,9 @@ main' postLoadMode dflags0 args flagWarnings = do
 
   -- we've finished manipulating the DynFlags, update the session
   _ <- GHC.setSessionDynFlags dflags5
+
+  A.frontendPlugin
+
   dflags6 <- GHC.getSessionDynFlags
   hsc_env <- GHC.getSession
 
