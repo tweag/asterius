@@ -25,7 +25,6 @@ split-objs: False
 executable-stripping: False
 library-stripping: False
 user-install: False
-deterministic: True
 tests: False
 coverage: False
 benchmarks: False
