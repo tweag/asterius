@@ -134,8 +134,6 @@ main = do
             -- start our GHC session
             GHC.runGhc mbMinusB $ do
 
-            A.frontendPlugin
-
             dflags <- GHC.getSessionDynFlags
 
             case postStartupMode of
@@ -246,6 +244,9 @@ main' postLoadMode dflags0 args flagWarnings = do
 
   -- we've finished manipulating the DynFlags, update the session
   _ <- GHC.setSessionDynFlags dflags5
+
+  A.frontendPlugin
+
   dflags6 <- GHC.getSessionDynFlags
   hsc_env <- GHC.getSession
 
