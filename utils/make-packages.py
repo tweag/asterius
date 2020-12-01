@@ -115,8 +115,8 @@ def patch_hadrian():
                            "Setting.hs"),
               mode="w") as h:
         h.writelines(ls)
-    shutil.copy(os.path.join(os.path.dirname(__file__), "UserSettings.hs"),
-                os.path.join(ghc_repo_path, "hadrian", "UserSettings.hs"))
+    os.link(os.path.join(os.path.dirname(__file__), "UserSettings.hs"),
+            os.path.join(ghc_repo_path, "hadrian", "UserSettings.hs"))
 
 
 def make_hadrian():
@@ -343,42 +343,49 @@ def patch_ghc_pkg_cabal():
 def make_ghc_heap_asterius():
     shutil.rmtree(ghc_heap_asterius_path, True)
     shutil.copytree(os.path.join(ghc_repo_path, "libraries", "ghc-heap"),
-                    ghc_heap_asterius_path)
+                    ghc_heap_asterius_path,
+                    copy_function=os.link)
     patch_ghc_heap_cabal()
 
 
 def make_ghc_boot_th_asterius():
     shutil.rmtree(ghc_boot_th_asterius_path, True)
     shutil.copytree(os.path.join(ghc_repo_path, "libraries", "ghc-boot-th"),
-                    ghc_boot_th_asterius_path)
+                    ghc_boot_th_asterius_path,
+                    copy_function=os.link)
     patch_ghc_boot_th_cabal()
 
 
 def make_ghc_boot_asterius():
     shutil.rmtree(ghc_boot_asterius_path, True)
     shutil.copytree(os.path.join(ghc_repo_path, "libraries", "ghc-boot"),
-                    ghc_boot_asterius_path)
+                    ghc_boot_asterius_path,
+                    copy_function=os.link)
     patch_ghc_boot_cabal()
 
 
 def make_template_haskell_asterius():
     shutil.rmtree(template_haskell_asterius_path, True)
-    shutil.copytree(
-        os.path.join(ghc_repo_path, "libraries", "template-haskell"),
-        template_haskell_asterius_path)
+    shutil.copytree(os.path.join(ghc_repo_path, "libraries",
+                                 "template-haskell"),
+                    template_haskell_asterius_path,
+                    copy_function=os.link)
     patch_template_haskell_cabal()
 
 
 def make_ghci_asterius():
     shutil.rmtree(ghci_asterius_path, True)
     shutil.copytree(os.path.join(ghc_repo_path, "libraries", "ghci"),
-                    ghci_asterius_path)
+                    ghci_asterius_path,
+                    copy_function=os.link)
     patch_ghci_cabal()
 
 
 def make_ghc_asterius():
     shutil.rmtree(ghc_asterius_path, True)
-    shutil.copytree(os.path.join(ghc_repo_path, "compiler"), ghc_asterius_path)
+    shutil.copytree(os.path.join(ghc_repo_path, "compiler"),
+                    ghc_asterius_path,
+                    copy_function=os.link)
     for f in [
             "cmm/CmmLex.x", "cmm/CmmParse.y", "parser/Lexer.x",
             "parser/Parser.y"
@@ -386,19 +393,22 @@ def make_ghc_asterius():
         os.remove(os.path.join(ghc_asterius_path, f))
     autogen_path = os.path.join(ghc_asterius_path, "autogen")
     os.mkdir(autogen_path)
-    shutil.copy(os.path.join(ghc_repo_path, "includes", "CodeGen.Platform.hs"),
-                autogen_path)
+    os.link(os.path.join(ghc_repo_path, "includes", "CodeGen.Platform.hs"),
+            os.path.join(autogen_path, "CodeGen.Platform.hs"))
     for f in ghc_autogen_files:
-        shutil.copy(os.path.join(ghc_repo_path, f), autogen_path)
+        os.link(os.path.join(ghc_repo_path, f),
+                os.path.join(autogen_path, os.path.basename(f)))
     patch_ghc_cabal()
     patch_ghc_include()
 
 
 def make_ghc_bin_asterius():
     shutil.rmtree(ghc_bin_asterius_path, True)
-    shutil.copytree(os.path.join(ghc_repo_path, "ghc"), ghc_bin_asterius_path)
-    shutil.copy(os.path.join(ghc_repo_path, "rts", "PosixSource.h"),
-                ghc_bin_asterius_path)
+    shutil.copytree(os.path.join(ghc_repo_path, "ghc"),
+                    ghc_bin_asterius_path,
+                    copy_function=os.link)
+    os.link(os.path.join(ghc_repo_path, "rts", "PosixSource.h"),
+            os.path.join(ghc_bin_asterius_path, "PosixSource.h"))
     patch_ghc_bin_cabal()
     patch_ghc_bin_include()
 
@@ -406,9 +416,11 @@ def make_ghc_bin_asterius():
 def make_ghc_pkg_asterius():
     shutil.rmtree(ghc_pkg_asterius_path, True)
     shutil.copytree(os.path.join(ghc_repo_path, "utils", "ghc-pkg"),
-                    ghc_pkg_asterius_path)
+                    ghc_pkg_asterius_path,
+                    copy_function=os.link)
     for f in ghc_pkg_autogen_files:
-        shutil.copy(os.path.join(ghc_repo_path, f), ghc_pkg_asterius_path)
+        os.link(os.path.join(ghc_repo_path, f),
+                os.path.join(ghc_pkg_asterius_path, os.path.basename(f)))
     patch_ghc_pkg_cabal()
 
 
