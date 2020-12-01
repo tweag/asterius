@@ -17,6 +17,7 @@ module Asterius.BuildInfo
     setupGhcPrim,
     unlit,
     dataDir,
+    ahcLibDir,
   )
 where
 
@@ -53,3 +54,6 @@ setupGhcPrim = binDir </> "Setup-ghc-prim" <.> exeExtension
 
 unlit :: FilePath
 unlit = binDir </> "unlit" <.> exeExtension
+
+ahcLibDir :: FilePath
+ahcLibDir = dataDir </> ".boot" </> "asterius_lib"
