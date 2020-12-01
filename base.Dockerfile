@@ -41,7 +41,7 @@ WORKDIR /root
 COPY . /root/.asterius
 
 RUN \
-  (curl https://raw.githubusercontent.com/nvm-sh/nvm/v0.37.1/install.sh | bash) && \
+  (curl https://raw.githubusercontent.com/nvm-sh/nvm/v0.37.2/install.sh | bash) && \
   bash -i -c "nvm install ${NODE_VER}" && \
   patch ~/.nvm/versions/node/v${NODE_VER}/lib/node_modules/npm/node_modules/@npmcli/promise-spawn/index.js ~/.asterius/utils/promise-spawn.patch && \
   bash -i -c "npm install -g --unsafe-perm=true --allow-root @cloudflare/wrangler webpack webpack-cli" && \
