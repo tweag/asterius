@@ -20,4 +20,4 @@ sudo dpkg -i /tmp/binaryen.deb
 rm /tmp/binaryen.deb
 
 sudo mkdir -p /opt/wasi-sdk
-curl -L https://github.com/TerrorJack/wasi-sdk/releases/download/201027/wasi-sdk-11.6gc1fd249a52ea-linux.tar.gz | sudo tar xz -C /opt/wasi-sdk --strip-components=1
+curl -L https://github.com/TerrorJack/wasi-sdk/releases/download/201101/wasi-sdk-11.9g579c89f8fd06-linux.tar.gz | sudo tar xz -C /opt/wasi-sdk --strip-components=1
