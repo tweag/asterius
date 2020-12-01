@@ -394,9 +394,10 @@ def make_ghc_asterius():
     autogen_path = os.path.join(ghc_asterius_path, "autogen")
     os.mkdir(autogen_path)
     os.link(os.path.join(ghc_repo_path, "includes", "CodeGen.Platform.hs"),
-            autogen_path)
+            os.path.join(autogen_path, "CodeGen.Platform.hs"))
     for f in ghc_autogen_files:
-        os.link(os.path.join(ghc_repo_path, f), autogen_path)
+        os.link(os.path.join(ghc_repo_path, f),
+                os.path.join(autogen_path, os.path.basename(f)))
     patch_ghc_cabal()
     patch_ghc_include()
 
@@ -407,7 +408,7 @@ def make_ghc_bin_asterius():
                     ghc_bin_asterius_path,
                     copy_function=os.link)
     os.link(os.path.join(ghc_repo_path, "rts", "PosixSource.h"),
-            ghc_bin_asterius_path)
+            os.path.join(ghc_bin_asterius_path, "PosixSource.h"))
     patch_ghc_bin_cabal()
     patch_ghc_bin_include()
 
@@ -418,7 +419,8 @@ def make_ghc_pkg_asterius():
                     ghc_pkg_asterius_path,
                     copy_function=os.link)
     for f in ghc_pkg_autogen_files:
-        os.link(os.path.join(ghc_repo_path, f), ghc_pkg_asterius_path)
+        os.link(os.path.join(ghc_repo_path, f),
+                os.path.join(ghc_pkg_asterius_path, os.path.basename(f)))
     patch_ghc_pkg_cabal()
 
 
