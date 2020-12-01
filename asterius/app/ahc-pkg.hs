@@ -10,6 +10,6 @@ main = do
   args <- getArgs
   callProcess ghcPkg $
     ( "--global-package-db="
-        <> (A.dataDir </> ".boot" </> "asterius_lib" </> "package.conf.d")
+        <> (A.ahcLibDir </> "package.conf.d")
     )
       : args

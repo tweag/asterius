@@ -8,7 +8,6 @@ module Asterius.JSGen.LibC
   )
 where
 
-import Asterius.BuildInfo
 import qualified Asterius.BuildInfo as A
 import Asterius.Internals.Temp
 import qualified Data.ByteString as BS
@@ -45,14 +44,14 @@ genLibC LibCOpts {..} = do
     case mp of
       Just p -> pure p
       _ -> fail "WASI_SDK_PATH not set"
-  let cish_dir = dataDir </> "libc"
+  let cish_dir = A.dataDir </> "libc"
   cish <- map (cish_dir </>) <$> listDirectory cish_dir
   let cbits = filter isC cish
       cxxbits = filter isCxx cish
   withTempDir "asterius" $ \tmpdir -> do
     let common_opts =
           [ "--sysroot=" <> wasi_sdk </> "share" </> "wasi-sysroot",
-            "-I" <> (A.dataDir </> ".boot" </> "asterius_lib" </> "include"),
+            "-I" <> (A.ahcLibDir </> "include"),
             "-Oz",
             "-flto"
           ]

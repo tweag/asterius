@@ -19,7 +19,7 @@ main = do
       =<< Paths_asterius.getDataFileName ("cabal" </> "config")
   writeFile ahc_cabal_config_path $
     "install-dirs global\n  prefix: "
-      <> (dataDir </> ".boot" </> "asterius_lib")
+      <> ahcLibDir
       <> "\nprogram-locations\n  ar-location: "
       <> ahcAr
       <> "\nprogram-default-options\n  hsc2hs-options: --cross-compile"

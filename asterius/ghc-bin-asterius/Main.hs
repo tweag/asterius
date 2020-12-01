@@ -107,7 +107,7 @@ main = do
     argv0 <- getArgs
 
     let (minusB_args, argv1) = partition ("-B" `isPrefixOf`) argv0
-        mbMinusB | null minusB_args = Just (A.dataDir </> ".boot" </> "asterius_lib")
+        mbMinusB | null minusB_args = Just A.ahcLibDir
                  | otherwise = Just (drop 2 (last minusB_args))
 
     let argv2 = map (mkGeneralLocated "on the commandline") argv1
