@@ -333,6 +333,8 @@ def patch_ghc_pkg_cabal():
                 ls.append("Name: ghc-pkg-asterius\n")
             elif l.lower().split() == ["executable", "ghc-pkg"]:
                 ls.append("Executable ghc-pkg-asterius\n")
+            elif l.strip().lower().startswith("ghc-boot,"):
+                ls.append("                   ghc-boot-asterius,\n")
             else:
                 ls.append(l)
     with open(os.path.join(ghc_pkg_asterius_path, "ghc-pkg-asterius.cabal"),
