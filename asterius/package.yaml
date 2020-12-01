@@ -75,9 +75,6 @@ dependencies:
   - transformers
   - wasm-toolkit
 
-build-tools:
-  - ghc-pkg-asterius:ghc-pkg-asterius
-
 internal-libraries:
   asterius-types:
     source-dirs: src-types
@@ -113,11 +110,15 @@ executables:
       - unix
 
   ahc-pkg:
-    source-dirs: app
-    main: ahc-pkg.hs
+    source-dirs: ghc-pkg-asterius
+    main: Main.hs
+    cpp-options:
+      - -DWITH_TERMINFO
     ghc-options: *exe-ghc-options
     dependencies:
       - asterius
+      - terminfo
+      - unix
 
   Setup-ghc-prim:
     source-dirs: app

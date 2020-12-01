@@ -24,7 +24,6 @@ packages:
   - lib/ghc-boot-asterius
   - lib/ghc-boot-th-asterius
   - lib/ghc-heap-asterius
-  - lib/ghc-pkg-asterius
   - lib/ghci-asterius
   - lib/template-haskell-asterius
   - wasm-toolkit
