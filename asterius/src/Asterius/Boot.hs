@@ -148,14 +148,9 @@ bootRTSCmm BootArgs {..} =
           )
       liftIO $ do
         obj_paths <- readIORef obj_paths_ref
-        tmpdir <- getTemporaryDirectory
-        (rsp_path, rsp_h) <- openTempFile tmpdir "ar.rsp"
-        hPutStr rsp_h $ unlines obj_paths
-        hClose rsp_h
         callProcess
-          "ar"
-          [obj_topdir </> "rts" </> "libHSrts.a", '@' : rsp_path]
-        removeFile rsp_path
+          "ar" $
+          ["r", obj_topdir </> "rts" </> "libHSrts.a"] <> obj_paths
   where
     rts_path = bootLibsPath </> "rts"
     obj_topdir = bootDir </> "asterius_lib"
