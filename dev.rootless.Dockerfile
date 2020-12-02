@@ -38,7 +38,7 @@ ARG DEBIAN_FRONTEND
 ARG USERNAME
 ARG UID
 
-ARG NODE_VER=15.2.1
+ARG NODE_VER=15.3.0
 
 ENV \
   BROWSER=echo \
@@ -74,7 +74,7 @@ RUN \
     zlib1g-dev \
     zstd && \
   sudo mkdir -p ${WASI_SDK_PATH} && \
-  (curl -L https://github.com/TerrorJack/wasi-sdk/releases/download/201027/wasi-sdk-11.6gc1fd249a52ea-linux.tar.gz | sudo tar xz -C ${WASI_SDK_PATH} --strip-components=1) && \
+  (curl -L https://github.com/TerrorJack/wasi-sdk/releases/download/201202/wasi-sdk-11.9gb368b8b12ee6-linux.tar.gz | sudo tar xz -C ${WASI_SDK_PATH} --strip-components=1) && \
   sudo apt autoremove --purge -y && \
   sudo apt clean && \
   sudo rm -rf -v \
@@ -83,7 +83,7 @@ RUN \
     /var/tmp/*
 
 RUN \
-  (curl https://raw.githubusercontent.com/nvm-sh/nvm/v0.37.0/install.sh | bash) && \
+  (curl https://raw.githubusercontent.com/nvm-sh/nvm/v0.37.2/install.sh | bash) && \
   bash -i -c "nvm install ${NODE_VER}" && \
   bash -i -c "npm install -g @cloudflare/wrangler webpack webpack-cli" && \
   mkdir -p ~/.local/bin && \
@@ -98,7 +98,7 @@ RUN \
 
 RUN \
   stack --no-terminal update && \
-  stack --no-terminal --resolver lts-16.23 install \
+  stack --no-terminal --resolver lts-16.24 install \
     brittany \
     ghcid \
     ormolu \
