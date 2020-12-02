@@ -29,7 +29,7 @@ RUN \
     python3-minimal \
     zlib1g-dev && \
   mkdir -p ${WASI_SDK_PATH} && \
-  (curl -L https://github.com/TerrorJack/wasi-sdk/releases/download/201101/wasi-sdk-11.9g579c89f8fd06-linux.tar.gz | tar xz -C ${WASI_SDK_PATH} --strip-components=1) && \
+  (curl -L https://github.com/TerrorJack/wasi-sdk/releases/download/201202/wasi-sdk-11.9gb368b8b12ee6-linux.tar.gz | tar xz -C ${WASI_SDK_PATH} --strip-components=1) && \
   cp \
     /etc/skel/.bash_logout \
     /etc/skel/.bashrc \
