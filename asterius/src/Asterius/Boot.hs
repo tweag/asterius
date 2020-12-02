@@ -69,7 +69,6 @@ defaultBootArgs = BootArgs
        "--ipid=$pkg",
        "--with-ghc=" <> ahc,
        "--with-ghc-pkg=" <> ahcPkg,
-       "--with-ar=" <> ahcAr,
        "--hsc2hs-option=--cross-compile",
        "--ghc-option=-v1",
        "--ghc-option=-dsuppress-ticks"
