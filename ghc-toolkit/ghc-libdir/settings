@@ -11,7 +11,7 @@
  ("ld supports build-id", "YES"),
  ("ld supports filelist", "NO"),
  ("ld is GNU ld", "YES"),
- ("ar command", "ar"),
+ ("ar command", "/opt/wasi-sdk/bin/llvm-ar"),
  ("ar flags", "q"),
  ("ar supports at file", "YES"),
  ("ranlib command", "ranlib"),
