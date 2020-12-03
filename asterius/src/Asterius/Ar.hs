@@ -1,7 +1,6 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
 -- |
@@ -20,7 +19,6 @@
 -- that of GHC).
 module Asterius.Ar
   ( loadArchive,
-    createArchive,
   )
 where
 
@@ -39,64 +37,13 @@ import qualified IfaceEnv as GHC
 
 -------------------------------------------------------------------------------
 
-newtype Archive = Archive [BS.ByteString]
-  deriving (Eq, Show, Semigroup, Monoid)
-
--------------------------------------------------------------------------------
-
-putPaddedInt :: Int -> Int -> Put
-putPaddedInt padding i = putPaddedString '\x20' padding (show i)
-
-putPaddedString :: Char -> Int -> String -> Put
-putPaddedString pad padding s =
-  putByteString . CBS.pack . take padding $ s <> repeat pad
-
-putArchMagic :: Put
-putArchMagic = putByteString $ CBS.pack "!<arch>\n"
-
--- | Put the contents of an object file as an archive entry. Note that this
--- sets all entry metadata, including the filename, to defaults. The only
--- exception to this rule is the filesize which is set to the size of the given
--- contents.
-putArchEntry :: BS.ByteString -> PutM ()
-putArchEntry file_contents = do
-  -- total: 60 bytes
-  putByteString "                " -- name, 16 bytes
-  putByteString "0           " -- mtime, 12 bytes
-  putByteString "0     " -- UID, 6 bytes
-  putByteString "0     " -- GID, 6 bytes
-  putByteString "0644    " -- mode, 8 bytes
-  putPaddedInt 10 st_size -- file length, 10 bytes
-  putByteString "\x60\x0a" -- header magic, 2 bytes
-  putByteString file_contents
-  when (st_size `mod` 2 == 1) $
-    putWord8 0x0a
-  where
-    st_size = BS.length file_contents
-
-putArchive :: Archive -> PutM ()
-putArchive (Archive as) = putArchMagic >> mapM_ putArchEntry as
-
--- | Create a library archive from a bunch of object files. All metadata
--- (including the filename) are set to defaults; when we deserialize (see
--- 'loadArchive'), the metadata is ignored anyway.
-createArchive :: FilePath -> [FilePath] -> IO ()
-createArchive arFile objFiles = do
-  blobs <- for objFiles (unsafeDupableInterleaveIO . BS.readFile)
-  writeArchiveToFile arFile $ Archive blobs
-
-writeArchiveToFile :: FilePath -> Archive -> IO ()
-writeArchiveToFile fp = LBS.writeFile fp . runPut . putArchive
-
--------------------------------------------------------------------------------
-
 -- | Load the contents of an archive (@.a@) file. 'loadArchive' ignores (@.o@)
 -- files in the archive that cannot be parsed. Also, the metadata of the
 -- contained files are ignored ('createArchive' always sets them to default
 -- values anyway).
 loadArchive :: GHC.NameCacheUpdater -> FilePath -> IO AsteriusCachedModule
 loadArchive ncu p = do
-  Archive entries <- walkArchiveFile p
+  entries <- walkArchiveFile p
   foldlM
     ( \acc entry -> tryGetBS ncu entry >>= \case
         Left _ -> pure acc
@@ -133,9 +80,9 @@ getMany fn = do
     then return []
     else (:) <$> fn <*> getMany fn
 
-getArchive :: Get Archive
-getArchive = getArchMagic *> (Archive <$> getMany getEntry)
+getArchive :: Get [BS.ByteString]
+getArchive = getArchMagic *> getMany getEntry
 
-walkArchiveFile :: FilePath -> IO Archive
+walkArchiveFile :: FilePath -> IO [BS.ByteString]
 walkArchiveFile path =
   runGet getArchive . LBS.fromChunks . pure <$> BS.readFile path
