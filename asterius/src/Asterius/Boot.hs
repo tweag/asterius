@@ -150,7 +150,7 @@ bootRTSCmm BootArgs {..} =
         obj_paths <- readIORef obj_paths_ref
         callProcess
           "ar" $
-          ["r", obj_topdir </> "rts" </> "libHSrts.a"] <> obj_paths
+          ["qDS", obj_topdir </> "rts" </> "libHSrts.a"] <> obj_paths
   where
     rts_path = bootLibsPath </> "rts"
     obj_topdir = bootDir </> "asterius_lib"
