@@ -127,13 +127,6 @@ executables:
     dependencies:
       - asterius
 
-  ahc-ar:
-    source-dirs: app
-    main: ahc-ar.hs
-    ghc-options: *exe-ghc-options
-    dependencies:
-      - asterius
-
   ahc-boot:
     source-dirs: app
     main: ahc-boot.hs

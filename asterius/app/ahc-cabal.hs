@@ -20,8 +20,6 @@ main = do
   writeFile ahc_cabal_config_path $
     "install-dirs global\n  prefix: "
       <> ahcLibDir
-      <> "\nprogram-locations\n  ar-location: "
-      <> ahcAr
       <> "\nprogram-default-options\n  hsc2hs-options: --cross-compile"
       <> "\nwith-compiler: "
       <> ahc

@@ -12,7 +12,7 @@
  ("ld supports filelist", "NO"),
  ("ld is GNU ld", "YES"),
  ("ar command", "ar"),
- ("ar flags", "q"),
+ ("ar flags", "qDS"),
  ("ar supports at file", "YES"),
  ("ranlib command", "ranlib"),
  ("otool command", "otool"),

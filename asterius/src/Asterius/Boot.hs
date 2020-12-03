@@ -69,7 +69,6 @@ defaultBootArgs = BootArgs
        "--ipid=$pkg",
        "--with-ghc=" <> ahc,
        "--with-ghc-pkg=" <> ahcPkg,
-       "--with-ar=" <> ahcAr,
        "--hsc2hs-option=--cross-compile",
        "--ghc-option=-v1",
        "--ghc-option=-dsuppress-ticks"
@@ -149,14 +148,9 @@ bootRTSCmm BootArgs {..} =
           )
       liftIO $ do
         obj_paths <- readIORef obj_paths_ref
-        tmpdir <- getTemporaryDirectory
-        (rsp_path, rsp_h) <- openTempFile tmpdir "ar.rsp"
-        hPutStr rsp_h $ unlines obj_paths
-        hClose rsp_h
         callProcess
-          "ahc-ar"
-          [obj_topdir </> "rts" </> "libHSrts.a", '@' : rsp_path]
-        removeFile rsp_path
+          "ar" $
+          ["qDS", obj_topdir </> "rts" </> "libHSrts.a"] <> obj_paths
   where
     rts_path = bootLibsPath </> "rts"
     obj_topdir = bootDir </> "asterius_lib"
