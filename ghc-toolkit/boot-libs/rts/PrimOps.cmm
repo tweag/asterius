@@ -930,7 +930,7 @@ stg_forkzh ( gcptr closure )
     ("ptr" threadid) = ccall createIOThread( closure "ptr" );
 #else
     ("ptr" threadid) = ccall createIOThread( MyCapability() "ptr",
-                                  RtsFlags_GcFlags_initialStkSize(RtsFlags),
+                                  TO_W_(RtsFlags_GcFlags_initialStkSize(RtsFlags)),
                                   closure "ptr");
 #endif
 
@@ -957,8 +957,9 @@ again: MAYBE_GC(again);
 #if defined(ASTERIUS)
     ("ptr" threadid) = ccall createIOThread( closure "ptr" );
 #else
-    ("ptr" threadid) = ccall createIOThread( MyCapability() "ptr",
-                                  RtsFlags_GcFlags_initialStkSize(RtsFlags),
+    ("ptr" threadid) = ccall createIOThread(
+        MyCapability() "ptr",
+        TO_W_(RtsFlags_GcFlags_initialStkSize(RtsFlags)),
                                   closure "ptr");
 #endif
 
