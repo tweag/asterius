@@ -315,7 +315,7 @@ jobs:
       - name: setup-python
         uses: actions/setup-python@v2
         with:
-          python-version: 3.9.0
+          python-version: 3.9.1
 
       - name: setup-node-15
         uses: actions/setup-node@v2-beta
