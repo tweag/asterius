@@ -2,7 +2,7 @@ FROM debian:sid
 
 ARG DEBIAN_FRONTEND=noninteractive
 
-ARG NODE_VER=15.3.0
+ARG NODE_VER=15.4.0
 
 ENV \
   BROWSER=echo \
