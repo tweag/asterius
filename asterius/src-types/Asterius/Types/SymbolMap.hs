@@ -80,7 +80,7 @@ instance Semigroup (SymbolMap a) where
   SymbolMap m0 <> SymbolMap m1 =
     SymbolMap $
       IM.unionWithKey
-        (\sym _ _ -> error $ "Duplicate symbol: " <> show sym)
+        (\_ (sym, _) _ -> error $ "Duplicate symbol: " <> show sym)
         m0
         m1
 
