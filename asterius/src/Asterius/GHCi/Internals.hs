@@ -52,6 +52,7 @@ import Data.IORef
 import qualified Data.IntMap.Strict as IM
 import qualified Data.Map.Strict as M
 import Data.Maybe
+import qualified Data.Set as S
 import Data.String
 import qualified ErrUtils as GHC
 import qualified FastString as GHC
@@ -94,6 +95,7 @@ import qualified VarEnv as GHC
 data GHCiState = GHCiState
   { ghciUniqSupply :: GHC.UniqSupply,
     ghciNameCacheUpdater :: GHC.NameCacheUpdater,
+    ghciLoadedLibs :: S.Set FilePath,
     ghciLibs :: AsteriusCachedModule,
     ghciObjs :: M.Map FilePath AsteriusCachedModule,
     ghciCompiledCoreExprs :: IM.IntMap (EntitySymbol, AsteriusCachedModule),
@@ -110,6 +112,7 @@ globalGHCiState = unsafePerformIO $ do
     GHCiState
       { ghciUniqSupply = us,
         ghciNameCacheUpdater = ncu,
+        ghciLoadedLibs = S.empty,
         ghciLibs = mempty,
         ghciObjs = M.empty,
         ghciCompiledCoreExprs = IM.empty,
@@ -199,9 +202,19 @@ asteriusIservCall hsc_env _ msg = do
   case msg of
     GHC.InitLinker -> pure ()
     GHC.LoadDLL _ -> pure Nothing
-    GHC.LoadArchive p -> modifyMVar_ globalGHCiState $ \s -> do
-      lib <- loadArchive (ghciNameCacheUpdater s) p
-      evaluate s {ghciLibs = lib <> ghciLibs s}
+    GHC.LoadArchive p -> modifyMVar_ globalGHCiState $ \s ->
+      if p `S.member` ghciLoadedLibs s
+        then pure s
+        else do
+          lib <-
+            loadArchive
+              (ghciNameCacheUpdater s)
+              p
+          evaluate
+            s
+              { ghciLoadedLibs = S.insert p (ghciLoadedLibs s),
+                ghciLibs = lib <> ghciLibs s
+              }
     GHC.LoadObj p -> modifyMVar_ globalGHCiState $ \s -> do
       obj <- getFile (ghciNameCacheUpdater s) p
       evaluate s {ghciObjs = M.insert p obj $ ghciObjs s}
