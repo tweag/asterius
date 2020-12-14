@@ -25,6 +25,7 @@ import qualified Data.Map.Strict as M
 import Data.Maybe
 import Data.Tuple
 import qualified GHC
+import qualified GhcMonad as GHC
 import qualified GhcPlugins as GHC
 import qualified Hooks as GHC
 import Language.Haskell.GHC.Toolkit.Compiler
@@ -41,44 +42,41 @@ frontendPlugin = do
   is_debug <- liftIO $ isJust <$> getEnv "ASTERIUS_DEBUG"
   do
     dflags <- GHC.getSessionDynFlags
-    void $
-      GHC.setSessionDynFlags
-        dflags
-          { GHC.hooks =
-              (GHC.hooks dflags)
-                { GHC.dsForeignsHook = Just asteriusDsForeigns,
-                  GHC.tcForeignImportsHook = Just asteriusTcForeignImports,
-                  GHC.tcForeignExportsHook = Just asteriusTcForeignExports,
-                  GHC.hscCompileCoreExprHook = Just asteriusHscCompileCoreExpr,
-                  GHC.startIServHook = Just asteriusStartIServ,
-                  GHC.iservCallHook = Just asteriusIservCall,
-                  GHC.readIServHook = Just asteriusReadIServ,
-                  GHC.writeIServHook = Just asteriusWriteIServ,
-                  GHC.stopIServHook = Just asteriusStopIServ
-                }
-          }
+    mySetSessionDynFlags
+      dflags
+        { GHC.hooks =
+            (GHC.hooks dflags)
+              { GHC.dsForeignsHook = Just asteriusDsForeigns,
+                GHC.tcForeignImportsHook = Just asteriusTcForeignImports,
+                GHC.tcForeignExportsHook = Just asteriusTcForeignExports,
+                GHC.hscCompileCoreExprHook = Just asteriusHscCompileCoreExpr,
+                GHC.startIServHook = Just asteriusStartIServ,
+                GHC.iservCallHook = Just asteriusIservCall,
+                GHC.readIServHook = Just asteriusReadIServ,
+                GHC.writeIServHook = Just asteriusWriteIServ,
+                GHC.stopIServHook = Just asteriusStopIServ
+              }
+        }
   do
     dflags <- GHC.getSessionDynFlags
-    void $
-      GHC.setSessionDynFlags $
-        dflags
-          { GHC.settings =
-              (GHC.settings dflags)
-                { GHC.sPgm_L = unlit,
-                  GHC.sPgm_l = (ahcLd, []),
-                  GHC.sPgm_i = "false"
-                }
-          }
-          `GHC.gopt_set` GHC.Opt_EagerBlackHoling
-          `GHC.gopt_set` GHC.Opt_ExternalInterpreter
+    mySetSessionDynFlags $
+      dflags
+        { GHC.settings =
+            (GHC.settings dflags)
+              { GHC.sPgm_L = unlit,
+                GHC.sPgm_l = (ahcLd, []),
+                GHC.sPgm_i = "false"
+              }
+        }
+        `GHC.gopt_set` GHC.Opt_EagerBlackHoling
+        `GHC.gopt_set` GHC.Opt_ExternalInterpreter
   when is_debug $ do
     dflags <- GHC.getSessionDynFlags
-    void $
-      GHC.setSessionDynFlags $
-        dflags
-          `GHC.gopt_set` GHC.Opt_DoCoreLinting
-          `GHC.gopt_set` GHC.Opt_DoStgLinting
-          `GHC.gopt_set` GHC.Opt_DoCmmLinting
+    mySetSessionDynFlags $
+      dflags
+        `GHC.gopt_set` GHC.Opt_DoCoreLinting
+        `GHC.gopt_set` GHC.Opt_DoStgLinting
+        `GHC.gopt_set` GHC.Opt_DoCmmLinting
   do
     spt_entries_map_ref <- liftIO $ newIORef M.empty
     dflags <- GHC.getSessionDynFlags
@@ -115,10 +113,16 @@ frontendPlugin = do
               }
           )
           (GHC.hooks dflags)
-    void $
-      GHC.setSessionDynFlags
-        dflags
-          { GHC.integerLibrary = GHC.IntegerSimple,
-            GHC.tablesNextToCode = False,
-            GHC.hooks = h'
-          }
+    mySetSessionDynFlags
+      dflags
+        { GHC.integerLibrary = GHC.IntegerSimple,
+          GHC.tablesNextToCode = False,
+          GHC.hooks = h'
+        }
+
+mySetSessionDynFlags :: GHC.DynFlags -> GHC.Ghc ()
+mySetSessionDynFlags dflags = GHC.modifySession $ \h ->
+  h
+    { GHC.hsc_dflags = dflags,
+      GHC.hsc_IC = (GHC.hsc_IC h) {GHC.ic_dflags = dflags}
+    }

@@ -73,8 +73,16 @@ import Prelude hiding (filter, lookup)
 
 -- | A map from 'EntitySymbol's to values @a@.
 newtype SymbolMap a = SymbolMap (IM.IntMap (EntitySymbol, a))
-  deriving newtype (Eq, Semigroup, Monoid, NFData)
+  deriving newtype (Eq, Monoid, NFData)
   deriving stock (Data)
+
+instance Semigroup (SymbolMap a) where
+  SymbolMap m0 <> SymbolMap m1 =
+    SymbolMap $
+      IM.unionWithKey
+        (\_ (sym, _) _ -> error $ "Duplicate symbol: " <> show sym)
+        m0
+        m1
 
 instance Show a => Show (SymbolMap a) where
   showsPrec d m =
