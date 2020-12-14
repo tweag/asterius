@@ -61,7 +61,7 @@ RUN \
   mkdir -p ~/.local/bin && \
   curl -L https://github.com/commercialhaskell/stack/releases/download/v2.5.1/stack-2.5.1-linux-x86_64-bin -o ~/.local/bin/stack && \
   chmod +x ~/.local/bin/stack && \
-  curl -L https://oleg.fi/cabal-install-3.4.0.0-rc4/cabal-install-3.4.0.0-x86_64-ubuntu-16.04.tar.xz | tar xJ -C ~/.local/bin --wildcards '*/cabal' && \
+  curl http://oleg.fi/cabal-install-3.4.0.0-rc4/cabal-install-3.4.0.0-x86_64-ubuntu-16.04.tar.xz | tar xJ -C ~/.local/bin --wildcards '*/cabal' && \
   echo "eval \"\$(stack --bash-completion-script stack)\"" >> ~/.bashrc && \
   echo "eval \"\$(direnv hook bash)\"" >> ~/.bashrc && \
   pip3 install \
