@@ -1,6 +1,6 @@
 #!/usr/bin/env stack
 {-
-  stack --resolver lts-16.24 script
+  stack --resolver lts-16.26 script
     --package Cabal
     --package containers
     --package pantry
