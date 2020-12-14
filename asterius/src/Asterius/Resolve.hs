@@ -89,7 +89,7 @@ resolveAsteriusModule pic_is_on debug m_globals_resolved =
                     )
                     func_imports
             )
-            $ rtsFunctionExports debug,
+            $ rtsFunctionExports pic_is_on debug,
         functionTable = func_table,
         tableImport = Nothing,
         tableSlots = table_slots,
