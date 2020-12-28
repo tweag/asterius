@@ -70,7 +70,7 @@ RUN \
 
 RUN \
   stack --no-terminal update && \
-  stack --no-terminal --resolver lts-16.26 install \
+  stack --no-terminal --resolver lts-16.27 install \
     brittany \
     ghcid \
     ormolu \
