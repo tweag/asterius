@@ -2,7 +2,7 @@ FROM debian:sid
 
 ARG DEBIAN_FRONTEND=noninteractive
 
-ARG NODE_VER=15.4.0
+ARG NODE_VER=15.5.0
 
 ENV \
   BROWSER=echo \
@@ -70,7 +70,7 @@ RUN \
 
 RUN \
   stack --no-terminal update && \
-  stack --no-terminal --resolver lts-16.26 install \
+  stack --no-terminal --resolver lts-16.27 install \
     brittany \
     ghcid \
     ormolu \
