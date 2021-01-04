@@ -18,8 +18,8 @@ export class StableNameManager {
     const tag = this.ptr2stable.size;
 
     // https://github.com/ghc/ghc/blob/fe819dd637842fb564524a7cf80612a3673ce14c/includes/rts/storage/Closures.h#L197
-    let stableptr = this.heapalloc.allocatePinned(
-      rtsConstants.sizeof_StgStableName
+    let stableptr = this.heapalloc.allocate(
+      Math.ceil(rtsConstants.sizeof_StgStableName / 8)
     );
     this.memory.i64Store(stableptr, this.SymbolTable.addressOf("stg_STABLE_NAME_info"));
     this.memory.i64Store(stableptr + rtsConstants.offset_StgStableName_sn, tag);
