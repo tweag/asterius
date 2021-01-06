@@ -3,7 +3,7 @@ import * as FunTypes from "./rts.funtypes.mjs";
 import { Memory } from "./rts.memory.mjs";
 import * as rtsConstants from "./rts.constants.mjs";
 import { stg_arg_bitmaps } from "./rts.autoapply.mjs";
-import { JSValManager } from "./rts.stableptr.mjs";
+import { JSValManager } from "./rts.jsval.mjs";
 
 /**
  * Returns the address of the block descriptor
