@@ -1,18 +1,46 @@
-export class StablePtrManager {
-  constructor() {
-    this.spt = new Map();
-    this.lasts = [0, 0];
-    Object.freeze(this);
+export class JSValManager {
+  constructor(components) {
+    this.components = components;
+    this.closure2Val = new Map();
+    Object.seal(this);
   }
 
-  newWithTag(v, tag) {
-    const sp = (++this.lasts[tag] << 1) | tag;
-    this.spt.set(sp, v);
-    return sp;
+  newJSValzh(v) {
+    const c = this.components.heapAlloc.allocate(1);
+    this.components.memory.i64Store(
+      c,
+      this.components.symbolTable.addressOf("stg_JSVAL_info")
+    );
+    this.closure2Val.set(c, v);
+    return c;
+  }
+
+  getJSValzh(c) {
+    if (!this.closure2Val.has(c)) {
+      throw new WebAssembly.RuntimeError(`Invalid JSVal# 0x${c.toString(16)}`);
+    }
+    return this.closure2Val.get(c);
+  }
+
+  freeJSValzh(c) {
+    if (!this.closure2Val.delete(c)) {
+      throw new WebAssembly.RuntimeError(`Invalid JSVal# 0x${c.toString(16)}`);
+    }
+  }
+}
+
+export class StablePtrManager {
+  constructor(components) {
+    this.jsvalManager = new JSValManager(components);
+    this.spt = new Map();
+    this.last = 0;
+    Object.seal(this);
   }
 
   newStablePtr(addr) {
-    return this.newWithTag(addr, 0);
+    const sp = ++this.last;
+    this.spt.set(sp, addr);
+    return sp;
   }
 
   deRefStablePtr(sp) {
@@ -24,23 +52,18 @@ export class StablePtrManager {
   }
 
   newJSVal(v) {
-    return this.newWithTag(v, 1);
+    return this.jsvalManager.newJSValzh(v);
   }
 
-  getJSVal(sp) {
-    return this.deRefStablePtr(sp);
+  getJSVal(c) {
+    return this.jsvalManager.getJSValzh(c);
   }
 
-  freeJSVal(sp) {
-    this.freeStablePtr(sp);
+  freeJSVal(c) {
+    this.jsvalManager.freeJSValzh(c);
   }
 
   hasStablePtr(sp) {
     return this.spt.has(sp);
-  }
-
-  preserveJSVals(sps) {
-    for (const sp of Array.from(this.spt.keys()))
-      if (sp & 1 && !sps.has(sp)) this.freeJSVal(sp);
   }
 }

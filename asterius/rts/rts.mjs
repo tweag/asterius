@@ -86,7 +86,7 @@ export async function newAsteriusInstance(req) {
     __asterius_heapalloc = new HeapAlloc(
       __asterius_memory
     ),
-    __asterius_stableptr_manager = new StablePtrManager(),
+    __asterius_stableptr_manager = new StablePtrManager(__asterius_components),
     __asterius_stablename_manager = new StableNameManager(
       __asterius_memory,
       __asterius_heapalloc,
@@ -105,6 +105,7 @@ export async function newAsteriusInstance(req) {
     __asterius_integer_manager = new IntegerManager(),
     __asterius_time_cbits = new TimeCBits(__asterius_memory, req.targetSpecificModule),
     __asterius_gc = new GC(
+      __asterius_components,
       __asterius_memory,
       __asterius_heapalloc,
       __asterius_stableptr_manager,
@@ -138,6 +139,8 @@ export async function newAsteriusInstance(req) {
 
   __asterius_components.memory = __asterius_memory;
   __asterius_components.exports = __asterius_exports;
+  __asterius_components.heapAlloc = __asterius_heapalloc;
+  __asterius_components.symbolTable = __asterius_symbol_table;
 
   function __asterius_show_I64(x) {
     return `0x${x.toString(16).padStart(8, "0")}`;
