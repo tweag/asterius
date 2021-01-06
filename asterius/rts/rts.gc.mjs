@@ -1090,7 +1090,7 @@ export class GC {
     this.nonMovedObjects.clear();
     this.liveMBlocks.clear();
     this.deadMBlocks.clear();
-    this.liveJSValManager = new JSValManager(components);
+    this.liveJSValManager = new JSValManager(this.components);
     this.reentrancyGuard.exit(1);
   }
 }
