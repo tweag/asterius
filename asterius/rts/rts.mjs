@@ -41,7 +41,7 @@ export async function newAsteriusInstance(req) {
     for (const [k, off] of spt_offset_entries.entries()) {
       absolute_spt_entries.set(
         k,
-        Memory.tagData(__asterius_memory_base.value + off)
+        __asterius_memory_base.value + off
       );
     }
     return absolute_spt_entries;
@@ -52,7 +52,7 @@ export async function newAsteriusInstance(req) {
       const absolute_info_tables = new Set();
       for (const off of offset_info_tables.keys()) {
         absolute_info_tables.add(
-          Memory.tagData(__asterius_memory_base.value + off)
+          __asterius_memory_base.value + off
         );
       }
       return absolute_info_tables;
@@ -242,7 +242,7 @@ export async function newAsteriusInstance(req) {
         f
       ] = __asterius_exports.newHaskellCallback(
         __asterius_stableptr_manager.newStablePtr(
-          Memory.tagData(__asterius_memory_base.value + off)
+         __asterius_memory_base.value + off
         ),
         a,
         r,

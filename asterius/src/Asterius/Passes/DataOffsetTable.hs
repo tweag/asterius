@@ -116,10 +116,8 @@ makeWasmApplyRelocs fn_statics_len ss_statics_len = runEDSL "__wasm_apply_relocs
     let off = loadI64 (symbol "__asterius_fn_segment" `addInt64` getLVal i) 0
     putLVal loc $
       (memory_base `addInt64` off)
-        `orInt64` ConstI64 (dataTag `shiftL` 32)
     storeI64 (getLVal loc) 0 $
       (table_base `addInt64` loadI64 (getLVal loc) 0)
-        `orInt64` ConstI64 (functionTag `shiftL` 32)
     putLVal i (getLVal i `addInt64` ConstI64 8)
   -- Fix the static offsets second
   putLVal i (ConstI64 0)
@@ -127,10 +125,8 @@ makeWasmApplyRelocs fn_statics_len ss_statics_len = runEDSL "__wasm_apply_relocs
     let off = loadI64 (symbol "__asterius_ss_segment" `addInt64` getLVal i) 0
     putLVal loc $
       (memory_base `addInt64` off)
-        `orInt64` ConstI64 (dataTag `shiftL` 32)
     storeI64 (getLVal loc) 0 $
       (memory_base `addInt64` loadI64 (getLVal loc) 0)
-        `orInt64` ConstI64 (dataTag `shiftL` 32)
     putLVal i (getLVal i `addInt64` ConstI64 8)
 
 -- | Given the offset of a static and the static itself, compute the

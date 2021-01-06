@@ -17,16 +17,6 @@ export class MemoryTrap {
   }
 
   trap(sym, p) {
-    const tag = Memory.getTag(p);
-    if (tag != rtsConstants.dataTag) {
-      const err = new WebAssembly.RuntimeError(
-        `Invalid address ${showI64(p)} accessed in ${this.symbolLookupTable.get(
-          Number(sym)
-        )}`
-      );
-      this.logger.logError(err);
-      throw err;
-    }
   }
 
   loadI8(sym, bp, o) {
