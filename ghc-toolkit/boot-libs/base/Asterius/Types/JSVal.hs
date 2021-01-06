@@ -28,7 +28,7 @@ instance Ord JSVal where
 freeJSVal :: JSVal -> IO ()
 freeJSVal (JSVal sn) = js_freeJSVal sn
 
-foreign import javascript unsafe "__asterius_jsffi.freeJSVal($1)" js_freeJSVal :: JSVal# -> IO ()
+foreign import javascript unsafe "__asterius_jsffi.freeJSValzh($1)" js_freeJSVal :: JSVal# -> IO ()
 
 foreign import javascript unsafe "$1 === $2" js_eqJSVal :: JSVal -> JSVal -> Bool
 

@@ -3,7 +3,7 @@ import * as FunTypes from "./rts.funtypes.mjs";
 import { Memory } from "./rts.memory.mjs";
 import * as rtsConstants from "./rts.constants.mjs";
 import { stg_arg_bitmaps } from "./rts.autoapply.mjs";
-import { JSValManager } from "./rts.stableptr.mjs";
+import { JSValManager } from "./rts.jsval.mjs";
 
 /**
  * Returns the address of the block descriptor
@@ -364,7 +364,7 @@ export class GC {
         if (info === this.symbolTable.addressOf("stg_JSVAL_info")) {
           this.liveJSValManager.closure2Val.set(
             dest_c,
-            this.stablePtrManager.jsvalManager.getJSValzh(untagged_c)
+            this.components.jsvalManager.getJSValzh(untagged_c)
           );
         }
 
@@ -1085,7 +1085,7 @@ export class GC {
     // allocate a new nursery
     this.updateNursery();
     // garbage collect unused JSVals
-    this.stablePtrManager.jsvalManager = this.liveJSValManager;
+    this.components.jsvalManager = this.liveJSValManager;
     // cleanup
     this.nonMovedObjects.clear();
     this.liveMBlocks.clear();
