@@ -16,7 +16,7 @@ function decodeTys(arr, tag) {
 function decodeRtsMk(e, ty) {
   switch (ty) {
     case "JSVal": {
-      return v => e.rts_mkJSVal(e.context.stablePtrManager.newJSVal(v));
+      return v => e.rts_mkJSVal(e.context.components.jsvalManager.newJSValzh(v));
     }
     default: {
       const f = `rts_mk${ty}`;
@@ -28,7 +28,7 @@ function decodeRtsMk(e, ty) {
 function decodeRtsGet(e, ty) {
   switch (ty) {
     case "JSVal": {
-      return p => e.context.stablePtrManager.getJSVal(e.rts_getJSVal(p));
+      return p => e.context.components.jsvalManager.getJSValzh(e.rts_getJSVal(p));
     }
     default: {
       const f = `rts_get${ty}`;
@@ -39,6 +39,7 @@ function decodeRtsGet(e, ty) {
 
 export class Exports {
   constructor(
+    components,
     memory,
     reentrancy_guard,
     symbol_table,
@@ -46,6 +47,7 @@ export class Exports {
     stableptr_manager
   ) {
     this.context = Object.freeze({
+      components: components,
       memory: memory,
       reentrancyGuard: reentrancy_guard,
       symbolTable: symbol_table,
@@ -107,11 +109,11 @@ export class Exports {
   }
 
   freeHaskellCallback(sn) {
-    const cb = this.context.stablePtrManager.getJSVal(sn);
+    const cb = this.context.components.jsvalManager.getJSValzh(sn);
     this.context.stablePtrManager.freeStablePtr(
       this.context.callbackStablePtrs.get(cb)
     );
     this.context.callbackStablePtrs.delete(cb);
-    this.context.stablePtrManager.freeJSVal(sn);
+    this.context.components.jsvalManager.freeJSValzh(sn);
   }
 }

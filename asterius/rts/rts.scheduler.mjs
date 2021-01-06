@@ -9,7 +9,8 @@ import * as rtsConstants from "./rts.constants.mjs";
  *
  */
 export class Scheduler {
-  constructor(memory, symbol_table, stablePtrManager) {
+  constructor(components, memory, symbol_table, stablePtrManager) {
+    this.components = components;
     this.memory = memory;
     this.symbolTable = symbol_table;
     this.lastTid = 0;
@@ -271,7 +272,7 @@ export class Scheduler {
               "base_AsteriusziTypesziJSException_mkJSException_closure"
             ),
             this.exports.rts_mkJSVal(
-              this.stablePtrManager.newJSVal(tso_info.ffiRetErr)
+              this.components.jsvalManager.newJSValzh(tso_info.ffiRetErr)
             )
           );
         this.memory.i64Store(stackobj + rtsConstants.offset_StgStack_sp, sp);
@@ -287,7 +288,7 @@ export class Scheduler {
           }
           case 1: {
             // JSVal
-            const ptr = this.stablePtrManager.newJSVal(tso_info.ffiRet);
+            const ptr = this.components.jsvalManager.newJSValzh(tso_info.ffiRet);
             //console.log(`Restore after FFI with value: ${tso_info.ffiRet} with type ${typeof tso_info.ffiRet} constructor ${tso_info.ffiRet.constructor} as ${ptr}`);
             this.memory.i64Store(
               this.symbolTable.addressOf("MainCapability") +
@@ -359,8 +360,8 @@ export class Scheduler {
   }
 
   tsoReportException(tso, v) {
-    const err = this.stablePtrManager.getJSVal(v);
-    this.stablePtrManager.freeJSVal(v);
+    const err = this.components.jsvalManager.getJSValzh(v);
+    this.components.jsvalManager.freeJSValzh(v);
     const tid = this.getTSOid(tso);
     this.tsos.get(tid).retError = err;
   }

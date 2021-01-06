@@ -255,7 +255,7 @@ generateFFIFunctionImports FFIMarshalState {..} =
 -- | Generate FFI import lambda
 --
 -- Unsafe:
---    * Return a JSVal: (_1,_2,...,_N) => __asterius_jsffi.newJSVal(code)
+--    * Return a JSVal: (_1,_2,...,_N) => __asterius_jsffi.newJSValzh(code)
 --    * Otherwise:      (_1,_2,...,_N) => (code)
 -- Safe:
 --    * (_1,_2,...,_N) => __asterius_jsffi.returnFFIPromise((async () => (code))().then(v => [returnTypes,v]))
@@ -288,7 +288,7 @@ generateFFIImportLambda FFIImportDecl {ffiFunctionType = FFIFunctionType {..}, .
             FFIJSValRep ->
               "$"
                 <> intDec i
-                <> " = __asterius_jsffi.getJSVal($"
+                <> " = __asterius_jsffi.getJSValzh($"
                 <> intDec i
                 <> ");"
             _ -> mempty
@@ -300,7 +300,7 @@ generateFFIImportLambda FFIImportDecl {ffiFunctionType = FFIFunctionType {..}, .
         <> "return "
         <> ( case map ffiValueTypeRep ffiResultTypes of
                [FFIJSValRep] ->
-                 "__asterius_jsffi.newJSVal("
+                 "__asterius_jsffi.newJSValzh("
                    <> byteString ffiSourceText
                    <> ")"
                _ -> "(" <> byteString ffiSourceText <> ")"

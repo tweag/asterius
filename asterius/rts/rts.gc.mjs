@@ -364,7 +364,7 @@ export class GC {
         if (info === this.symbolTable.addressOf("stg_JSVAL_info")) {
           this.liveJSValManager.closure2Val.set(
             dest_c,
-            this.stablePtrManager.jsvalManager.getJSValzh(untagged_c)
+            this.components.jsvalManager.getJSValzh(untagged_c)
           );
         }
 
@@ -1085,7 +1085,7 @@ export class GC {
     // allocate a new nursery
     this.updateNursery();
     // garbage collect unused JSVals
-    this.stablePtrManager.jsvalManager = this.liveJSValManager;
+    this.components.jsvalManager = this.liveJSValManager;
     // cleanup
     this.nonMovedObjects.clear();
     this.liveMBlocks.clear();
