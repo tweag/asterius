@@ -1,5 +1,7 @@
 module Asterius.Internals.MagicNumber
-  ( invalidAddress,
+  ( dataTag,
+    functionTag,
+    invalidAddress,
     defaultTableBase,
     defaultMemoryBase,
     mkStaticDataAddress,
@@ -7,8 +9,15 @@ module Asterius.Internals.MagicNumber
   )
 where
 
+import Data.Bits
 import Data.Int
 import Data.Word
+
+dataTag :: Int64
+dataTag = 0
+
+functionTag :: Int64
+functionTag = 0
 
 invalidAddress :: Int64
 invalidAddress = 0x001fffffffff0000
