@@ -92,14 +92,12 @@ import Asterius.EDSL.BinaryOp
 import Asterius.EDSL.LibC
 import Asterius.EDSL.UnaryOp
 import Asterius.Internals
-import Asterius.Internals.MagicNumber
 import Asterius.Passes.All
 import Asterius.Passes.GlobalRegs
 import Asterius.Types
 import qualified Asterius.Types.SymbolMap as SM
 import Bag
 import Control.Monad.State.Strict
-import Data.Bits
 import qualified Data.ByteString as BS
 import Data.Traversable
 import Data.Word
@@ -353,12 +351,10 @@ dynamicTableBase =
 mkDynamicDataAddress :: Word32 -> Expression
 mkDynamicDataAddress off =
   extendUInt32 (dynamicMemoryBase `addInt32` ConstI32 (fromIntegral off))
-    `orInt64` ConstI64 (dataTag `shiftL` 32)
 
 mkDynamicFunctionAddress :: Word32 -> Expression
 mkDynamicFunctionAddress off =
   extendUInt32 (dynamicTableBase `addInt32` ConstI32 (fromIntegral off))
-    `orInt64` ConstI64 (functionTag `shiftL` 32)
 
 call :: EntitySymbol -> [Expression] -> EDSL ()
 call f xs =

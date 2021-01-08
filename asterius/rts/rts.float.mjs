@@ -248,7 +248,7 @@ export class FloatCBits {
 
   __decodeDouble_2Int(p_man_sign, p_man_high, p_man_low, p_exp, dbl) {
     const [man_sign, man_high, man_low, exp] = this.__decodeDouble_2IntJS(dbl);
-    this.memory.dataView.setBigInt64(Memory.unTag(p_man_sign), BigInt(man_sign), true);
+    this.memory.dataView.setBigInt64(p_man_sign, BigInt(man_sign), true);
     this.memory.i64Store(p_man_high, man_high);
     this.memory.i64Store(p_man_low, man_low);
     this.memory.i64Store(p_exp, exp);

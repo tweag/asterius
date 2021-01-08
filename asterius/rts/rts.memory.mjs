@@ -4,14 +4,14 @@ function checkNullAndTag(p) {
   if (!p) {
     throw new WebAssembly.RuntimeError(`Allocator returned NULL`);
   }
-  return Memory.tagData(p);
+  return p;
 }
 
 /**
  * Class acting as the low-level interface to Wasm memory.
  * It mainly provides methods to load/store data in memory
  * (e.g. {@link Memory#i64Load}, {@link Memory#i64Store}),
- * static methods to handle pointer tagging (e.g. {@link Memory#getTag},
+ * static methods to handle pointer tagging (e.g.
  * {@link Memory#getDynTag}), and a MBlock allocator
  * ({@link Memory#getMBlocks} and {@link Memory#freeMBlocks}).
  */
@@ -59,23 +59,6 @@ export class Memory {
     this.staticMBlocks = static_mblocks;
   }
 
-  static unTag(p) {
-    return Number(p) & 0xffffffff;
-  }
-
-  static getTag(p) {
-    //return Number(BigInt(p) >> BigInt(32));
-    return Math.floor(Number(p) / 2 ** 32);
-  }
-
-  static tagData(p) {
-    return rtsConstants.dataTag * 2 ** 32 + Number(p);
-  }
-
-  static tagFunction(p) {
-    return rtsConstants.functionTag * 2 ** 32 + Number(p);
-  }
-
   static unDynTag(p) {
     const np = Number(p);
     return np - (np & 7);
@@ -91,83 +74,83 @@ export class Memory {
   }
 
   i8Load(p) {
-    return this.i8View[Memory.unTag(p)];
+    return this.i8View[p];
   }
 
   i8Store(p, v) {
-    this.i8View[Memory.unTag(p)] = Number(v);
+    this.i8View[p] = Number(v);
   }
 
   i16Load(p) {
-    return this.dataView.getUint16(Memory.unTag(p), true);
+    return this.dataView.getUint16(p, true);
   }
 
   i16Store(p, v) {
-    this.dataView.setUint16(Memory.unTag(p), Number(v), true);
+    this.dataView.setUint16(p, Number(v), true);
   }
 
   i32Load(p) {
-    return this.dataView.getUint32(Memory.unTag(p), true);
+    return this.dataView.getUint32(p, true);
   }
 
   i32Store(p, v) {
-    this.dataView.setUint32(Memory.unTag(p), Number(v), true);
+    this.dataView.setUint32(p, Number(v), true);
   }
 
   i64Load(p) {
-    return this.dataView.getBigUint64(Memory.unTag(p), true);
+    return this.dataView.getBigUint64(p, true);
   }
 
   i64Store(p, v) {
-    this.dataView.setBigUint64(Memory.unTag(p), BigInt(v), true);
+    this.dataView.setBigUint64(p, BigInt(v), true);
   }
 
   f32Load(p) {
-    return this.dataView.getFloat32(Memory.unTag(p), true);
+    return this.dataView.getFloat32(p, true);
   }
 
   f32Store(p, v) {
-    this.dataView.setFloat32(Memory.unTag(p), Number(v), true);
+    this.dataView.setFloat32(p, Number(v), true);
   }
 
   f64Load(p) {
-    return this.dataView.getFloat64(Memory.unTag(p), true);
+    return this.dataView.getFloat64(p, true);
   }
 
   f64Store(p, v) {
-    this.dataView.setFloat64(Memory.unTag(p), Number(v), true);
+    this.dataView.setFloat64(p, Number(v), true);
   }
 
   i32LoadS8(p) {
-    return this.dataView.getInt8(Memory.unTag(p));
+    return this.dataView.getInt8(p);
   }
 
   i32LoadU8(p) {
-    return this.dataView.getUint8(Memory.unTag(p));
+    return this.dataView.getUint8(p);
   }
 
   i32LoadS16(p) {
-    return this.dataView.getInt16(Memory.unTag(p), true);
+    return this.dataView.getInt16(p, true);
   }
 
   i32LoadU16(p) {
-    return this.dataView.getUint16(Memory.unTag(p), true);
+    return this.dataView.getUint16(p, true);
   }
 
   i64LoadS8(p) {
-    return BigInt(this.dataView.getInt8(Memory.unTag(p)));
+    return BigInt(this.dataView.getInt8(p));
   }
 
   i64LoadU8(p) {
-    return BigInt(this.dataView.getUint8(Memory.unTag(p)));
+    return BigInt(this.dataView.getUint8(p));
   }
 
   i64LoadS16(p) {
-    return BigInt(this.dataView.getInt16(Memory.unTag(p), true));
+    return BigInt(this.dataView.getInt16(p, true));
   }
 
   i64LoadU16(p) {
-    return BigInt(this.dataView.getUint16(Memory.unTag(p), true));
+    return BigInt(this.dataView.getUint16(p, true));
   }
 
   /**
@@ -179,7 +162,7 @@ export class Memory {
    */
   heapAlloced(p) {
     return (
-      Memory.unTag(p) >= this.staticMBlocks << rtsConstants.mblock_size_log2
+      p >= this.staticMBlocks << rtsConstants.mblock_size_log2
     );
   }
 
@@ -201,19 +184,19 @@ export class Memory {
    * Frees MBlocks starting at address {@param p}.
    */
   freeMBlocks(p) {
-    this.components.exports.free(Memory.unTag(p));
+    this.components.exports.free(p);
   }
 
   expose(p, len, t) {
-    return new t(this.memory.buffer, Memory.unTag(p), len);
+    return new t(this.memory.buffer, p, len);
   }
 
   strlen(_str) {
-    return this.components.exports.strlen(Memory.unTag(_str));
+    return this.components.exports.strlen(_str);
   }
 
   strLoad(_str) {
-    let p = Memory.unTag(_str);
+    let p = _str;
     let s = "";
     let i = 0;
 
@@ -228,15 +211,11 @@ export class Memory {
   }
 
   memchr(_ptr, val, num) {
-    return Memory.tagData(
-      this.components.exports.memchr(Memory.unTag(_ptr), val, num)
-    );
+    return this.components.exports.memchr(_ptr, val, num);
   }
 
   memcpy(_dst, _src, n) {
-    return Memory.tagData(
-      this.components.exports.memcpy(Memory.unTag(_dst), Memory.unTag(_src), n)
-    );
+    return this.components.exports.memcpy(_dst, _src, n);
   }
 
   memset(_dst, c, n, size = 1) {

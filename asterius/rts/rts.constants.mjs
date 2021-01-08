@@ -1,5 +1,3 @@
-export const dataTag = 0x1ffff7;
-export const functionTag = 0x1fffed;
 export const mblock_size = 0x100000;
 export const mblock_size_log2 = 0x14;
 export const block_size = 0x1000;

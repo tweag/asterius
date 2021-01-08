@@ -37,7 +37,7 @@ export class FS {
   }
 
   read(fd, buf, count) {
-    const p = Memory.unTag(buf);
+    const p = buf;
     return fs.readSync(fd, this.components.memory.i8View, p, count, null);
   }
 
