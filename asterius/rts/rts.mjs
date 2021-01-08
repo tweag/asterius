@@ -6,6 +6,7 @@ import { Tracer } from "./rts.tracing.mjs";
 import { Memory } from "./rts.memory.mjs";
 import { MemoryTrap } from "./rts.memorytrap.mjs";
 import { HeapAlloc } from "./rts.heapalloc.mjs";
+import { JSValManager } from "./rts.jsval.mjs";
 import { StablePtrManager } from "./rts.stableptr.mjs";
 import { StableNameManager } from "./rts.stablename.mjs";
 import { StaticPtrManager } from "./rts.staticptr.mjs";
@@ -86,6 +87,7 @@ export async function newAsteriusInstance(req) {
     __asterius_heapalloc = new HeapAlloc(
       __asterius_memory
     ),
+    __asterius_jsval_manager = new JSValManager(__asterius_components),
     __asterius_stableptr_manager = new StablePtrManager(),
     __asterius_stablename_manager = new StableNameManager(
       __asterius_memory,
@@ -98,6 +100,7 @@ export async function newAsteriusInstance(req) {
       __asterius_spt_entries
     ),
     __asterius_scheduler = new Scheduler(
+      __asterius_components,
       __asterius_memory,
       __asterius_symbol_table,
       __asterius_stableptr_manager
@@ -105,6 +108,7 @@ export async function newAsteriusInstance(req) {
     __asterius_integer_manager = new IntegerManager(),
     __asterius_time_cbits = new TimeCBits(__asterius_memory, req.targetSpecificModule),
     __asterius_gc = new GC(
+      __asterius_components,
       __asterius_memory,
       __asterius_heapalloc,
       __asterius_stableptr_manager,
@@ -120,6 +124,7 @@ export async function newAsteriusInstance(req) {
     __asterius_messages = new Messages(__asterius_memory, __asterius_fs),
     __asterius_unicode = new Unicode(),
     __asterius_exports = new Exports(
+      __asterius_components,
       __asterius_memory,
       __asterius_reentrancy_guard,
       __asterius_symbol_table,
@@ -138,6 +143,9 @@ export async function newAsteriusInstance(req) {
 
   __asterius_components.memory = __asterius_memory;
   __asterius_components.exports = __asterius_exports;
+  __asterius_components.heapAlloc = __asterius_heapalloc;
+  __asterius_components.symbolTable = __asterius_symbol_table;
+  __asterius_components.jsvalManager = __asterius_jsval_manager;
 
   function __asterius_show_I64(x) {
     return `0x${x.toString(16).padStart(8, "0")}`;
@@ -145,9 +153,9 @@ export async function newAsteriusInstance(req) {
 
   const __asterius_jsffi_instance = {
     exposeMemory: (p, len, t = Uint8Array) => __asterius_memory.expose(p, len, t),
-    newJSVal: v => __asterius_stableptr_manager.newJSVal(v),
-    getJSVal: i => __asterius_stableptr_manager.getJSVal(i),
-    freeJSVal: i => __asterius_stableptr_manager.freeJSVal(i),
+    newJSValzh: v => __asterius_components.jsvalManager.newJSValzh(v),
+    getJSValzh: i => __asterius_components.jsvalManager.getJSValzh(i),
+    freeJSValzh: i => __asterius_components.jsvalManager.freeJSValzh(i),
     fs: __asterius_fs,
     stdio: {
       stdout: () => __asterius_fs.history(1),
@@ -207,7 +215,7 @@ export async function newAsteriusInstance(req) {
               ? () => __asterius_exports.freeHaskellCallback(sn[0])
               : () => {}
           );
-          sn[0] = __asterius_stableptr_manager.newJSVal(cb);
+          sn[0] = __asterius_components.jsvalManager.newJSValzh(cb);
           return sn[0];
         },
         freeHaskellCallback: sn => __asterius_exports.freeHaskellCallback(sn)

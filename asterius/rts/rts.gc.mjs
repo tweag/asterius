@@ -3,6 +3,7 @@ import * as FunTypes from "./rts.funtypes.mjs";
 import { Memory } from "./rts.memory.mjs";
 import * as rtsConstants from "./rts.constants.mjs";
 import { stg_arg_bitmaps } from "./rts.autoapply.mjs";
+import { JSValManager } from "./rts.jsval.mjs";
 
 /**
  * Returns the address of the block descriptor
@@ -19,6 +20,7 @@ function bdescr(c) {
  */
 export class GC {
   constructor(
+    components,
     memory,
     heapalloc,
     stableptr_manager,
@@ -30,6 +32,7 @@ export class GC {
     yolo,
     gcThreshold
   ) {
+    this.components = components;
     this.memory = memory;
     this.heapAlloc = heapalloc;
     this.stablePtrManager = stableptr_manager;
@@ -94,12 +97,11 @@ export class GC {
     this.deadMBlocks = new Set();
     /**
      * At each garbage collection, the live JSVals encountered are
-     * recorded in {@link GC#liveJSVals}, and then handled separately
-     * by {@link StablePtrManager}.
-     * @name GC#liveJSVals
+     * recorded in {@link GC#liveJSValManager}.
+     * @name GC#liveJSValManager
      */
-    this.liveJSVals = new Set();
-    Object.freeze(this);
+    this.liveJSValManager = new JSValManager(components);
+    Object.seal(this);
   }
 
   /**
@@ -248,16 +250,9 @@ export class GC {
    * @param c The memory address of the closure to evacuate.
    */
   evacuateClosure(c) {
-    if (!Memory.getTag(c)) {
-      // c is the address of a JSVal
-      if (!(Number(c) & 1))
-        throw new WebAssembly.RuntimeError(`Illegal JSVal 0x${c.toString(16)}`);
-      this.liveJSVals.add(Number(c));
-      return c;
-    }
     const tag = Memory.getDynTag(c),
       untagged_c = Memory.unDynTag(c);
-    let info = Number(this.memory.i64Load(untagged_c));
+    const info = Number(this.memory.i64Load(untagged_c));
 
     if (info % 2) {
       // The info header has already been overwritten with
@@ -365,6 +360,14 @@ export class GC {
             info + rtsConstants.offset_StgInfoTable_layout + 4
           );
         dest_c = this.copyClosure(untagged_c, (1 + ptrs + non_ptrs) << 3);
+
+        if (info === this.symbolTable.addressOf("stg_JSVAL_info")) {
+          this.liveJSValManager.closure2Val.set(
+            dest_c,
+            this.components.jsvalManager.getJSValzh(untagged_c)
+          );
+        }
+
         break;
       }
       case ClosureTypes.THUNK_SELECTOR: {
@@ -1040,8 +1043,9 @@ export class GC {
     }
 
     // Evacuate stable pointers
-    for (const [sp, c] of this.stablePtrManager.spt.entries())
-      if (!(sp & 1)) this.stablePtrManager.spt.set(sp, this.evacuateClosure(c));
+    for (const [sp, c] of this.stablePtrManager.spt.entries()) {
+      this.stablePtrManager.spt.set(sp, this.evacuateClosure(c));
+    }
 
     // Stage the movement of stable pointers.
     // Step 1: Move all the pointers
@@ -1081,12 +1085,12 @@ export class GC {
     // allocate a new nursery
     this.updateNursery();
     // garbage collect unused JSVals
-    this.stablePtrManager.preserveJSVals(this.liveJSVals);
+    this.components.jsvalManager = this.liveJSValManager;
     // cleanup
     this.nonMovedObjects.clear();
     this.liveMBlocks.clear();
     this.deadMBlocks.clear();
-    this.liveJSVals.clear();
+    this.liveJSValManager = new JSValManager(this.components);
     this.reentrancyGuard.exit(1);
   }
 }

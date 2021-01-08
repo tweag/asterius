@@ -359,6 +359,7 @@ Library
 
     cmm-sources:
         cbits/CastFloatWord.cmm
+        cbits/JSVal.cmm
 
     include-dirs: include
     includes:

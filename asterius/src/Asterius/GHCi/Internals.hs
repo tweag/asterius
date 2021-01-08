@@ -380,7 +380,7 @@ asteriusRunTH _ _ q ty loc s ahc_dist_input = withTempDir "asdf" $ \tmp_dir ->
         uint8_arr = "new Uint8Array(" <> toJS (encode loc) <> ")"
         uint8_arr_sn =
           toJS i
-            <> ".exports.context.stablePtrManager.newJSVal("
+            <> ".exports.context.components.jsvalManager.newJSValzh("
             <> uint8_arr
             <> ")"
         uint8_arr_closure =
