@@ -133,7 +133,7 @@ export class ExceptionHelper {
    */
   barf(s) {
     if (s) {
-      const v0 = this.memory.i8View.subarray(Memory.unTag(s)),
+      const v0 = this.memory.i8View.subarray(s),
         len = v0.indexOf(0),
         v1 = v0.subarray(0, len),
         r = this.decoder.decode(v1);
