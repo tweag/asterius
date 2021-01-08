@@ -300,7 +300,6 @@ base16
 base16-bytestring
 base16-lens
 base32
-base32-lens
 base32string
 base58string
 base64
