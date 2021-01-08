@@ -38,7 +38,7 @@ ARG DEBIAN_FRONTEND
 ARG USERNAME
 ARG UID
 
-ARG NODE_VER=15.5.0
+ARG NODE_VER=15.5.1
 
 ENV \
   BROWSER=echo \
@@ -98,7 +98,7 @@ RUN \
 
 RUN \
   stack --no-terminal update && \
-  stack --no-terminal --resolver lts-16.27 install \
+  stack --no-terminal --resolver lts-16.28 install \
     brittany \
     ghcid \
     ormolu \
