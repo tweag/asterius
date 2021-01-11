@@ -54,32 +54,16 @@ loadTheWorld LinkTask {..} = do
 rtsUsedSymbols :: SS.SymbolSet
 rtsUsedSymbols =
   SS.fromList
-    [ "barf",
-      "base_AsteriusziTopHandler_runIO_closure",
+    [ "base_AsteriusziTopHandler_runIO_closure",
       "base_AsteriusziTopHandler_runNonIO_closure",
       "base_AsteriusziTypesziJSException_mkJSException_closure",
-      "base_GHCziPtr_Ptr_con_info",
-      "ghczmprim_GHCziTypes_Czh_con_info",
-      "ghczmprim_GHCziTypes_Dzh_con_info",
-      "ghczmprim_GHCziTypes_False_closure",
-      "ghczmprim_GHCziTypes_Izh_con_info",
-      "ghczmprim_GHCziTypes_True_closure",
-      "ghczmprim_GHCziTypes_Wzh_con_info",
-      "ghczmprim_GHCziTypes_ZC_con_info",
-      "ghczmprim_GHCziTypes_ZMZN_closure",
       "MainCapability",
-      "stg_ARR_WORDS_info",
-      "stg_BLACKHOLE_info",
       "stg_WHITEHOLE_info",
       "stg_IND_info",
-      "stg_DEAD_WEAK_info",
-      "stg_marked_upd_frame_info",
-      "stg_NO_FINALIZER_closure",
       "stg_raise_info",
       "stg_raise_ret_info",
       "stg_JSVAL_info",
-      "stg_STABLE_NAME_info",
-      "stg_WEAK_info"
+      "stg_STABLE_NAME_info"
     ]
 
 rtsPrivateSymbols :: SS.SymbolSet
