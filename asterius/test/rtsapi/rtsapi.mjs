@@ -29,12 +29,6 @@ module
       )
     );
     console.log(i.exports.rts_getInt(i.exports.getTSOret(tid_p1)));
-    console.log(
-      i.exports.rts_getBool(i.symbolTable.addressOf("ghczmprim_GHCziTypes_False_closure"))
-    );
-    console.log(
-      i.exports.rts_getBool(i.symbolTable.addressOf("ghczmprim_GHCziTypes_True_closure"))
-    );
     console.log(i.exports.rts_getBool(i.exports.rts_mkBool(0)));
     console.log(i.exports.rts_getBool(i.exports.rts_mkBool(42)));
     const x0 = Math.random();
