@@ -826,11 +826,18 @@ export class GC {
         this.scavengePointersFirst(c + 8, ptrs);
         return (1 + ptrs + non_ptrs) << 3;
       }
+      case ClosureTypes.MUT_VAR_CLEAN: {
+        this.scavengeClosureAt(c + rtsConstants.offset_StgMutVar_var);
+        return rtsConstants.offset_StgMutVar_var + 8;
+      }
+      case ClosureTypes.MUT_VAR_DIRTY: {
+        this.memory.i64Store(c, this.symbolTable["stg_MUT_VAR_CLEAN_info"]);
+        this.scavengeClosureAt(c + rtsConstants.offset_StgMutVar_var);
+        return rtsConstants.offset_StgMutVar_var + 8;
+      }
       case ClosureTypes.CONSTR:
       case ClosureTypes.CONSTR_NOCAF:
       case ClosureTypes.BLACKHOLE:
-      case ClosureTypes.MUT_VAR_CLEAN:
-      case ClosureTypes.MUT_VAR_DIRTY:
       case ClosureTypes.PRIM:
       case ClosureTypes.MUT_PRIM:
       case ClosureTypes.COMPACT_NFDATA: {
@@ -920,8 +927,14 @@ export class GC {
         this.scavengeClosureAt(c + rtsConstants.offset_StgIndStatic_indirectee);
         return; // size not important, this object won't be moved
       }
-      case ClosureTypes.MVAR_CLEAN:
+      case ClosureTypes.MVAR_CLEAN: {
+        this.scavengeClosureAt(c + rtsConstants.offset_StgMVar_head);
+        this.scavengeClosureAt(c + rtsConstants.offset_StgMVar_tail);
+        this.scavengeClosureAt(c + rtsConstants.offset_StgMVar_value);
+        return rtsConstants.offset_StgMVar_value + 8;
+      }
       case ClosureTypes.MVAR_DIRTY: {
+        this.memory.i64Store(c, this.symbolTable["stg_MVAR_CLEAN_info"]);
         this.scavengeClosureAt(c + rtsConstants.offset_StgMVar_head);
         this.scavengeClosureAt(c + rtsConstants.offset_StgMVar_tail);
         this.scavengeClosureAt(c + rtsConstants.offset_StgMVar_value);
@@ -939,9 +952,29 @@ export class GC {
         );
       }
       case ClosureTypes.MUT_ARR_PTRS_CLEAN:
-      case ClosureTypes.MUT_ARR_PTRS_DIRTY:
-      case ClosureTypes.MUT_ARR_PTRS_FROZEN_DIRTY:
       case ClosureTypes.MUT_ARR_PTRS_FROZEN_CLEAN: {
+        const ptrs = Number(
+          this.memory.i64Load(c + rtsConstants.offset_StgMutArrPtrs_ptrs)
+        );
+        this.scavengePointersFirst(
+          c + rtsConstants.offset_StgMutArrPtrs_payload,
+          ptrs
+        );
+        return rtsConstants.sizeof_StgMutArrPtrs + (ptrs << 3);
+      }
+      case ClosureTypes.MUT_ARR_PTRS_DIRTY: {
+        this.memory.i64Store(c, this.symbolTable["stg_MUT_ARR_PTRS_CLEAN_info"]);
+        const ptrs = Number(
+          this.memory.i64Load(c + rtsConstants.offset_StgMutArrPtrs_ptrs)
+        );
+        this.scavengePointersFirst(
+          c + rtsConstants.offset_StgMutArrPtrs_payload,
+          ptrs
+        );
+        return rtsConstants.sizeof_StgMutArrPtrs + (ptrs << 3);
+      }
+      case ClosureTypes.MUT_ARR_PTRS_FROZEN_DIRTY: {
+        this.memory.i64Store(c, this.symbolTable["stg_MUT_ARR_PTRS_FROZEN_CLEAN_info"]);
         const ptrs = Number(
           this.memory.i64Load(c + rtsConstants.offset_StgMutArrPtrs_ptrs)
         );
@@ -959,10 +992,12 @@ export class GC {
         return rtsConstants.offset_StgWeak_link + 8;
       }
       case ClosureTypes.TSO: {
+        this.memory.i32Store(c + rtsConstants.offset_StgTSO_dirty, 0);
         this.scavengeClosureAt(c + rtsConstants.offset_StgTSO_stackobj);
         return; // size not important, this object won't be moved
       }
       case ClosureTypes.STACK: {
+        this.memory.i32Store(c + rtsConstants.offset_StgStack_dirty, 0);
         const
           stack_size =
             this.memory.i32Load(c + rtsConstants.offset_StgStack_stack_size) << 3,
@@ -972,9 +1007,29 @@ export class GC {
         return rtsConstants.offset_StgStack_stack + stack_size;
       }
       case ClosureTypes.SMALL_MUT_ARR_PTRS_CLEAN:
-      case ClosureTypes.SMALL_MUT_ARR_PTRS_DIRTY:
-      case ClosureTypes.SMALL_MUT_ARR_PTRS_FROZEN_DIRTY:
       case ClosureTypes.SMALL_MUT_ARR_PTRS_FROZEN_CLEAN: {
+        const ptrs = Number(
+          this.memory.i64Load(c + rtsConstants.offset_StgSmallMutArrPtrs_ptrs)
+        );
+        this.scavengePointersFirst(
+          c + rtsConstants.offset_StgSmallMutArrPtrs_payload,
+          ptrs
+        );
+        return rtsConstants.offset_StgSmallMutArrPtrs_payload + (ptrs << 3);
+      }
+      case ClosureTypes.SMALL_MUT_ARR_PTRS_DIRTY: {
+        this.memory.i64Store(c, this.symbolTable["stg_SMALL_MUT_ARR_PTRS_CLEAN_info"]);
+        const ptrs = Number(
+          this.memory.i64Load(c + rtsConstants.offset_StgSmallMutArrPtrs_ptrs)
+        );
+        this.scavengePointersFirst(
+          c + rtsConstants.offset_StgSmallMutArrPtrs_payload,
+          ptrs
+        );
+        return rtsConstants.offset_StgSmallMutArrPtrs_payload + (ptrs << 3);
+      }
+      case ClosureTypes.SMALL_MUT_ARR_PTRS_FROZEN_DIRTY: {
+        this.memory.i64Store(c, this.symbolTable["stg_SMALL_MUT_ARR_PTRS_FROZEN_CLEAN_info"]);
         const ptrs = Number(
           this.memory.i64Load(c + rtsConstants.offset_StgSmallMutArrPtrs_ptrs)
         );

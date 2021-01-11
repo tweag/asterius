@@ -257,6 +257,8 @@ HsInt offset_StgMutArrPtrs_payload() {
   return offsetof(StgMutArrPtrs, payload);
 }
 
+HsInt offset_StgMutVar_var() { return offsetof(StgMutVar, var); }
+
 HsInt offset_StgMVar_head() { return offsetof(StgMVar, head); }
 
 HsInt offset_StgMVar_tail() { return offsetof(StgMVar, tail); }
