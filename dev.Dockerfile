@@ -38,6 +38,7 @@ RUN \
     xdg-utils \
     zlib1g-dev \
     zstd && \
+  curl -o /usr/include/wasm-delegations.h https://raw.githubusercontent.com/WebAssembly/binaryen/version_99/src/wasm-delegations.h && \
   mkdir -p ${WASI_SDK_PATH} && \
   (curl -L https://github.com/TerrorJack/wasi-sdk/releases/download/201202/wasi-sdk-11.9gb368b8b12ee6-linux.tar.gz | tar xz -C ${WASI_SDK_PATH} --strip-components=1) && \
   apt autoremove --purge -y && \
