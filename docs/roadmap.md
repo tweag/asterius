@@ -73,6 +73,42 @@ sync and also useful to regular Haskell developers.
 
 ## Quarterly roadmap
 
+### 2021 Q1
+
+In 2020 Q4 we mainly delivered:
+
+- Use standalone stage-1 GHC API packages and support building Asterius using
+  vanilla GHC.
+- Remove numerous hacks and simplify the codebase, e.g.:
+  - Make `ahc` a proper GHC frontend exe, support `ahc -c` on non-Haskell
+    sources
+  - Use vanilla archives and get rid of custom `ahc-ar`
+- Refactor things incompatible with 32-bit pointer convention, e.g.:
+  - Proper heap layout for `JSVal#` closures
+  - Remove higher 32-bit data/function address tags
+
+In 2021 Q1, the primary goals are:
+
+- Finish transition to 32-bit code generation.
+- Improve C/C++ support, including support for `integer-gmp` and `cbits` in
+  common packages.
+
+The plan to achieving above goals:
+
+- Audit the current code generator & runtime and remove everything incompatible
+  with 32-bit pointer convention.
+- For the time being, favor simplicity/robustness over performance. Some
+  previous optimizations may need to be reverted temporarily to simplify the
+  codebase and reduce the refactoring overhead.
+- Use `wasi-sdk` as the C toolchain to configure the stage-1 GHC and finish the
+  transition.
+
+A longer term goal beyond Q1 is upstreaming Asterius as a proper wasm backend of
+GHC. We need to play well with `wasi-sdk` for this to happen, so another thing
+we're working on in Q1 is: refactor the linker infrastructure to make it
+LLVM-compliant, which means managing non-standard entities (e.g. static
+pointers, JSFFI imports/exports) in a standard-compliant way.
+
 ### 2020 Q4
 
 In 2020 Q3 we mainly delivered:
