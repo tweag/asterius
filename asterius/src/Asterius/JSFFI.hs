@@ -31,9 +31,10 @@ import Language.Haskell.GHC.Toolkit.Constants
 
 recoverWasmWrapperValueType :: FFIValueType -> ValueType
 recoverWasmWrapperValueType FFIValueType {..} = case ffiValueTypeRep of
+  FFIJSValRep -> I64
+  FFIBoolRep -> I32
   FFILiftedRep -> I64
   FFIUnliftedRep -> I64
-  FFIJSValRep -> I64
   FFIIntRep -> I64
   FFIInt8Rep -> I32
   FFIInt16Rep -> I32
@@ -162,9 +163,10 @@ marshalParamLocation _ = error "Asterius.JSFFI.marshalParamLocation"
 
 recoverCmmType :: GHC.DynFlags -> FFIValueType -> GHC.CmmType
 recoverCmmType dflags FFIValueType {..} = case ffiValueTypeRep of
+  FFIJSValRep -> GHC.gcWord dflags
+  FFIBoolRep -> GHC.b32
   FFILiftedRep -> GHC.gcWord dflags
   FFIUnliftedRep -> GHC.gcWord dflags
-  FFIJSValRep -> GHC.gcWord dflags
   FFIIntRep -> GHC.bWord dflags
   FFIInt8Rep -> GHC.b8
   FFIInt16Rep -> GHC.b16

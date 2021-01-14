@@ -23,9 +23,10 @@ ffiJSVal = FFIValueType {ffiValueTypeRep = FFIJSValRep, hsTyCon = "JSVal"}
 
 ffiValueTypeSigned :: FFIValueType -> Bool
 ffiValueTypeSigned FFIValueType {..} = case ffiValueTypeRep of
+  FFIJSValRep -> False
+  FFIBoolRep -> False
   FFILiftedRep -> False
   FFIUnliftedRep -> False
-  FFIJSValRep -> False
   FFIIntRep -> True
   FFIInt8Rep -> True
   FFIInt16Rep -> True

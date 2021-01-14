@@ -623,6 +623,7 @@ data RelooperRun
 
 data FFIValueTypeRep
   = FFIJSValRep
+  | FFIBoolRep
   | FFILiftedRep
   | FFIUnliftedRep
   | FFIIntRep
