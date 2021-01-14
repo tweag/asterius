@@ -27,7 +27,15 @@ ffiValueTypeSigned FFIValueType {..} = case ffiValueTypeRep of
   FFIUnliftedRep -> False
   FFIJSValRep -> False
   FFIIntRep -> True
+  FFIInt8Rep -> True
+  FFIInt16Rep -> True
+  FFIInt32Rep -> True
+  FFIInt64Rep -> True
   FFIWordRep -> False
+  FFIWord8Rep -> False
+  FFIWord16Rep -> False
+  FFIWord32Rep -> False
+  FFIWord64Rep -> False
   FFIAddrRep -> False
   FFIFloatRep -> True
   FFIDoubleRep -> True
@@ -37,7 +45,13 @@ getFFIValueTypeRep tc = case GHC.tyConPrimRep tc of
   [GHC.LiftedRep] -> FFILiftedRep
   [GHC.UnliftedRep] -> FFIUnliftedRep
   [GHC.IntRep] -> FFIIntRep
+  [GHC.Int8Rep] -> FFIInt8Rep
+  [GHC.Int16Rep] -> FFIInt16Rep
+  [GHC.Int64Rep] -> FFIInt64Rep
   [GHC.WordRep] -> FFIWordRep
+  [GHC.Word8Rep] -> FFIWord8Rep
+  [GHC.Word16Rep] -> FFIWord16Rep
+  [GHC.Word64Rep] -> FFIWord64Rep
   [GHC.AddrRep] -> FFIAddrRep
   [GHC.FloatRep] -> FFIFloatRep
   [GHC.DoubleRep] -> FFIDoubleRep

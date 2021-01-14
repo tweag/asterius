@@ -35,7 +35,15 @@ recoverWasmWrapperValueType FFIValueType {..} = case ffiValueTypeRep of
   FFIUnliftedRep -> I64
   FFIJSValRep -> I64
   FFIIntRep -> I64
+  FFIInt8Rep -> I32
+  FFIInt16Rep -> I32
+  FFIInt32Rep -> I32
+  FFIInt64Rep -> I64
   FFIWordRep -> I64
+  FFIWord8Rep -> I32
+  FFIWord16Rep -> I32
+  FFIWord32Rep -> I32
+  FFIWord64Rep -> I64
   FFIAddrRep -> I64
   FFIFloatRep -> F32
   FFIDoubleRep -> F64
@@ -158,7 +166,15 @@ recoverCmmType dflags FFIValueType {..} = case ffiValueTypeRep of
   FFIUnliftedRep -> GHC.gcWord dflags
   FFIJSValRep -> GHC.gcWord dflags
   FFIIntRep -> GHC.bWord dflags
+  FFIInt8Rep -> GHC.b8
+  FFIInt16Rep -> GHC.b16
+  FFIInt32Rep -> GHC.b32
+  FFIInt64Rep -> GHC.b64
   FFIWordRep -> GHC.bWord dflags
+  FFIWord8Rep -> GHC.b8
+  FFIWord16Rep -> GHC.b16
+  FFIWord32Rep -> GHC.b32
+  FFIWord64Rep -> GHC.b64
   FFIAddrRep -> GHC.bWord dflags
   FFIFloatRep -> GHC.f32
   FFIDoubleRep -> GHC.f64
