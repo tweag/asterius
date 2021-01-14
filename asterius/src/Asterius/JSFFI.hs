@@ -158,7 +158,15 @@ recoverCmmType dflags FFIValueType {..} = case ffiValueTypeRep of
   FFIUnliftedRep -> GHC.gcWord dflags
   FFIJSValRep -> GHC.gcWord dflags
   FFIIntRep -> GHC.bWord dflags
+  FFIInt8Rep -> GHC.b8
+  FFIInt16Rep -> GHC.b16
+  FFIInt32Rep -> GHC.b32
+  FFIInt64Rep -> GHC.b64
   FFIWordRep -> GHC.bWord dflags
+  FFIWord8Rep -> GHC.b8
+  FFIWord16Rep -> GHC.b16
+  FFIWord32Rep -> GHC.b32
+  FFIWord64Rep -> GHC.b64
   FFIAddrRep -> GHC.bWord dflags
   FFIFloatRep -> GHC.f32
   FFIDoubleRep -> GHC.f64
