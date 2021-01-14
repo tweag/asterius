@@ -622,11 +622,19 @@ data RelooperRun
   deriving (Show, Data)
 
 data FFIValueTypeRep
-  = FFILiftedRep
+  = FFIJSValRep
+  | FFILiftedRep
   | FFIUnliftedRep
-  | FFIJSValRep
   | FFIIntRep
+  | FFIInt8Rep
+  | FFIInt16Rep
+  | FFIInt32Rep
+  | FFIInt64Rep
   | FFIWordRep
+  | FFIWord8Rep
+  | FFIWord16Rep
+  | FFIWord32Rep
+  | FFIWord64Rep
   | FFIAddrRep
   | FFIFloatRep
   | FFIDoubleRep
