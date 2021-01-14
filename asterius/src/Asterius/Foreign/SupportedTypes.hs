@@ -27,7 +27,15 @@ ffiValueTypeSigned FFIValueType {..} = case ffiValueTypeRep of
   FFIUnliftedRep -> False
   FFIJSValRep -> False
   FFIIntRep -> True
+  FFIInt8Rep -> True
+  FFIInt16Rep -> True
+  FFIInt32Rep -> True
+  FFIInt64Rep -> True
   FFIWordRep -> False
+  FFIWord8Rep -> False
+  FFIWord16Rep -> False
+  FFIWord32Rep -> False
+  FFIWord64Rep -> False
   FFIAddrRep -> False
   FFIFloatRep -> True
   FFIDoubleRep -> True
