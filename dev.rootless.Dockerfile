@@ -38,12 +38,12 @@ ARG DEBIAN_FRONTEND
 ARG USERNAME
 ARG UID
 
-ARG NODE_VER=15.5.1
+ARG NODE_VER=15.6.0
 
 ENV \
   BROWSER=echo \
   LANG=C.UTF-8 \
-  PATH=/home/${USERNAME}/.local/bin:/home/${USERNAME}/.nvm/versions/node/v${NODE_VER}/bin:${PATH} \
+  PATH=/home/${USERNAME}/.local/bin:${PATH} \
   WASI_SDK_PATH=/opt/wasi-sdk
 
 RUN \
@@ -74,7 +74,7 @@ RUN \
     zlib1g-dev \
     zstd && \
   sudo mkdir -p ${WASI_SDK_PATH} && \
-  (curl -L https://github.com/TerrorJack/wasi-sdk/releases/download/201202/wasi-sdk-11.9gb368b8b12ee6-linux.tar.gz | sudo tar xz -C ${WASI_SDK_PATH} --strip-components=1) && \
+  (curl -L https://github.com/TerrorJack/wasi-sdk/releases/download/210113/wasi-sdk-12.1g41fa3294474c-linux.tar.gz | sudo tar xz -C ${WASI_SDK_PATH} --strip-components=1) && \
   sudo apt autoremove --purge -y && \
   sudo apt clean && \
   sudo rm -rf -v \
@@ -98,7 +98,7 @@ RUN \
 
 RUN \
   stack --no-terminal update && \
-  stack --no-terminal --resolver lts-16.28 install \
+  stack --no-terminal --resolver lts-16.29 install \
     brittany \
     ghcid \
     ormolu \
