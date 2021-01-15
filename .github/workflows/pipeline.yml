@@ -22,7 +22,7 @@ jobs:
       - name: setup-node-15
         uses: actions/setup-node@v2-beta
         with:
-          node-version: 15.5.1
+          node-version: 15.6.0
 
       - name: checkout
         uses: actions/checkout@v2
@@ -88,7 +88,7 @@ jobs:
       - name: setup-node-15
         uses: actions/setup-node@v2-beta
         with:
-          node-version: 15.5.1
+          node-version: 15.6.0
 
       - name: checkout
         uses: actions/checkout@v2
@@ -180,7 +180,7 @@ jobs:
       - name: setup-node-15
         uses: actions/setup-node@v2-beta
         with:
-          node-version: 15.5.1
+          node-version: 15.6.0
 
       - name: checkout
         uses: actions/checkout@v2
@@ -227,7 +227,7 @@ jobs:
       - name: setup-node-15
         uses: actions/setup-node@v2-beta
         with:
-          node-version: 15.5.1
+          node-version: 15.6.0
 
       - name: checkout
         uses: actions/checkout@v2
@@ -320,7 +320,7 @@ jobs:
       - name: setup-node-15
         uses: actions/setup-node@v2-beta
         with:
-          node-version: 15.5.1
+          node-version: 15.6.0
 
       - name: setup-deps
         run: |
