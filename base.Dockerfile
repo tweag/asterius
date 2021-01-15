@@ -2,7 +2,7 @@ FROM debian:sid-slim
 
 ARG DEBIAN_FRONTEND=noninteractive
 
-ARG NODE_VER=15.5.1
+ARG NODE_VER=15.6.0
 
 ENV \
   LANG=C.UTF-8 \
@@ -29,7 +29,7 @@ RUN \
     python3-minimal \
     zlib1g-dev && \
   mkdir -p ${WASI_SDK_PATH} && \
-  (curl -L https://github.com/TerrorJack/wasi-sdk/releases/download/201202/wasi-sdk-11.9gb368b8b12ee6-linux.tar.gz | tar xz -C ${WASI_SDK_PATH} --strip-components=1) && \
+  (curl -L https://github.com/TerrorJack/wasi-sdk/releases/download/210113/wasi-sdk-12.1g41fa3294474c-linux.tar.gz | tar xz -C ${WASI_SDK_PATH} --strip-components=1) && \
   cp \
     /etc/skel/.bash_logout \
     /etc/skel/.bashrc \
