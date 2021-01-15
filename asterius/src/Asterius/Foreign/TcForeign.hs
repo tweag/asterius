@@ -18,7 +18,6 @@ import ForeignCall
 import GhcPlugins
 import HsSyn
 import Outputable
-import PrelNames
 import TcEnv
 import TcExpr
 import TcForeign
@@ -171,8 +170,3 @@ asteriusIsFFIExportResultTy ty
   | isAnyTy ty = IsValid
   | isJSValTy ty = IsValid
   | otherwise = isFFIExportResultTy ty
-
-isAnyTy :: Type -> Bool
-isAnyTy ty = case tcSplitTyConApp_maybe ty of
-  Just (tc, _) -> anyTyConKey == getUnique tc
-  Nothing -> False

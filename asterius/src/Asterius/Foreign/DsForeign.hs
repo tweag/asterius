@@ -11,6 +11,7 @@ where
 
 import Asterius.Foreign.ExportStatic
 import Asterius.Foreign.Internals
+import Asterius.Foreign.SupportedTypes
 import Asterius.Types
 import Control.Monad
 import CoreUnfold
@@ -154,11 +155,6 @@ asteriusDsFExportDynamic id co0 src = do
     Just FFIFunctionType {..} = parseFFIFunctionType False arg_ty
     ffi_params_tag = encodeTys ffiParamTypes
     ffi_ret_tag = encodeTys ffiResultTypes
-
-isAnyTy :: Type -> Bool
-isAnyTy ty = case tcSplitTyConApp_maybe ty of
-  Just (tc, _) -> anyTyConKey == getUnique tc
-  Nothing -> False
 
 asteriusUnboxArg :: CoreExpr -> DsM (CoreExpr, CoreExpr -> CoreExpr)
 asteriusUnboxArg arg

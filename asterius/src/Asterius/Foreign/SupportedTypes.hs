@@ -6,12 +6,15 @@ module Asterius.Foreign.SupportedTypes
     getFFIValueType0,
     getFFIValueType1,
     ffiBoxedValueTypeList,
+    isAnyTy,
     isJSValTy,
+    getFFIValueTypeRep',
   )
 where
 
 import Asterius.Types
 import qualified Data.ByteString as BS
+import Data.Maybe
 import qualified ErrUtils as GHC
 import qualified GhcPlugins as GHC
 import qualified PrelNames as GHC
@@ -58,6 +61,48 @@ getFFIValueTypeRep tc = case GHC.tyConPrimRep tc of
   [GHC.DoubleRep] -> FFIDoubleRep
   _ -> error "Asterius.Foreign.SupportedTypes.getFFIValueTypeRep"
 
+getFFIValueTypeRep' :: GHC.Type -> FFIValueTypeRep
+getFFIValueTypeRep' ty
+  | isJSValTy ty =
+    FFIJSValRep
+  | Just tc <- GHC.tyConAppTyCon_maybe ty,
+    tc == GHC.boolTyCon =
+    FFIBoolRep
+  | isAnyTy ty =
+    FFILiftedRep
+  | is_product_type,
+    data_con_arity == 1,
+    GHC.isPrimitiveType data_con_arg_ty1 =
+    getFFIValueTypeRep' data_con_arg_ty1
+  | GHC.isPrimitiveType ty =
+    case GHC.typePrimRep ty of
+      [GHC.UnliftedRep] -> FFIUnliftedRep
+      [GHC.IntRep] -> FFIIntRep
+      [GHC.Int8Rep] -> FFIInt8Rep
+      [GHC.Int16Rep] -> FFIInt16Rep
+      [GHC.Int64Rep] -> FFIInt64Rep
+      [GHC.WordRep] -> FFIWordRep
+      [GHC.Word8Rep] -> FFIWord8Rep
+      [GHC.Word16Rep] -> FFIWord16Rep
+      [GHC.Word64Rep] -> FFIWord64Rep
+      [GHC.AddrRep] -> FFIAddrRep
+      [GHC.FloatRep] -> FFIFloatRep
+      [GHC.DoubleRep] -> FFIDoubleRep
+      _ ->
+        error $
+          "Asterius.Foreign.SupportedTypes.getFFIValueTypeRep': "
+            <> GHC.showPpr GHC.unsafeGlobalDynFlags ty
+  | otherwise =
+    error $
+      "Asterius.Foreign.SupportedTypes.getFFIValueTypeRep': "
+        <> GHC.showPpr GHC.unsafeGlobalDynFlags ty
+  where
+    maybe_product_type = GHC.splitDataProductType_maybe ty
+    is_product_type = isJust maybe_product_type
+    Just (_, _, data_con, data_con_arg_tys) = maybe_product_type
+    data_con_arity = GHC.dataConSourceArity data_con
+    (data_con_arg_ty1 : _) = data_con_arg_tys
+
 getFFIValueType0 :: Bool -> GHC.TyCon -> Maybe FFIValueType
 getFFIValueType0 accept_prim norm_tc
   | GHC.isValid (isJSValTyCon norm_tc) = pure ffiJSVal
@@ -79,13 +124,13 @@ getFFIValueType1 accept_prim norm_tc =
 
 ffiBoxedValueTypeList :: [FFIValueType]
 ffiBoxedValueTypeList =
-  ffiJSVal
-    : [ vt
-        | vt@FFIValueType {..} <-
-            GHC.nameEnvElts ffiBoxedValueTypeMap0
-              <> GHC.nameEnvElts ffiBoxedValueTypeMap1,
-          not $ BS.null hsTyCon
-      ]
+  ffiJSVal :
+    [ vt
+      | vt@FFIValueType {..} <-
+          GHC.nameEnvElts ffiBoxedValueTypeMap0
+            <> GHC.nameEnvElts ffiBoxedValueTypeMap1,
+        not $ BS.null hsTyCon
+    ]
 
 ffiBoxedValueTypeMap0,
   ffiBoxedValueTypeMap1,
@@ -258,6 +303,11 @@ ffiPrimValueTypeMap1 =
     ]
 ffiValueTypeMap0 = ffiBoxedValueTypeMap0 `GHC.plusNameEnv` ffiPrimValueTypeMap0
 ffiValueTypeMap1 = ffiBoxedValueTypeMap1 `GHC.plusNameEnv` ffiPrimValueTypeMap1
+
+isAnyTy :: GHC.Type -> Bool
+isAnyTy ty = case GHC.tcSplitTyConApp_maybe ty of
+  Just (tc, _) -> tc == GHC.anyTyCon
+  Nothing -> False
 
 isJSValTy :: GHC.Type -> Bool
 isJSValTy = GHC.isValid . checkRepTyCon isJSValTyCon
