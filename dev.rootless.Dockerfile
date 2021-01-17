@@ -98,7 +98,7 @@ RUN \
 
 RUN \
   stack --no-terminal update && \
-  stack --no-terminal --resolver lts-16.29 install \
+  stack --no-terminal --resolver lts-16.31 install \
     brittany \
     ghcid \
     ormolu \

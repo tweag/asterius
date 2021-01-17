@@ -83,6 +83,7 @@ Ranged-sets
 Rasterific
 RefSerialize
 SHA
+STMonadTrans
 SVGFonts
 SafeSemaphore
 ShellCheck
@@ -343,6 +344,7 @@ bits
 bits-extra
 bitset-word8
 bitvec
+bitwise-enum
 blake2
 blanks
 blas-carray
@@ -598,6 +600,7 @@ data-endian
 data-fix
 data-forest
 data-has
+data-hash
 data-interval
 data-inttrie
 data-lens-light
@@ -726,6 +729,7 @@ epub-metadata
 eq
 equal-files
 equational-reasoning
+equivalence
 erf
 errors
 errors-ext
@@ -855,6 +859,7 @@ generic-optics
 generic-random
 generics-sop
 generics-sop-lens
+geniplate-mirror
 genvalidity
 genvalidity-aeson
 genvalidity-bytestring

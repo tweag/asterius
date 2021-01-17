@@ -101,7 +101,7 @@ def ghc_configure():
 def patch_hadrian():
     with open(os.path.join(ghc_repo_path, "hadrian", "stack.yaml"),
               mode="w") as f:
-        f.write("resolver: lts-16.29\n")
+        f.write("resolver: lts-16.31\n")
     with open(os.path.join(ghc_repo_path, "hadrian", "src", "Oracles",
                            "Setting.hs"),
               mode="r") as h:
