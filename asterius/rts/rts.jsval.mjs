@@ -23,8 +23,6 @@ export class JSValManager {
   }
 
   freeJSValzh(c) {
-    if (!this.closure2Val.delete(c)) {
-      throw new WebAssembly.RuntimeError(`Invalid JSVal# 0x${c.toString(16)}`);
-    }
+    this.closure2Val.delete(c);
   }
 }
