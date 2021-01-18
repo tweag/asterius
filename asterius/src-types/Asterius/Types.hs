@@ -639,7 +639,7 @@ data FFIValueTypeRep
   | FFIAddrRep
   | FFIFloatRep
   | FFIDoubleRep
-  deriving (Show, Data)
+  deriving (Data, Enum, Show)
 
 data FFIValueType
   = FFIValueType
