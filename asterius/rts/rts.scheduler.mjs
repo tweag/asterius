@@ -272,7 +272,7 @@ export class Scheduler {
               "base_AsteriusziTypesziJSException_mkJSException_closure"
             ),
             this.exports.rts_mkJSVal(
-              this.components.jsvalManager.newJSValzh(tso_info.ffiRetErr)
+              BigInt(this.components.jsvalManager.newJSValzh(tso_info.ffiRetErr))
             )
           );
         this.memory.i64Store(stackobj + rtsConstants.offset_StgStack_sp, sp);

@@ -3,7 +3,7 @@
 
 module Asterius.Builtins.RtsAPI
   ( rtsAPIExports,
-    rtsAPIModule,
+    rtsAPICBits,
   )
 where
 
@@ -33,8 +33,8 @@ rtsAPIExports =
         ]
   ]
 
-rtsAPIModule :: AsteriusModule
-rtsAPIModule =
+rtsAPICBits :: AsteriusModule
+rtsAPICBits =
   rtsApply
     <> mconcat
       [ rtsMk func_sym con_info_sym

@@ -16,7 +16,7 @@ function decodeTys(arr, tag) {
 function decodeRtsMk(e, ty) {
   switch (ty) {
     case "JSVal": {
-      return v => e.rts_mkJSVal(e.context.components.jsvalManager.newJSValzh(v));
+      return v => e.rts_mkJSVal(BigInt(e.context.components.jsvalManager.newJSValzh(v)));
     }
     default: {
       const f = `rts_mk${ty}`;
@@ -28,7 +28,7 @@ function decodeRtsMk(e, ty) {
 function decodeRtsGet(e, ty) {
   switch (ty) {
     case "JSVal": {
-      return p => e.context.components.jsvalManager.getJSValzh(e.rts_getJSVal(p));
+      return p => e.context.components.jsvalManager.getJSValzh(Number(e.rts_getJSVal(p)));
     }
     default: {
       const f = `rts_get${ty}`;
@@ -91,12 +91,12 @@ export class Exports {
             `Expected ${arg_mk_funcs.length} arguments, got ${args.length}`
           );
         }
-        let p = this.context.stablePtrManager.deRefStablePtr(sp);
+        let p = BigInt(this.context.stablePtrManager.deRefStablePtr(sp));
         for (let i = 0; i < arg_mk_funcs.length; ++i) {
           p = this.rts_apply(p, arg_mk_funcs[i](args[i]));
         }
-        p = this.rts_apply(run_func, p);
-        const tid = await eval_func(p);
+        p = this.rts_apply(BigInt(run_func), p);
+        const tid = await eval_func(Number(p));
         if (ret_get_funcs.length) {
           return ret_get_funcs[0](this.context.scheduler.getTSOret(tid));
         }

@@ -384,19 +384,19 @@ asteriusRunTH _ _ q ty loc s ahc_dist_input = withTempDir "asdf" $ \tmp_dir ->
             <> uint8_arr
             <> ")"
         uint8_arr_closure =
-          toJS i <> ".exports.rts_mkJSVal(" <> uint8_arr_sn <> ")"
+          toJS i <> ".exports.rts_mkJSVal(BigInt(" <> uint8_arr_sn <> "))"
         bs_closure =
           toJS i
-            <> ".exports.rts_apply("
+            <> ".exports.rts_apply(BigInt("
             <> buf_conv_closure
-            <> ","
+            <> "),"
             <> uint8_arr_closure
             <> ")"
         runner_closure' =
           toJS i
-            <> ".exports.rts_apply("
+            <> ".exports.rts_apply(BigInt("
             <> runner_closure
-            <> ","
+            <> "),"
             <> bs_closure
             <> ")"
         hv_closure = fromString $ show q
@@ -404,10 +404,10 @@ asteriusRunTH _ _ q ty loc s ahc_dist_input = withTempDir "asdf" $ \tmp_dir ->
           toJS i
             <> ".exports.rts_apply("
             <> runner_closure'
-            <> ","
+            <> ",BigInt("
             <> hv_closure
-            <> ")"
-        tid = toJS i <> ".exports.rts_evalLazyIO(" <> applied_closure <> ")"
+            <> "))"
+        tid = toJS i <> ".exports.rts_evalLazyIO(Number(" <> applied_closure <> "))"
         on_error err = do
           hPrint stderr err
           killSession s
