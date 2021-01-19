@@ -98,7 +98,7 @@ export class Exports {
         p = this.rts_apply(BigInt(run_func), p);
         const tid = await eval_func(Number(p));
         if (ret_get_funcs.length) {
-          return ret_get_funcs[0](this.context.scheduler.getTSOret(tid));
+          return ret_get_funcs[0](BigInt(this.context.scheduler.getTSOret(tid)));
         }
       } finally {
         finalizer();
