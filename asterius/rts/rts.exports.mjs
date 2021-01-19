@@ -21,7 +21,7 @@ const hsTyCons = [
 function decodeTys(tag) {
   const tys = [];
   while (tag) {
-    const i = tag & 0x1f;
+    const i = (tag & 0x1f) - 1;
     tys.push(i);
     tag >>>= 5;
   }
