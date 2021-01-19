@@ -37,8 +37,8 @@ module
       )
     );
     console.log(i.exports.rts_getInt(BigInt(i.exports.getTSOret(tid_p1))));
-    console.log(i.exports.rts_getBool(BigInt(i.exports.rts_mkBool(0))));
-    console.log(i.exports.rts_getBool(BigInt(i.exports.rts_mkBool(42))));
+    console.log(i.exports.rts_getBool(BigInt(i.exports.rts_mkBool(0n))));
+    console.log(i.exports.rts_getBool(BigInt(i.exports.rts_mkBool(42n))));
     const x0 = Math.random();
     const tid_p3 = await i.exports.rts_evalIO(
       Number(
