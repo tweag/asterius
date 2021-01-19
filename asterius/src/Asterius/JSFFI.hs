@@ -30,24 +30,23 @@ import qualified GhcPlugins as GHC
 import Language.Haskell.GHC.Toolkit.Constants
 
 recoverWasmWrapperValueType :: FFIValueType -> ValueType
-recoverWasmWrapperValueType FFIValueType {..} = case ffiValueTypeRep of
-  FFIJSValRep -> I64
-  FFIBoolRep -> I32
-  FFILiftedRep -> I64
-  FFIUnliftedRep -> I64
-  FFIIntRep -> I64
-  FFIInt8Rep -> I32
-  FFIInt16Rep -> I32
-  FFIInt32Rep -> I32
-  FFIInt64Rep -> I64
-  FFIWordRep -> I64
-  FFIWord8Rep -> I32
-  FFIWord16Rep -> I32
-  FFIWord32Rep -> I32
-  FFIWord64Rep -> I64
-  FFIAddrRep -> I64
-  FFIFloatRep -> F32
-  FFIDoubleRep -> F64
+recoverWasmWrapperValueType FFIJSVal = I64
+recoverWasmWrapperValueType FFIBool = I64
+recoverWasmWrapperValueType FFILifted = I64
+recoverWasmWrapperValueType FFIUnlifted = I64
+recoverWasmWrapperValueType FFIInt = I64
+recoverWasmWrapperValueType FFIInt8 = I32
+recoverWasmWrapperValueType FFIInt16 = I32
+recoverWasmWrapperValueType FFIInt32 = I32
+recoverWasmWrapperValueType FFIInt64 = I64
+recoverWasmWrapperValueType FFIWord = I64
+recoverWasmWrapperValueType FFIWord8 = I32
+recoverWasmWrapperValueType FFIWord16 = I32
+recoverWasmWrapperValueType FFIWord32 = I32
+recoverWasmWrapperValueType FFIWord64 = I64
+recoverWasmWrapperValueType FFIAddr = I64
+recoverWasmWrapperValueType FFIFloat = F32
+recoverWasmWrapperValueType FFIDouble = F64
 
 recoverWasmImportFunctionType :: FFISafety -> FFIFunctionType -> FunctionType
 recoverWasmImportFunctionType ffi_safety FFIFunctionType {..}
@@ -162,24 +161,24 @@ marshalParamLocation (GHC.RegisterParam (GHC.DoubleReg i)) = DoubleReg i
 marshalParamLocation _ = error "Asterius.JSFFI.marshalParamLocation"
 
 recoverCmmType :: GHC.DynFlags -> FFIValueType -> GHC.CmmType
-recoverCmmType dflags FFIValueType {..} = case ffiValueTypeRep of
-  FFIJSValRep -> GHC.gcWord dflags
-  FFIBoolRep -> GHC.b32
-  FFILiftedRep -> GHC.gcWord dflags
-  FFIUnliftedRep -> GHC.gcWord dflags
-  FFIIntRep -> GHC.bWord dflags
-  FFIInt8Rep -> GHC.b8
-  FFIInt16Rep -> GHC.b16
-  FFIInt32Rep -> GHC.b32
-  FFIInt64Rep -> GHC.b64
-  FFIWordRep -> GHC.bWord dflags
-  FFIWord8Rep -> GHC.b8
-  FFIWord16Rep -> GHC.b16
-  FFIWord32Rep -> GHC.b32
-  FFIWord64Rep -> GHC.b64
-  FFIAddrRep -> GHC.bWord dflags
-  FFIFloatRep -> GHC.f32
-  FFIDoubleRep -> GHC.f64
+recoverCmmType dflags vt = case vt of
+  FFIJSVal -> GHC.gcWord dflags
+  FFIBool -> GHC.b32
+  FFILifted -> GHC.gcWord dflags
+  FFIUnlifted -> GHC.gcWord dflags
+  FFIInt -> GHC.bWord dflags
+  FFIInt8 -> GHC.b8
+  FFIInt16 -> GHC.b16
+  FFIInt32 -> GHC.b32
+  FFIInt64 -> GHC.b64
+  FFIWord -> GHC.bWord dflags
+  FFIWord8 -> GHC.b8
+  FFIWord16 -> GHC.b16
+  FFIWord32 -> GHC.b32
+  FFIWord64 -> GHC.b64
+  FFIAddr -> GHC.bWord dflags
+  FFIFloat -> GHC.f32
+  FFIDouble -> GHC.f64
 
 asyncImportWrapper ::
   GHC.DynFlags -> EntitySymbol -> FFIImportDecl -> Function
@@ -302,8 +301,8 @@ generateFFIImportLambda FFIImportDecl {ffiFunctionType = FFIFunctionType {..}, .
         <> ")=>"
     getjsval_code =
       mconcat
-        [ case ffiValueTypeRep pt of
-            FFIJSValRep ->
+        [ case pt of
+            FFIJSVal ->
               "$"
                 <> intDec i
                 <> " = __asterius_jsffi.getJSValzh($"
@@ -316,8 +315,8 @@ generateFFIImportLambda FFIImportDecl {ffiFunctionType = FFIFunctionType {..}, .
       "{"
         <> getjsval_code
         <> "return "
-        <> ( case map ffiValueTypeRep ffiResultTypes of
-               [FFIJSValRep] ->
+        <> ( case ffiResultTypes of
+               [FFIJSVal] ->
                  "__asterius_jsffi.newJSValzh("
                    <> byteString ffiSourceText
                    <> ")"
@@ -327,8 +326,8 @@ generateFFIImportLambda FFIImportDecl {ffiFunctionType = FFIFunctionType {..}, .
     safe_code =
       "{"
         <> getjsval_code
-        <> "return ["
-        <> intDec (ffiValueTypesTag ffiResultTypes)
+        <> "return [0x"
+        <> wordHex (ffiValueTypesTag ffiResultTypes)
         <> ", await ("
         <> byteString ffiSourceText
         <> ")];}"

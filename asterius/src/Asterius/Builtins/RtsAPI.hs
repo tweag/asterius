@@ -70,10 +70,10 @@ rtsApply = runEDSL "rts_apply" $ do
 rtsMkBool :: AsteriusModule
 rtsMkBool = runEDSL "rts_mkBool" $ do
   setReturnTypes [I64]
-  b <- param I32
+  b <- param I64
   if'
     [I64]
-    (eqZInt32 b)
+    (eqZInt64 b)
     (emit $ symbol "ghczmprim_GHCziTypes_False_closure" `addInt64` constI64 1)
     (emit $ symbol "ghczmprim_GHCziTypes_True_closure" `addInt64` constI64 2)
 
@@ -128,9 +128,13 @@ rtsMk func_sym con_info_sym = runEDSL func_sym $ do
 
 rtsGetBool :: AsteriusModule
 rtsGetBool = runEDSL "rts_getBool" $ do
-  setReturnTypes [I32]
+  setReturnTypes [I64]
   c <- param I64
-  emit $ eqInt64 (unTagClosure c) (symbol "ghczmprim_GHCziTypes_True_closure")
+  emit $
+    extendUInt32 $
+      eqInt64
+        (unTagClosure c)
+        (symbol "ghczmprim_GHCziTypes_True_closure")
 
 rtsGetFloat :: AsteriusModule
 rtsGetFloat = runEDSL "rts_getFloat" $ do

@@ -1,5 +1,3 @@
-{-# LANGUAGE RecordWildCards #-}
-
 module Asterius.Foreign.TypesTag
   ( ffiValueTypesTag,
   )
@@ -9,13 +7,9 @@ import Asterius.Types
 import Data.Bits
 import Data.Foldable
 
-ffiValueTypeTag :: FFIValueType -> Int
-ffiValueTypeTag FFIValueType {..} = case ffiValueTypeRep of
-  FFIJSValRep -> 1
-  FFIFloatRep -> 3
-  FFIDoubleRep -> 4
-  _ -> 2
+ffiValueTypeTag :: FFIValueType -> Word
+ffiValueTypeTag = succ . fromIntegral . fromEnum
 
-ffiValueTypesTag :: [FFIValueType] -> Int
+ffiValueTypesTag :: [FFIValueType] -> Word
 ffiValueTypesTag =
-  foldr' (\vt acc -> (acc `shiftL` 3) .|. ffiValueTypeTag vt) 0
+  foldr' (\vt acc -> (acc `shiftL` 5) .|. ffiValueTypeTag vt) 0

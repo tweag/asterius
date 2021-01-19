@@ -3,17 +3,13 @@
 
 module Asterius.Foreign.ExportStatic
   ( genExportStaticObj,
-    encodeTys,
   )
 where
 
-import Asterius.Foreign.SupportedTypes
+import Asterius.Foreign.TypesTag
 import Asterius.Types
 import qualified Asterius.Types.SymbolMap as SM
-import Data.Bits
 import Data.ByteString.Builder
-import Data.Foldable
-import Data.Int
 import Data.List
 import Data.Maybe
 import Data.Word
@@ -44,17 +40,8 @@ genExportStaticFunc k FFIExportDecl {ffiFunctionType = FFIFunctionType {..}, ..}
       <> "\",0x"
       <> word32HexFixed off
       <> ",0x"
-      <> int64HexFixed (encodeTys ffiParamTypes)
+      <> wordHex (ffiValueTypesTag ffiParamTypes)
       <> ",0x"
-      <> int64HexFixed (encodeTys ffiResultTypes)
+      <> wordHex (ffiValueTypesTag ffiResultTypes)
       <> ","
       <> if ffiInIO then "true]" else "false]"
-
-encodeTys :: [FFIValueType] -> Int64
-encodeTys = foldr' (\vt acc -> (acc `shiftL` 5) .|. encodeTy vt) 0
-
-encodeTy :: FFIValueType -> Int64
-encodeTy vt =
-  case findIndex (\vt' -> hsTyCon vt == hsTyCon vt') ffiBoxedValueTypeList of
-    Just i -> fromIntegral i + 1
-    _ -> error $ "Asterius.Foreign.ExportStatic: cannot encode " <> show vt

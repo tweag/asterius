@@ -9,9 +9,9 @@ module Asterius.Foreign.DsForeign
   )
 where
 
-import Asterius.Foreign.ExportStatic
 import Asterius.Foreign.Internals
 import Asterius.Foreign.SupportedTypes
+import Asterius.Foreign.TypesTag
 import Asterius.Types
 import Control.Monad
 import CoreUnfold
@@ -152,9 +152,9 @@ asteriusDsFExportDynamic id co0 src = do
     (tvs, sans_foralls) = tcSplitForAllTys ty
     ([arg_ty], fn_res_ty) = tcSplitFunTys sans_foralls
     Just (io_tc, res_ty) = tcSplitIOType_maybe fn_res_ty
-    Just FFIFunctionType {..} = parseFFIFunctionType False arg_ty
-    ffi_params_tag = encodeTys ffiParamTypes
-    ffi_ret_tag = encodeTys ffiResultTypes
+    Right FFIFunctionType {..} = getFFIFunctionType arg_ty
+    ffi_params_tag = ffiValueTypesTag ffiParamTypes
+    ffi_ret_tag = ffiValueTypesTag ffiResultTypes
 
 asteriusUnboxArg :: CoreExpr -> DsM (CoreExpr, CoreExpr -> CoreExpr)
 asteriusUnboxArg arg

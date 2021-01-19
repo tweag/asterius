@@ -49,7 +49,6 @@ module Asterius.Types
     RelooperBlock (..),
     unreachableRelooperBlock,
     RelooperRun (..),
-    FFIValueTypeRep (..),
     FFIValueType (..),
     FFIFunctionType (..),
     FFISafety (..),
@@ -621,32 +620,25 @@ data RelooperRun
       }
   deriving (Show, Data)
 
-data FFIValueTypeRep
-  = FFIJSValRep
-  | FFIBoolRep
-  | FFILiftedRep
-  | FFIUnliftedRep
-  | FFIIntRep
-  | FFIInt8Rep
-  | FFIInt16Rep
-  | FFIInt32Rep
-  | FFIInt64Rep
-  | FFIWordRep
-  | FFIWord8Rep
-  | FFIWord16Rep
-  | FFIWord32Rep
-  | FFIWord64Rep
-  | FFIAddrRep
-  | FFIFloatRep
-  | FFIDoubleRep
-  deriving (Data, Enum, Show)
-
 data FFIValueType
-  = FFIValueType
-      { ffiValueTypeRep :: FFIValueTypeRep,
-        hsTyCon :: BS.ByteString
-      }
-  deriving (Show, Data)
+  = FFIJSVal
+  | FFIBool
+  | FFILifted
+  | FFIUnlifted
+  | FFIInt
+  | FFIInt8
+  | FFIInt16
+  | FFIInt32
+  | FFIInt64
+  | FFIWord
+  | FFIWord8
+  | FFIWord16
+  | FFIWord32
+  | FFIWord64
+  | FFIAddr
+  | FFIFloat
+  | FFIDouble
+  deriving (Data, Enum, Show)
 
 data FFIFunctionType
   = FFIFunctionType
@@ -747,8 +739,6 @@ $(genNFData ''RelooperBlock)
 
 $(genNFData ''RelooperRun)
 
-$(genNFData ''FFIValueTypeRep)
-
 $(genNFData ''FFIValueType)
 
 $(genNFData ''FFIFunctionType)
@@ -822,8 +812,6 @@ $(genBinary ''RelooperAddBranch)
 $(genBinary ''RelooperBlock)
 
 $(genBinary ''RelooperRun)
-
-$(genBinary ''FFIValueTypeRep)
 
 $(genBinary ''FFIValueType)
 

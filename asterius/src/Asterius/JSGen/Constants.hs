@@ -1,5 +1,4 @@
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE RecordWildCards #-}
 
 module Asterius.JSGen.Constants
   ( rtsConstants,
@@ -7,12 +6,9 @@ module Asterius.JSGen.Constants
 where
 
 import Asterius.Builtins.Posix
-import Asterius.Foreign.SupportedTypes
 import Asterius.Internals.ByteString
-import Asterius.Types
 import Data.Bits
 import Data.ByteString.Builder
-import Data.List
 import Language.Haskell.GHC.Toolkit.Constants
 
 rtsConstants :: Builder
@@ -147,14 +143,4 @@ rtsConstants =
                  ("clock_monotonic", clock_monotonic),
                  ("clock_realtime", clock_realtime)
                ]
-         ]
-      <> [ "export const hsTyCons = [",
-           mconcat
-             ( intersperse
-                 ","
-                 [ "\"" <> byteString hsTyCon <> "\""
-                   | FFIValueType {..} <- ffiBoxedValueTypeList
-                 ]
-             ),
-           "];\n"
          ]

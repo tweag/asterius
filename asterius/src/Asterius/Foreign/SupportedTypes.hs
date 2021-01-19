@@ -1,14 +1,10 @@
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE RecordWildCards #-}
 
 module Asterius.Foreign.SupportedTypes
   ( ffiValueTypeSigned,
-    getFFIValueType0,
-    getFFIValueType1,
-    ffiBoxedValueTypeList,
     isAnyTy,
     isJSValTy,
-    getFFIValueTypeRep',
+    getFFIValueType,
   )
 where
 
@@ -21,80 +17,59 @@ import qualified PrelNames as GHC
 import qualified RepType as GHC
 import qualified TysPrim as GHC
 
-ffiJSVal :: FFIValueType
-ffiJSVal = FFIValueType {ffiValueTypeRep = FFIJSValRep, hsTyCon = "JSVal"}
-
 ffiValueTypeSigned :: FFIValueType -> Bool
-ffiValueTypeSigned FFIValueType {..} = case ffiValueTypeRep of
-  FFIJSValRep -> False
-  FFIBoolRep -> False
-  FFILiftedRep -> False
-  FFIUnliftedRep -> False
-  FFIIntRep -> True
-  FFIInt8Rep -> True
-  FFIInt16Rep -> True
-  FFIInt32Rep -> True
-  FFIInt64Rep -> True
-  FFIWordRep -> False
-  FFIWord8Rep -> False
-  FFIWord16Rep -> False
-  FFIWord32Rep -> False
-  FFIWord64Rep -> False
-  FFIAddrRep -> False
-  FFIFloatRep -> True
-  FFIDoubleRep -> True
+ffiValueTypeSigned FFIJSVal = False
+ffiValueTypeSigned FFIBool = False
+ffiValueTypeSigned FFILifted = False
+ffiValueTypeSigned FFIUnlifted = False
+ffiValueTypeSigned FFIInt = True
+ffiValueTypeSigned FFIInt8 = True
+ffiValueTypeSigned FFIInt16 = True
+ffiValueTypeSigned FFIInt32 = True
+ffiValueTypeSigned FFIInt64 = True
+ffiValueTypeSigned FFIWord = False
+ffiValueTypeSigned FFIWord8 = False
+ffiValueTypeSigned FFIWord16 = False
+ffiValueTypeSigned FFIWord32 = False
+ffiValueTypeSigned FFIWord64 = False
+ffiValueTypeSigned FFIAddr = False
+ffiValueTypeSigned FFIFloat = True
+ffiValueTypeSigned FFIDouble = True
 
-getFFIValueTypeRep :: GHC.TyCon -> FFIValueTypeRep
-getFFIValueTypeRep tc = case GHC.tyConPrimRep tc of
-  [GHC.LiftedRep] -> FFILiftedRep
-  [GHC.UnliftedRep] -> FFIUnliftedRep
-  [GHC.IntRep] -> FFIIntRep
-  [GHC.Int8Rep] -> FFIInt8Rep
-  [GHC.Int16Rep] -> FFIInt16Rep
-  [GHC.Int64Rep] -> FFIInt64Rep
-  [GHC.WordRep] -> FFIWordRep
-  [GHC.Word8Rep] -> FFIWord8Rep
-  [GHC.Word16Rep] -> FFIWord16Rep
-  [GHC.Word64Rep] -> FFIWord64Rep
-  [GHC.AddrRep] -> FFIAddrRep
-  [GHC.FloatRep] -> FFIFloatRep
-  [GHC.DoubleRep] -> FFIDoubleRep
-  _ -> error "Asterius.Foreign.SupportedTypes.getFFIValueTypeRep"
-
-getFFIValueTypeRep' :: GHC.Type -> FFIValueTypeRep
-getFFIValueTypeRep' ty
+getFFIValueType :: GHC.Type -> Either String FFIValueType
+getFFIValueType ty
   | isJSValTy ty =
-    FFIJSValRep
+    pure FFIJSVal
   | Just tc <- GHC.tyConAppTyCon_maybe ty,
     tc == GHC.boolTyCon =
-    FFIBoolRep
+    pure FFIBool
   | isAnyTy ty =
-    FFILiftedRep
+    pure FFILifted
   | is_product_type,
     data_con_arity == 1,
     GHC.isPrimitiveType data_con_arg_ty1 =
-    getFFIValueTypeRep' data_con_arg_ty1
+    getFFIValueType data_con_arg_ty1
   | GHC.isPrimitiveType ty =
     case GHC.typePrimRep ty of
-      [GHC.UnliftedRep] -> FFIUnliftedRep
-      [GHC.IntRep] -> FFIIntRep
-      [GHC.Int8Rep] -> FFIInt8Rep
-      [GHC.Int16Rep] -> FFIInt16Rep
-      [GHC.Int64Rep] -> FFIInt64Rep
-      [GHC.WordRep] -> FFIWordRep
-      [GHC.Word8Rep] -> FFIWord8Rep
-      [GHC.Word16Rep] -> FFIWord16Rep
-      [GHC.Word64Rep] -> FFIWord64Rep
-      [GHC.AddrRep] -> FFIAddrRep
-      [GHC.FloatRep] -> FFIFloatRep
-      [GHC.DoubleRep] -> FFIDoubleRep
+      [GHC.UnliftedRep] -> pure FFIUnlifted
+      [GHC.IntRep] -> pure FFIInt
+      [GHC.Int8Rep] -> pure FFIInt8
+      [GHC.Int16Rep] -> pure FFIInt16
+      [GHC.Int64Rep] -> pure FFIInt64
+      [GHC.WordRep] -> pure FFIWord
+      [GHC.Word8Rep] -> pure FFIWord8
+      [GHC.Word16Rep] -> pure FFIWord16
+      [GHC.Word64Rep] -> pure FFIWord64
+      [GHC.AddrRep] -> pure FFIAddr
+      [GHC.FloatRep] -> pure FFIFloat
+      [GHC.DoubleRep] -> pure FFIDouble
       _ ->
-        error $
-          "Asterius.Foreign.SupportedTypes.getFFIValueTypeRep': "
+        Left $
+          "Asterius.Foreign.SupportedTypes.getFFIValueType: "
             <> GHC.showPpr GHC.unsafeGlobalDynFlags ty
   | otherwise =
-    error $
-      "Asterius.Foreign.SupportedTypes.getFFIValueTypeRep': "
+    Left $
+      "Asterius.Foreign.SupportedTypes.getFFIValueType: "
         <> GHC.showPpr GHC.unsafeGlobalDynFlags ty
   where
     maybe_product_type = GHC.splitDataProductType_maybe ty
@@ -102,207 +77,6 @@ getFFIValueTypeRep' ty
     Just (_, _, data_con, data_con_arg_tys) = maybe_product_type
     data_con_arity = GHC.dataConSourceArity data_con
     (data_con_arg_ty1 : _) = data_con_arg_tys
-
-getFFIValueType0 :: Bool -> GHC.TyCon -> Maybe FFIValueType
-getFFIValueType0 accept_prim norm_tc
-  | GHC.isValid (isJSValTyCon norm_tc) = pure ffiJSVal
-  | otherwise = GHC.lookupNameEnv ffi_valuetype_map0 (GHC.getName norm_tc)
-  where
-    ffi_valuetype_map0
-      | accept_prim = ffiValueTypeMap0
-      | otherwise = ffiBoxedValueTypeMap0
-
-getFFIValueType1 :: Bool -> GHC.TyCon -> Maybe FFIValueType
-getFFIValueType1 accept_prim norm_tc =
-  GHC.lookupNameEnv
-    ffi_valuetype_map1
-    (GHC.getName norm_tc)
-  where
-    ffi_valuetype_map1
-      | accept_prim = ffiValueTypeMap1
-      | otherwise = ffiBoxedValueTypeMap1
-
-ffiBoxedValueTypeList :: [FFIValueType]
-ffiBoxedValueTypeList =
-  ffiJSVal :
-    [ vt
-      | vt@FFIValueType {..} <-
-          GHC.nameEnvElts ffiBoxedValueTypeMap0
-            <> GHC.nameEnvElts ffiBoxedValueTypeMap1,
-        not $ BS.null hsTyCon
-    ]
-
-ffiBoxedValueTypeMap0,
-  ffiBoxedValueTypeMap1,
-  ffiPrimValueTypeMap0,
-  ffiPrimValueTypeMap1,
-  ffiValueTypeMap0,
-  ffiValueTypeMap1 ::
-    GHC.NameEnv FFIValueType
-ffiBoxedValueTypeMap0 =
-  GHC.mkNameEnv
-    [ ( GHC.getName GHC.anyTyCon,
-        FFIValueType {ffiValueTypeRep = FFILiftedRep, hsTyCon = ""}
-      ),
-      ( GHC.charTyConName,
-        FFIValueType
-          { ffiValueTypeRep = getFFIValueTypeRep GHC.charPrimTyCon,
-            hsTyCon = "Char"
-          }
-      ),
-      ( GHC.boolTyConName,
-        FFIValueType {ffiValueTypeRep = FFIWordRep, hsTyCon = "Bool"}
-      ),
-      ( GHC.intTyConName,
-        FFIValueType
-          { ffiValueTypeRep = getFFIValueTypeRep GHC.intPrimTyCon,
-            hsTyCon = "Int"
-          }
-      ),
-      ( GHC.int8TyConName,
-        FFIValueType
-          { ffiValueTypeRep = getFFIValueTypeRep GHC.intPrimTyCon,
-            hsTyCon = "Int8"
-          }
-      ),
-      ( GHC.int16TyConName,
-        FFIValueType
-          { ffiValueTypeRep = getFFIValueTypeRep GHC.intPrimTyCon,
-            hsTyCon = "Int16"
-          }
-      ),
-      ( GHC.int32TyConName,
-        FFIValueType
-          { ffiValueTypeRep = getFFIValueTypeRep GHC.intPrimTyCon,
-            hsTyCon = "Int32"
-          }
-      ),
-      ( GHC.int64TyConName,
-        FFIValueType
-          { ffiValueTypeRep = getFFIValueTypeRep GHC.intPrimTyCon,
-            hsTyCon = "Int64"
-          }
-      ),
-      ( GHC.wordTyConName,
-        FFIValueType
-          { ffiValueTypeRep = getFFIValueTypeRep GHC.wordPrimTyCon,
-            hsTyCon = "Word"
-          }
-      ),
-      ( GHC.word8TyConName,
-        FFIValueType
-          { ffiValueTypeRep = getFFIValueTypeRep GHC.wordPrimTyCon,
-            hsTyCon = "Word8"
-          }
-      ),
-      ( GHC.word16TyConName,
-        FFIValueType
-          { ffiValueTypeRep = getFFIValueTypeRep GHC.wordPrimTyCon,
-            hsTyCon = "Word16"
-          }
-      ),
-      ( GHC.word32TyConName,
-        FFIValueType
-          { ffiValueTypeRep = getFFIValueTypeRep GHC.wordPrimTyCon,
-            hsTyCon = "Word32"
-          }
-      ),
-      ( GHC.word64TyConName,
-        FFIValueType
-          { ffiValueTypeRep = getFFIValueTypeRep GHC.wordPrimTyCon,
-            hsTyCon = "Word64"
-          }
-      ),
-      ( GHC.floatTyConName,
-        FFIValueType
-          { ffiValueTypeRep = getFFIValueTypeRep GHC.floatPrimTyCon,
-            hsTyCon = "Float"
-          }
-      ),
-      ( GHC.doubleTyConName,
-        FFIValueType
-          { ffiValueTypeRep = getFFIValueTypeRep GHC.doublePrimTyCon,
-            hsTyCon = "Double"
-          }
-      )
-    ]
-ffiBoxedValueTypeMap1 =
-  GHC.mkNameEnv
-    [ ( GHC.ptrTyConName,
-        FFIValueType
-          { ffiValueTypeRep = getFFIValueTypeRep GHC.addrPrimTyCon,
-            hsTyCon = "Ptr"
-          }
-      ),
-      ( GHC.funPtrTyConName,
-        FFIValueType
-          { ffiValueTypeRep = getFFIValueTypeRep GHC.addrPrimTyCon,
-            hsTyCon = "FunPtr"
-          }
-      ),
-      ( GHC.stablePtrTyConName,
-        FFIValueType
-          { ffiValueTypeRep = getFFIValueTypeRep GHC.stablePtrPrimTyCon,
-            hsTyCon = "StablePtr"
-          }
-      )
-    ]
-ffiPrimValueTypeMap0 =
-  GHC.mkNameEnv
-    [ ( GHC.charPrimTyConName,
-        FFIValueType
-          { ffiValueTypeRep = getFFIValueTypeRep GHC.charPrimTyCon,
-            hsTyCon = ""
-          }
-      ),
-      ( GHC.intPrimTyConName,
-        FFIValueType
-          { ffiValueTypeRep = getFFIValueTypeRep GHC.intPrimTyCon,
-            hsTyCon = ""
-          }
-      ),
-      ( GHC.wordPrimTyConName,
-        FFIValueType
-          { ffiValueTypeRep = getFFIValueTypeRep GHC.wordPrimTyCon,
-            hsTyCon = ""
-          }
-      ),
-      ( GHC.floatPrimTyConName,
-        FFIValueType
-          { ffiValueTypeRep = getFFIValueTypeRep GHC.floatPrimTyCon,
-            hsTyCon = ""
-          }
-      ),
-      ( GHC.doublePrimTyConName,
-        FFIValueType
-          { ffiValueTypeRep = getFFIValueTypeRep GHC.doublePrimTyCon,
-            hsTyCon = ""
-          }
-      ),
-      ( GHC.addrPrimTyConName,
-        FFIValueType
-          { ffiValueTypeRep = getFFIValueTypeRep GHC.addrPrimTyCon,
-            hsTyCon = ""
-          }
-      )
-    ]
-ffiPrimValueTypeMap1 =
-  GHC.mkNameEnv
-    [ ( GHC.getName GHC.stablePtrPrimTyCon,
-        FFIValueType
-          { ffiValueTypeRep = getFFIValueTypeRep GHC.stablePtrPrimTyCon,
-            hsTyCon = ""
-          }
-      ),
-      ( GHC.getName GHC.stableNamePrimTyCon,
-        FFIValueType
-          { ffiValueTypeRep = getFFIValueTypeRep GHC.stableNamePrimTyCon,
-            hsTyCon = ""
-          }
-      )
-    ]
-ffiValueTypeMap0 = ffiBoxedValueTypeMap0 `GHC.plusNameEnv` ffiPrimValueTypeMap0
-ffiValueTypeMap1 = ffiBoxedValueTypeMap1 `GHC.plusNameEnv` ffiPrimValueTypeMap1
 
 isAnyTy :: GHC.Type -> Bool
 isAnyTy ty = case GHC.tcSplitTyConApp_maybe ty of
