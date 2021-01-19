@@ -99,4 +99,3 @@ export const offset_stat_dev = 0x0;
 export const offset_stat_ino = 0x8;
 export const clock_monotonic = 0x1;
 export const clock_realtime = 0x0;
-export const hsTyCons = ["JSVal","Bool","Char","Double","Float","Int","Int8","Int16","Int32","Int64","Word","Word8","Word16","Word32","Word64","StablePtr","Ptr","FunPtr"];

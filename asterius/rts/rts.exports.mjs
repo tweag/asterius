@@ -1,13 +1,28 @@
-import * as rtsConstants from "./rts.constants.mjs";
+const hsTyCons = [
+  "JSVal",
+  "Bool",
+  null,
+  null,
+  "Int",
+  "Int8",
+  "Int16",
+  "Int32",
+  "Int64",
+  "Word",
+  "Word8",
+  "Word16",
+  "Word32",
+  "Word64",
+  "Ptr",
+  "Float",
+  "Double",
+];
 
-function decodeTys(arr, tag) {
+function decodeTys(tag) {
   const tys = [];
   while (tag) {
-    const i = (tag & 0x1f) - 1;
-    if (!arr[i]) {
-      throw new WebAssembly.RuntimeError(`decodeTys: unsupported tag ${tag}`);
-    }
-    tys.push(arr[i]);
+    const i = tag & 0x1f;
+    tys.push(i);
     tag >>>= 5;
   }
   return tys;
@@ -15,24 +30,36 @@ function decodeTys(arr, tag) {
 
 function decodeRtsMk(e, ty) {
   switch (ty) {
-    case "JSVal": {
-      return v => e.rts_mkJSVal(BigInt(e.context.components.jsvalManager.newJSValzh(v)));
+    case 0: {
+      return (v) =>
+        e.rts_mkJSVal(BigInt(e.context.components.jsvalManager.newJSValzh(v)));
+    }
+    case 2: {
+      return (v) => v;
+    }
+    case 3: {
+      return (v) => v;
     }
     default: {
-      const f = `rts_mk${ty}`;
-      return v => e[f](v);
+      return e[`rts_mk${hsTyCons[ty]}`].bind(e);
     }
   }
 }
 
 function decodeRtsGet(e, ty) {
   switch (ty) {
-    case "JSVal": {
-      return p => e.context.components.jsvalManager.getJSValzh(Number(e.rts_getJSVal(p)));
+    case 0: {
+      return (p) =>
+        e.context.components.jsvalManager.getJSValzh(Number(e.rts_getJSVal(p)));
+    }
+    case 2: {
+      return (p) => p;
+    }
+    case 3: {
+      return (p) => p;
     }
     default: {
-      const f = `rts_get${ty}`;
-      return p => e[f](p);
+      return e[`rts_get${hsTyCons[ty]}`].bind(e);
     }
   }
 }
@@ -54,8 +81,6 @@ export class Exports {
       scheduler: scheduler,
       stablePtrManager: stableptr_manager,
       callbackStablePtrs: new Map(),
-      rtsMkFuncs: rtsConstants.hsTyCons.map(ty => decodeRtsMk(this, ty)),
-      rtsGetFuncs: rtsConstants.hsTyCons.map(ty => decodeRtsGet(this, ty))
     });
   }
 
@@ -71,16 +96,16 @@ export class Exports {
   }
 
   newHaskellCallback(sp, arg_tag, ret_tag, io, finalizer) {
-    const arg_mk_funcs = decodeTys(this.context.rtsMkFuncs, arg_tag),
-      ret_get_funcs = decodeTys(this.context.rtsGetFuncs, ret_tag),
+    const arg_mk_funcs = decodeTys(arg_tag).map((ty) => decodeRtsMk(this, ty)),
+      ret_get_funcs = decodeTys(ret_tag).map((ty) => decodeRtsGet(this, ty)),
       run_func = this.context.symbolTable.addressOf(
         io
           ? "base_AsteriusziTopHandler_runIO_closure"
           : "base_AsteriusziTopHandler_runNonIO_closure"
       ),
       eval_func = ret_get_funcs.length
-        ? p => this.rts_evalIO(p)
-        : p => this.rts_evalLazyIO(p);
+        ? (p) => this.rts_evalIO(p)
+        : (p) => this.rts_evalLazyIO(p);
     if (ret_get_funcs.length > 1) {
       throw new WebAssembly.RuntimeError(`Multiple returns not supported`);
     }
@@ -98,7 +123,9 @@ export class Exports {
         p = this.rts_apply(BigInt(run_func), p);
         const tid = await eval_func(Number(p));
         if (ret_get_funcs.length) {
-          return ret_get_funcs[0](BigInt(this.context.scheduler.getTSOret(tid)));
+          return ret_get_funcs[0](
+            BigInt(this.context.scheduler.getTSOret(tid))
+          );
         }
       } finally {
         finalizer();

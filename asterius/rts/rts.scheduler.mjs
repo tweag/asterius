@@ -298,17 +298,7 @@ export class Scheduler {
             );
             break;
           }
-          case 2: {
-            // I64
-            this.memory.i64Store(
-              this.symbolTable.addressOf("MainCapability") +
-                rtsConstants.offset_Capability_r +
-                rtsConstants.offset_StgRegTable_rR1,
-              tso_info.ffiRet
-            );
-            break;
-          }
-          case 3: {
+          case 16: {
             // F32
             this.memory.f32Store(
               this.symbolTable.addressOf("MainCapability") +
@@ -318,7 +308,7 @@ export class Scheduler {
             );
             break;
           }
-          case 4: {
+          case 17: {
             // F64
             this.memory.f64Store(
               this.symbolTable.addressOf("MainCapability") +
@@ -328,12 +318,16 @@ export class Scheduler {
             );
             break;
           }
-          default:
-            // FIXME: add support for multiple return values: the tag already
-            // supports it and we get a list of values in tso_info.ffiRet
-            throw new WebAssembly.RuntimeError(
-              `Unsupported FFI return value type tag ${tso_info.ffiRetType} (more than one value?): ${tso_info.ffiRet}`
+          default: {
+            // I64
+            this.memory.i64Store(
+              this.symbolTable.addressOf("MainCapability") +
+                rtsConstants.offset_Capability_r +
+                rtsConstants.offset_StgRegTable_rR1,
+              tso_info.ffiRet
             );
+            break;
+          }
         }
       }
 
