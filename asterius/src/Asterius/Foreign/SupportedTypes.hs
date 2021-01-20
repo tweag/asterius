@@ -9,13 +9,10 @@ module Asterius.Foreign.SupportedTypes
 where
 
 import Asterius.Types
-import qualified Data.ByteString as BS
 import Data.Maybe
 import qualified ErrUtils as GHC
 import qualified GhcPlugins as GHC
-import qualified PrelNames as GHC
 import qualified RepType as GHC
-import qualified TysPrim as GHC
 
 ffiValueTypeSigned :: FFIValueType -> Bool
 ffiValueTypeSigned FFIJSVal = False
