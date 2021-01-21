@@ -20,52 +20,33 @@ import Control.Monad.IO.Class
 import Data.IORef
 import qualified Data.Map.Strict as M
 import Data.String
+import Data.Traversable
 import qualified ForeignCall as GHC
 import qualified GhcPlugins as GHC
 import qualified HsSyn as GHC
-import qualified PrelNames as GHC
 import System.IO.Unsafe
 import qualified TcRnMonad as GHC
-import qualified TyCoRep as GHC
+import qualified TcType as GHC
 
 getFFIFunctionType :: GHC.Type -> Either String FFIFunctionType
-getFFIFunctionType norm_sig_ty = case res_ty of
-  GHC.FunTy norm_t1 norm_t2 -> do
-    vt <- getFFIValueType norm_t1
-    ft <- getFFIFunctionType norm_t2
-    pure ft {ffiParamTypes = vt : ffiParamTypes ft}
-  GHC.TyConApp norm_tc norm_tys1 | GHC.getName norm_tc == GHC.ioTyConName ->
-    case norm_tys1 of
-      [GHC.TyConApp u []]
-        | u == GHC.unitTyCon ->
-          pure
-            FFIFunctionType
-              { ffiParamTypes = [],
-                ffiResultTypes = [],
-                ffiInIO = True
-              }
-      [norm_t1] -> do
-        r <- getFFIValueType norm_t1
-        pure
-          FFIFunctionType
-            { ffiParamTypes = [],
-              ffiResultTypes = [r],
-              ffiInIO = True
-            }
-      _ ->
-        Left $
-          "Asterius.Foreign.Internals.getFFIFunctionType: "
-            <> GHC.showPpr GHC.unsafeGlobalDynFlags norm_sig_ty
-  _ -> do
-    r <- getFFIValueType res_ty
-    pure
-      FFIFunctionType
-        { ffiParamTypes = [],
-          ffiResultTypes = [r],
-          ffiInIO = False
-        }
+getFFIFunctionType ty = do
+  ats <- for arg_tys getFFIValueType
+  rts <-
+    if GHC.isUnitTy res_ty
+      then pure []
+      else (: []) <$> getFFIValueType res_ty
+  pure
+    FFIFunctionType
+      { ffiParamTypes = ats,
+        ffiResultTypes = rts,
+        ffiInIO = res_in_io
+      }
   where
-    res_ty = GHC.dropForAlls norm_sig_ty
+    (_, rho) = GHC.tcSplitForAllVarBndrs ty
+    (arg_tys, io_res_ty) = GHC.tcSplitFunTys rho
+    (res_ty, res_in_io)
+      | Just (_, res_ty') <- GHC.tcSplitIOType_maybe io_res_ty = (res_ty', True)
+      | otherwise = (io_res_ty, False)
 
 newtype FFIHookState = FFIHookState
   { ffiHookState :: M.Map GHC.Module FFIMarshalState

@@ -4,6 +4,8 @@ module Asterius.Foreign.SupportedTypes
   ( ffiValueTypeSigned,
     isAnyTy,
     isJSValTy,
+    jsValModule,
+    jsValTyConOccName,
     getFFIValueType,
   )
 where
@@ -85,8 +87,8 @@ isJSValTy = GHC.isValid . checkRepTyCon isJSValTyCon
 
 isJSValTyCon :: GHC.TyCon -> GHC.Validity
 isJSValTyCon tc
-  | (GHC.moduleName <$> GHC.nameModule_maybe n)
-      == Just asteriusTypesJSValModuleName
+  | GHC.nameModule_maybe n
+      == Just jsValModule
       && GHC.nameOccName n
       == jsValTyConOccName =
     GHC.IsValid
@@ -95,9 +97,9 @@ isJSValTyCon tc
   where
     n = GHC.tyConName tc
 
-{-# NOINLINE asteriusTypesJSValModuleName #-}
-asteriusTypesJSValModuleName :: GHC.ModuleName
-asteriusTypesJSValModuleName = GHC.mkModuleName "Asterius.Types.JSVal"
+{-# NOINLINE jsValModule #-}
+jsValModule :: GHC.Module
+jsValModule = GHC.mkModule GHC.baseUnitId (GHC.mkModuleName "Asterius.Types.JSVal")
 
 {-# NOINLINE jsValTyConOccName #-}
 jsValTyConOccName :: GHC.OccName

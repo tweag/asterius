@@ -44,13 +44,12 @@ asteriusTcFImport (L dloc fo@ForeignImport {fd_name = L nloc nm, fd_sig_ty = hs_
         arg_tys = mapMaybe binderRelevantType_maybe bndrs
         id = mkLocalId nm sig_ty
     imp_decl' <- asteriusTcCheckFIType arg_tys res_ty imp_decl
-    imp_decl'' <- processFFIImport globalFFIHookState norm_sig_ty imp_decl'
     let fi_decl =
           ForeignImport
             { fd_name = L nloc id,
               fd_sig_ty = undefined,
               fd_i_ext = mkSymCo norm_co,
-              fd_fi = imp_decl''
+              fd_fi = imp_decl'
             }
     return (id, L dloc fi_decl, gres)
 asteriusTcFImport d = pprPanic "asteriusTcFImport" (ppr d)

@@ -1,4 +1,5 @@
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE ViewPatterns #-}
@@ -23,6 +24,7 @@ import DsMonad
 import ForeignCall
 import GhcPlugins
 import HsSyn
+import IfaceEnv
 import MkId
 import OrdList
 import Pair
@@ -63,8 +65,8 @@ asteriusDsCImport ::
   Maybe Header ->
   SourceText ->
   DsM [Binding]
-asteriusDsCImport id co (CFunction target) cconv safety _ _ =
-  asteriusDsFCall id co (CCall (CCallSpec target cconv safety))
+asteriusDsCImport id co (CFunction target) JavaScriptCallConv safety _ _ =
+  asteriusDsFCall id co (CCall (CCallSpec target JavaScriptCallConv safety))
 asteriusDsCImport id co CWrapper JavaScriptCallConv _ _ src =
   asteriusDsFExportDynamic id co src
 asteriusDsCImport id co spec cconv safety mHeader _ = do
@@ -73,33 +75,76 @@ asteriusDsCImport id co spec cconv safety mHeader _ = do
 
 asteriusDsFCall :: Id -> Coercion -> ForeignCall -> DsM [(Id, Expr TyVar)]
 asteriusDsFCall fn_id co fcall = do
+  dflags <- getDynFlags
+  jsval_tycon_name <- lookupOrig jsValModule jsValTyConOccName
+  jsval_tycon <- lookupTyCon jsval_tycon_name
+  let jsval_ty = mkTyConTy jsval_tycon
+  (jsvalzh_ty, jsfunc_ccall_res_wrapper) <- asteriusBoxResult jsval_ty
+  jsffi_imp_mk_fcall_uniq <- newUnique
+  let jsffi_imp_mk_fcall =
+        CCall $
+          CCallSpec
+            ( StaticTarget
+                (SourceText "__asterius_jsffi_imp_mk")
+                "__asterius_jsffi_imp_mk"
+                Nothing
+                True
+            )
+            CCallConv
+            PlayRisky
+      jsffi_imp_key_rhs =
+        jsfunc_ccall_res_wrapper $
+          mkFCall
+            dflags
+            jsffi_imp_mk_fcall_uniq
+            jsffi_imp_mk_fcall
+            [mkStringLit $ read src_txt]
+            jsvalzh_ty
+      (CCall (CCallSpec (StaticTarget (SourceText src_txt) _ _ _) _ _)) = fcall
+  jsffi_imp_key_id <-
+    (`setInlinePragma` neverInlinePragma)
+      <$> mkSysLocalM (fsLit "__asterius_jsffi") jsval_ty
+  (jsffi_imp_key_raw, jsffi_imp_key_raw_case) <-
+    asteriusUnboxArg $
+      Var jsffi_imp_key_id
+  jsffi_imp_call_fcall_uniq <- newUnique
+  let jsffi_imp_call_fcall =
+        CCall $
+          CCallSpec
+            ( StaticTarget
+                (SourceText "__asterius_jsffi_imp_call")
+                "__asterius_jsffi_imp_call"
+                Nothing
+                True
+            )
+            CCallConv
+            PlayRisky
   let ty = pFst $ coercionKind co
       (tv_bndrs, rho) = tcSplitForAllVarBndrs ty
       (arg_tys, io_res_ty) = tcSplitFunTys rho
+      Right FFIFunctionType {..} = getFFIFunctionType ty
   args <- newSysLocalsDs arg_tys
   (val_args, arg_wrappers) <- mapAndUnzipM asteriusUnboxArg (map Var args)
   let work_arg_ids = [v | Var v <- val_args]
   (ccall_result_ty, res_wrapper) <- asteriusBoxResult io_res_ty
-  ccall_uniq <- newUnique
   work_uniq <- newUnique
-  dflags <- getDynFlags
-  fcall' <- case fcall of
-    CCall (CCallSpec (StaticTarget _ cName mUnitId _) CApiConv safety) -> do
-      wrapperName <- mkWrapperName "ghc_wrapper" (unpackFS cName)
-      let fcall' =
-            CCall
-              ( CCallSpec
-                  (StaticTarget NoSourceText wrapperName mUnitId True)
-                  CApiConv
-                  safety
-              )
-      return fcall'
-    _ -> return fcall
   let worker_ty =
         mkForAllTys tv_bndrs (mkFunTys (map idType work_arg_ids) ccall_result_ty)
       tvs = map binderVar tv_bndrs
-      the_ccall_app = mkFCall dflags ccall_uniq fcall' val_args ccall_result_ty
-      work_rhs = mkLams tvs (mkLams work_arg_ids the_ccall_app)
+      the_ccall_app =
+        mkFCall
+          dflags
+          jsffi_imp_call_fcall_uniq
+          jsffi_imp_call_fcall
+          ( [ jsffi_imp_key_raw,
+              mkWordLitWord dflags $ ffiValueTypesTag ffiParamTypes,
+              mkWordLitWord dflags $ ffiValueTypesTag ffiResultTypes
+            ]
+              ++ val_args
+          )
+          ccall_result_ty
+      work_rhs =
+        mkLams tvs (jsffi_imp_key_raw_case $ mkLams work_arg_ids the_ccall_app)
       work_id = mkSysLocal (fsLit "$wccall") work_uniq worker_ty
       work_app = mkApps (mkVarApps (Var work_id) tvs) val_args
       wrapper_body = foldr ($) (res_wrapper work_app) arg_wrappers
@@ -107,7 +152,11 @@ asteriusDsFCall fn_id co fcall = do
       wrap_rhs' = Cast wrap_rhs co
       fn_id_w_inl =
         fn_id `setIdUnfolding` mkInlineUnfoldingWithArity (length args) wrap_rhs'
-  return [(work_id, work_rhs), (fn_id_w_inl, wrap_rhs')]
+  return
+    [ (jsffi_imp_key_id, jsffi_imp_key_rhs),
+      (work_id, work_rhs),
+      (fn_id_w_inl, wrap_rhs')
+    ]
 
 asteriusDsFExportDynamic :: Id -> Coercion -> SourceText -> DsM [Binding]
 asteriusDsFExportDynamic id co0 src = do
@@ -133,14 +182,15 @@ asteriusDsFExportDynamic id co0 src = do
       PlayRisky
       (mkTyConApp io_tc [res_ty])
   let io_app =
-        mkLams tvs $ Lam cback $
-          mkApps
-            (Var bindIOId)
-            [ Type stable_ptr_ty,
-              Type res_ty,
-              mkApps (Var newStablePtrId) [Type arg_ty, Var cback],
-              Lam stbl_value ccall_adj
-            ]
+        mkLams tvs $
+          Lam cback $
+            mkApps
+              (Var bindIOId)
+              [ Type stable_ptr_ty,
+                Type res_ty,
+                mkApps (Var newStablePtrId) [Type arg_ty, Var cback],
+                Lam stbl_value ccall_adj
+              ]
       fed = (id `setInlineActivation` NeverActive, Cast io_app co0)
   return [fed]
   where
