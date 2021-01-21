@@ -56,8 +56,8 @@ asteriusTcFImport (L dloc fo@ForeignImport {fd_name = L nloc nm, fd_sig_ty = hs_
 asteriusTcFImport d = pprPanic "asteriusTcFImport" (ppr d)
 
 asteriusTcCheckFIType :: [Type] -> Type -> ForeignImport -> TcM ForeignImport
-asteriusTcCheckFIType arg_tys res_ty (CImport (L lc cconv) (L ls safety) mh (CFunction target) src)
-  | cconv == JavaScriptCallConv && unLoc src
+asteriusTcCheckFIType arg_tys res_ty (CImport (L lc JavaScriptCallConv) (L ls safety) mh (CFunction target) src)
+  | unLoc src
       `elem` map
         SourceText
         ["\"wrapper\"", "\"wrapper oneshot\""] =
@@ -84,8 +84,8 @@ asteriusTcCheckFIType arg_tys res_ty (CImport (L lc cconv) (L ls safety) mh (CFu
         _ ->
           addErrTc
             (illegalForeignTyErr Outputable.empty (text "One argument expected"))
-      return (CImport (L lc cconv) (L ls safety) mh CWrapper src)
-  | not (isDynamicTarget target || cconv == PrimCallConv) =
+      return (CImport (L lc JavaScriptCallConv) (L ls safety) mh CWrapper src)
+  | otherwise =
     do
       dflags <- getDynFlags
       checkForeignArgs (asteriusIsFFIArgumentTy dflags safety) arg_tys
@@ -94,7 +94,7 @@ asteriusTcCheckFIType arg_tys res_ty (CImport (L lc cconv) (L ls safety) mh (CFu
         checkSafe
         (asteriusIsFFIImportResultTy dflags)
         res_ty
-      return $ CImport (L lc cconv) (L ls safety) mh (CFunction target) src
+      return $ CImport (L lc JavaScriptCallConv) (L ls safety) mh (CFunction target) src
 asteriusTcCheckFIType arg_tys res_ty imp_decl =
   tcCheckFIType arg_tys res_ty imp_decl
 
