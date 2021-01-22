@@ -29,7 +29,6 @@ import MkId
 import OrdList
 import Pair
 import PrelNames
-import TcEnv
 import TcRnMonad
 import TcType
 import TysPrim
@@ -81,7 +80,9 @@ asteriusDsFCall fn_id co fcall = do
   let jsval_ty = mkTyConTy jsval_tycon
   (jsvalzh_ty, jsfunc_ccall_res_wrapper) <- asteriusBoxResult jsval_ty
   jsffi_imp_mk_fcall_uniq <- newUnique
-  let jsffi_imp_mk_fcall =
+  let ty = pFst $ coercionKind co
+      Right FFIFunctionType {..} = getFFIFunctionType ty
+      jsffi_imp_mk_fcall =
         CCall $
           CCallSpec
             ( StaticTarget
@@ -98,7 +99,10 @@ asteriusDsFCall fn_id co fcall = do
             dflags
             jsffi_imp_mk_fcall_uniq
             jsffi_imp_mk_fcall
-            [mkStringLit $ read src_txt]
+            [ mkStringLit $ read src_txt,
+              mkWordLitWord dflags $ ffiValueTypesTag ffiParamTypes,
+              mkWordLitWord dflags $ ffiValueTypesTag ffiResultTypes
+            ]
             jsvalzh_ty
       (CCall (CCallSpec (StaticTarget (SourceText src_txt) _ _ _) _ _)) = fcall
   jsffi_imp_key_id <-
@@ -119,10 +123,8 @@ asteriusDsFCall fn_id co fcall = do
             )
             CCallConv
             PlayRisky
-  let ty = pFst $ coercionKind co
-      (tv_bndrs, rho) = tcSplitForAllVarBndrs ty
+  let (tv_bndrs, rho) = tcSplitForAllVarBndrs ty
       (arg_tys, io_res_ty) = tcSplitFunTys rho
-      Right FFIFunctionType {..} = getFFIFunctionType ty
   args <- newSysLocalsDs arg_tys
   (val_args, arg_wrappers) <- mapAndUnzipM asteriusUnboxArg (map Var args)
   let work_arg_ids = [v | Var v <- val_args]
@@ -132,19 +134,14 @@ asteriusDsFCall fn_id co fcall = do
         mkForAllTys tv_bndrs (mkFunTys (map idType work_arg_ids) ccall_result_ty)
       tvs = map binderVar tv_bndrs
       the_ccall_app =
-        mkFCall
-          dflags
-          jsffi_imp_call_fcall_uniq
-          jsffi_imp_call_fcall
-          ( [ jsffi_imp_key_raw,
-              mkWordLitWord dflags $ ffiValueTypesTag ffiParamTypes,
-              mkWordLitWord dflags $ ffiValueTypesTag ffiResultTypes
-            ]
-              ++ val_args
-          )
-          ccall_result_ty
-      work_rhs =
-        mkLams tvs (jsffi_imp_key_raw_case $ mkLams work_arg_ids the_ccall_app)
+        jsffi_imp_key_raw_case $
+          mkFCall
+            dflags
+            jsffi_imp_call_fcall_uniq
+            jsffi_imp_call_fcall
+            (jsffi_imp_key_raw : val_args)
+            ccall_result_ty
+      work_rhs = mkLams tvs (mkLams work_arg_ids the_ccall_app)
       work_id = mkSysLocal (fsLit "$wccall") work_uniq worker_ty
       work_app = mkApps (mkVarApps (Var work_id) tvs) val_args
       wrapper_body = foldr ($) (res_wrapper work_app) arg_wrappers
