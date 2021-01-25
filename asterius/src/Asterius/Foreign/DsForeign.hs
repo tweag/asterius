@@ -117,10 +117,10 @@ asteriusDsFCall fn_id co fcall = do
             ( StaticTarget
                 (SourceText "__asterius_jsffi_imp_call")
                 "__asterius_jsffi_imp_call"
-                Nothing
+                (Just rtsUnitId)
                 True
             )
-            CCallConv
+            (if isSafeForeignCall fcall then PrimCallConv else CCallConv)
             PlayRisky
   let (tv_bndrs, rho) = tcSplitForAllVarBndrs ty
       (arg_tys, io_res_ty) = tcSplitFunTys rho
