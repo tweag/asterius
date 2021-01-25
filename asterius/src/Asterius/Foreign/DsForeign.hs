@@ -139,10 +139,7 @@ asteriusDsFCall fn_id co fcall = do
       wrapper_body = foldr ($) (res_wrapper the_ccall_app) arg_wrappers
       wrap_rhs = mkLams (tvs ++ args) wrapper_body
       wrap_rhs' = Cast wrap_rhs co
-  pure
-    [ (jsffi_imp_key_id, jsffi_imp_key_rhs),
-      (fn_id, wrap_rhs')
-    ]
+  pure [(jsffi_imp_key_id, jsffi_imp_key_rhs), (fn_id, wrap_rhs')]
 
 asteriusDsFExportDynamic :: Id -> Coercion -> SourceText -> DsM [Binding]
 asteriusDsFExportDynamic id co0 src = do
