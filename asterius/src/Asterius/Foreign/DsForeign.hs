@@ -51,28 +51,33 @@ asteriusDsForeigns fos = do
     do_decl (XForeignDecl _) = panic "asteriusDsForeigns"
 
 asteriusDsFImport :: Id -> Coercion -> ForeignImport -> DsM [Binding]
-asteriusDsFImport id co (CImport cconv safety mHeader spec (unLoc -> src)) =
-  asteriusDsCImport id co spec (unLoc cconv) (unLoc safety) mHeader src
+asteriusDsFImport id co (CImport cconv loc_safety mHeader spec (unLoc -> src)) =
+  asteriusDsCImport id co spec (unLoc cconv) loc_safety mHeader src
 
 asteriusDsCImport ::
   Id ->
   Coercion ->
   CImportSpec ->
   CCallConv ->
-  Safety ->
+  Located Safety ->
   Maybe Header ->
   SourceText ->
   DsM [Binding]
-asteriusDsCImport id co (CFunction target) JavaScriptCallConv safety _ _ =
-  asteriusDsFCall id co (CCall (CCallSpec target JavaScriptCallConv safety))
+asteriusDsCImport id co (CFunction target) JavaScriptCallConv loc_safety _ _ =
+  asteriusDsFCall
+    id
+    co
+    (CCall (CCallSpec target JavaScriptCallConv (unLoc loc_safety)))
+    loc_safety
 asteriusDsCImport id co CWrapper JavaScriptCallConv _ _ src =
   asteriusDsFExportDynamic id co src
-asteriusDsCImport id co spec cconv safety mHeader _ = do
+asteriusDsCImport id co spec cconv (unLoc -> safety) mHeader _ = do
   (r, _, _) <- dsCImport id co spec cconv safety mHeader
   pure r
 
-asteriusDsFCall :: Id -> Coercion -> ForeignCall -> DsM [(Id, Expr TyVar)]
-asteriusDsFCall fn_id co fcall = do
+asteriusDsFCall ::
+  Id -> Coercion -> ForeignCall -> Located Safety -> DsM [(Id, Expr TyVar)]
+asteriusDsFCall fn_id co fcall loc_safety = do
   dflags <- getDynFlags
   jsval_tycon_name <- lookupOrig jsValModule jsValTyConOccName
   jsval_tycon <- lookupTyCon jsval_tycon_name
@@ -111,7 +116,9 @@ asteriusDsFCall fn_id co fcall = do
     asteriusUnboxArg $
       Var jsffi_imp_key_id
   jsffi_imp_call_fcall_uniq <- newUnique
-  let jsffi_imp_call_fcall =
+  let is_safe_call =
+        isGoodSrcSpan (getLoc loc_safety) && isSafeForeignCall fcall
+      jsffi_imp_call_fcall =
         CCall $
           CCallSpec
             ( StaticTarget
@@ -120,7 +127,7 @@ asteriusDsFCall fn_id co fcall = do
                 (Just rtsUnitId)
                 True
             )
-            (if isSafeForeignCall fcall then PrimCallConv else CCallConv)
+            (if is_safe_call then PrimCallConv else CCallConv)
             PlayRisky
   let (tv_bndrs, rho) = tcSplitForAllVarBndrs ty
       (arg_tys, io_res_ty) = tcSplitFunTys rho
