@@ -15,7 +15,6 @@ import Asterius.Foreign.SupportedTypes
 import Asterius.Foreign.TypesTag
 import Asterius.Types
 import Control.Monad
-import CoreUnfold
 import Data.List
 import Data.Maybe
 import DsCCall
@@ -127,12 +126,8 @@ asteriusDsFCall fn_id co fcall = do
       (arg_tys, io_res_ty) = tcSplitFunTys rho
   args <- newSysLocalsDs arg_tys
   (val_args, arg_wrappers) <- mapAndUnzipM asteriusUnboxArg (map Var args)
-  let work_arg_ids = [v | Var v <- val_args]
   (ccall_result_ty, res_wrapper) <- asteriusBoxResult io_res_ty
-  work_uniq <- newUnique
-  let worker_ty =
-        mkForAllTys tv_bndrs (mkFunTys (map idType work_arg_ids) ccall_result_ty)
-      tvs = map binderVar tv_bndrs
+  let tvs = map binderVar tv_bndrs
       the_ccall_app =
         jsffi_imp_key_raw_case $
           mkFCall
@@ -141,18 +136,12 @@ asteriusDsFCall fn_id co fcall = do
             jsffi_imp_call_fcall
             (jsffi_imp_key_raw : val_args)
             ccall_result_ty
-      work_rhs = mkLams tvs (mkLams work_arg_ids the_ccall_app)
-      work_id = mkSysLocal (fsLit "$wccall") work_uniq worker_ty
-      work_app = mkApps (mkVarApps (Var work_id) tvs) val_args
-      wrapper_body = foldr ($) (res_wrapper work_app) arg_wrappers
+      wrapper_body = foldr ($) (res_wrapper the_ccall_app) arg_wrappers
       wrap_rhs = mkLams (tvs ++ args) wrapper_body
       wrap_rhs' = Cast wrap_rhs co
-      fn_id_w_inl =
-        fn_id `setIdUnfolding` mkInlineUnfoldingWithArity (length args) wrap_rhs'
-  return
+  pure
     [ (jsffi_imp_key_id, jsffi_imp_key_rhs),
-      (work_id, work_rhs),
-      (fn_id_w_inl, wrap_rhs')
+      (fn_id, wrap_rhs')
     ]
 
 asteriusDsFExportDynamic :: Id -> Coercion -> SourceText -> DsM [Binding]
