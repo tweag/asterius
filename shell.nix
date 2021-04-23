@@ -7,10 +7,13 @@
 }:
 (pkgs.buildFHSUserEnv {
   name = "hs-fhs";
-  targetPkgs = ps: import ./nix/stdenv-drvs.nix ps ++ (with ps; [
+  targetPkgs = ps: (with ps; [
     haskellPackages.alex
-    autoconf269
+    autoconf
+    automake
     binaryen
+    binutils
+    gcc
     haskell.compiler.ghc884
     git
     gmp.dev
@@ -25,8 +28,8 @@
     zlib.dev
   ]);
   profile = ''
-    export LANG=en_US.utf8;
-    unset SSL_CERT_FILE;
-    unset NIX_SSL_CERT_FILE;
+    export LANG=en_US.utf8
+    unset NIX_SSL_CERT_FILE
+    unset SSL_CERT_FILE
   '';
 }).env
