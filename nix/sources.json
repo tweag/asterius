@@ -1,0 +1,45 @@
+{
+    "ghc-asterius": {
+        "branch": "asterius-8.10",
+        "repo": "https://github.com/tweag/ghc-asterius.git",
+        "rev": "504247e7eda815a33c10b9c7148a985bbfb5579b",
+        "sha256": "1d9yxff5i50ifwwrv9ggkb7gc7jaaqr6040sw88xjdfxnb4wv2vz",
+        "type": "git"
+    },
+    "haskell-nix": {
+        "branch": "master",
+        "description": "Alternative Haskell Infrastructure for Nixpkgs",
+        "homepage": "https://input-output-hk.github.io/haskell.nix",
+        "owner": "input-output-hk",
+        "repo": "haskell.nix",
+        "rev": "531c9f4cac0e335db245849df3b5036973826d36",
+        "sha256": "0pxvhl20r8fkwpw2yb98jr87v932z0m53j5dx4w7f7q7wccjbsvh",
+        "type": "tarball",
+        "url": "https://github.com/input-output-hk/haskell.nix/archive/531c9f4cac0e335db245849df3b5036973826d36.tar.gz",
+        "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
+    },
+    "nixpkgs": {
+        "branch": "nixpkgs-unstable",
+        "description": "Nix Packages collection",
+        "homepage": "",
+        "owner": "NixOS",
+        "repo": "nixpkgs",
+        "rev": "dd98b100651cfbb8804f32d852f75ef7c97a6b74",
+        "sha256": "08ck4y9yhw75qdqh3m6mfk7k0pqcwylffrw30h6dphmgsxq188ip",
+        "type": "tarball",
+        "url": "https://github.com/NixOS/nixpkgs/archive/dd98b100651cfbb8804f32d852f75ef7c97a6b74.tar.gz",
+        "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
+    },
+    "wasi-sdk": {
+        "branch": "main",
+        "description": "WASI-enabled WebAssembly C/C++ toolchain",
+        "homepage": "",
+        "owner": "tweag",
+        "repo": "wasi-sdk",
+        "rev": "70cb070e43853c523d2ca4608e5b53659ce9f606",
+        "sha256": "1wd6n9fkfgf1wvmg3iykz31mjv37z1k6n4cclbhh4vqrjaxs4qfz",
+        "type": "tarball",
+        "url": "https://github.com/tweag/wasi-sdk/archive/70cb070e43853c523d2ca4608e5b53659ce9f606.tar.gz",
+        "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
+    }
+}

@@ -69,7 +69,6 @@ dependencies:
   - ghc-toolkit
   - ghci-asterius
   - inline-js-core
-  - libiserv
   - mtl
   - process
   - transformers
