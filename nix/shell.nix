@@ -47,6 +47,8 @@ hsPkgs.shellFor {
     }).haskell-language-server.components.exes.haskell-language-server
     pkgs.haskell-nix.internal-cabal-install
     pkgs.haskell-nix.internal-nix-tools
+    pkgs.cacert
+    pkgs.git
     pkgs.niv
     pkgs.nixfmt
     pkgs.nixpkgs-fmt
@@ -56,4 +58,10 @@ hsPkgs.shellFor {
   exactDeps = true;
 
   WASI_SDK_PREFIX = import sources.wasi-sdk { };
+
+  shellHook = ''
+    for pkg in asterius ghc-toolkit wasm-toolkit; do
+      hpack $pkg
+    done
+  '';
 }
