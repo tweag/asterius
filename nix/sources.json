@@ -1,11 +1,4 @@
 {
-    "ghc-asterius": {
-        "branch": "asterius-8.10",
-        "repo": "https://github.com/tweag/ghc-asterius.git",
-        "rev": "504247e7eda815a33c10b9c7148a985bbfb5579b",
-        "sha256": "1d9yxff5i50ifwwrv9ggkb7gc7jaaqr6040sw88xjdfxnb4wv2vz",
-        "type": "git"
-    },
     "haskell-nix": {
         "branch": "master",
         "description": "Alternative Haskell Infrastructure for Nixpkgs",
@@ -32,14 +25,9 @@
     },
     "wasi-sdk": {
         "branch": "main",
-        "description": "WASI-enabled WebAssembly C/C++ toolchain",
-        "homepage": "",
-        "owner": "tweag",
-        "repo": "wasi-sdk",
+        "repo": "https://github.com/tweag/wasi-sdk.git",
         "rev": "70cb070e43853c523d2ca4608e5b53659ce9f606",
-        "sha256": "1wd6n9fkfgf1wvmg3iykz31mjv37z1k6n4cclbhh4vqrjaxs4qfz",
-        "type": "tarball",
-        "url": "https://github.com/tweag/wasi-sdk/archive/70cb070e43853c523d2ca4608e5b53659ce9f606.tar.gz",
-        "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
+        "sha256": "0mxgxq1g7i541qfi29pvvmdvawj4slz3y263p71xf1zrwjmwmh5i",
+        "type": "git"
     }
 }

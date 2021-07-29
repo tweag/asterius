@@ -8,7 +8,7 @@ ENV \
   BROWSER=echo \
   LANG=C.UTF-8 \
   PATH=/root/.local/bin:${PATH} \
-  WASI_SDK_PATH=/opt/wasi-sdk
+  WASI_SDK_PREFIX=/opt/wasi-sdk
 
 RUN \
   rm /etc/apt/apt.conf.d/docker-clean && \
@@ -38,8 +38,8 @@ RUN \
     xdg-utils \
     zlib1g-dev \
     zstd && \
-  mkdir -p ${WASI_SDK_PATH} && \
-  (curl -L https://github.com/TerrorJack/wasi-sdk/releases/download/210113/wasi-sdk-12.1g41fa3294474c-linux.tar.gz | tar xz -C ${WASI_SDK_PATH} --strip-components=1) && \
+  mkdir -p ${WASI_SDK_PREFIX} && \
+  (curl -L https://github.com/TerrorJack/wasi-sdk/releases/download/210113/wasi-sdk-12.1g41fa3294474c-linux.tar.gz | tar xz -C ${WASI_SDK_PREFIX} --strip-components=1) && \
   apt autoremove --purge -y && \
   apt clean && \
   rm -rf -v /var/lib/apt/lists/* && \

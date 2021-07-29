@@ -44,7 +44,7 @@ ENV \
   BROWSER=echo \
   LANG=C.UTF-8 \
   PATH=/home/${USERNAME}/.local/bin:${PATH} \
-  WASI_SDK_PATH=/opt/wasi-sdk
+  WASI_SDK_PREFIX=/opt/wasi-sdk
 
 RUN \
   sudo apt update && \
@@ -73,8 +73,8 @@ RUN \
     xdg-utils \
     zlib1g-dev \
     zstd && \
-  sudo mkdir -p ${WASI_SDK_PATH} && \
-  (curl -L https://github.com/TerrorJack/wasi-sdk/releases/download/210113/wasi-sdk-12.1g41fa3294474c-linux.tar.gz | sudo tar xz -C ${WASI_SDK_PATH} --strip-components=1) && \
+  sudo mkdir -p ${WASI_SDK_PREFIX} && \
+  (curl -L https://github.com/TerrorJack/wasi-sdk/releases/download/210113/wasi-sdk-12.1g41fa3294474c-linux.tar.gz | sudo tar xz -C ${WASI_SDK_PREFIX} --strip-components=1) && \
   sudo apt autoremove --purge -y && \
   sudo apt clean && \
   sudo rm -rf -v \

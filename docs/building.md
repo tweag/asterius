@@ -23,7 +23,7 @@ needed in the local environment:
 * `node`, `npm` (at least `v12`)
 * `python3`
 * `stack`
-* `wasi-sdk` (the `WASI_SDK_PATH` environment variable must point to the
+* `wasi-sdk` (the `WASI_SDK_PREFIX` environment variable must point to the
   installation)
 
 ### Preparing the source tree

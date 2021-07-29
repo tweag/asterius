@@ -7,7 +7,7 @@ ARG NODE_VER=15.6.0
 ENV \
   LANG=C.UTF-8 \
   PATH=/root/.asterius-local-install-root/bin:/root/.asterius-snapshot-install-root/bin:/root/.asterius-compiler-bin:/root/.local/bin:/root/.nvm/versions/node/v${NODE_VER}/bin:${PATH} \
-  WASI_SDK_PATH=/opt/wasi-sdk
+  WASI_SDK_PREFIX=/opt/wasi-sdk
 
 RUN \
   apt update && \
@@ -28,8 +28,8 @@ RUN \
     libncurses-dev \
     python3-minimal \
     zlib1g-dev && \
-  mkdir -p ${WASI_SDK_PATH} && \
-  (curl -L https://github.com/TerrorJack/wasi-sdk/releases/download/210113/wasi-sdk-12.1g41fa3294474c-linux.tar.gz | tar xz -C ${WASI_SDK_PATH} --strip-components=1) && \
+  mkdir -p ${WASI_SDK_PREFIX} && \
+  (curl -L https://github.com/TerrorJack/wasi-sdk/releases/download/210113/wasi-sdk-12.1g41fa3294474c-linux.tar.gz | tar xz -C ${WASI_SDK_PREFIX} --strip-components=1) && \
   cp \
     /etc/skel/.bash_logout \
     /etc/skel/.bashrc \
@@ -87,4 +87,4 @@ RUN \
   cabal --version && \
   node --version && \
   wasm-opt --version && \
-  ${WASI_SDK_PATH}/bin/wasm-ld --version
+  ${WASI_SDK_PREFIX}/bin/wasm-ld --version

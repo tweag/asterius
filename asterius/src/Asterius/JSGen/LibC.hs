@@ -40,10 +40,10 @@ defLibCOpts =
 genLibC :: LibCOpts -> IO BS.ByteString
 genLibC LibCOpts {..} = do
   wasi_sdk <- do
-    mp <- getEnv "WASI_SDK_PATH"
+    mp <- getEnv "WASI_SDK_PREFIX"
     case mp of
       Just p -> pure p
-      _ -> fail "WASI_SDK_PATH not set"
+      _ -> fail "WASI_SDK_PREFIX not set"
   let cish_dir = A.dataDir </> "libc"
   cish <- map (cish_dir </>) <$> listDirectory cish_dir
   let cbits = filter isC cish

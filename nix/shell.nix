@@ -54,4 +54,6 @@ hsPkgs.shellFor {
   ];
 
   exactDeps = true;
+
+  WASI_SDK_PREFIX = import sources.wasi-sdk { };
 }
