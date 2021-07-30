@@ -34,13 +34,7 @@ hsPkgs.shellFor {
 
   nativeBuildInputs = [
     (pkgs.haskell-nix.cabalProject rec {
-      src = pkgs.fetchFromGitHub {
-        owner = "haskell";
-        repo = "haskell-language-server";
-        rev = "ghcide-v1.4.0.2";
-        sha256 = "sha256-mzIPZS0Ov+xUhb9i1GeACJm7gUZC9D/avle4pJreLdo=";
-        fetchSubmodules = true;
-      };
+      src = sources.haskell-language-server;
       compiler-nix-name = ghc;
       configureArgs = "--disable-benchmarks --disable-tests";
       modules = [{ dontPatchELF = false; } { dontStrip = false; }];

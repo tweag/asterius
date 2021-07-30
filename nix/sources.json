@@ -1,4 +1,11 @@
 {
+    "haskell-language-server": {
+        "branch": "master",
+        "repo": "https://github.com/haskell/haskell-language-server.git",
+        "rev": "e7c5e90b6df5dff2760d76169eddaea3bdd6a831",
+        "sha256": "1c5dayxvw00k4vfsfxg955ww32mcfx46124x386nabqzjz7d2cs6",
+        "type": "git"
+    },
     "haskell-nix": {
         "branch": "master",
         "description": "Alternative Haskell Infrastructure for Nixpkgs",
