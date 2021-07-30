@@ -57,7 +57,7 @@ hsPkgs.shellFor {
 
   exactDeps = true;
 
-  WASI_SDK_PREFIX = import sources.wasi-sdk { };
+  WASI_SDK_PREFIX = import "${sources.wasi-sdk}/nix/default.nix" { };
 
   shellHook = ''
     for pkg in asterius ghc-toolkit wasm-toolkit; do
