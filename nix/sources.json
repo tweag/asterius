@@ -33,8 +33,8 @@
     "wasi-sdk": {
         "branch": "main",
         "repo": "https://github.com/tweag/wasi-sdk.git",
-        "rev": "8a5bbb2289f5a121dd6925f3f006595225f0dede",
-        "sha256": "0zpjz4r7yz757rif9l372lnmx96kc64mgr6f1jjswprbc8gixdbb",
+        "rev": "85bd323e9bb368fbd8738e0bd259e959dd727c24",
+        "sha256": "0pijfcy6qa7csnfdkskrvcaq9r7jiy67nsrqhx4vy4rxnqs4jfxi",
         "type": "git"
     }
 }
