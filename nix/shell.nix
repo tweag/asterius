@@ -50,6 +50,7 @@ hsPkgs.shellFor {
     pkgs.nixfmt
     pkgs.nixpkgs-fmt
     pkgs.nodejs_latest
+    pkgs.wabt
     pkgs.wasmtime
   ];
 
