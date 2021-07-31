@@ -2,7 +2,10 @@
 , haskellNix ? import sources.haskell-nix { }
 , pkgs ? import sources.nixpkgs
     (haskellNix.nixpkgsArgs // {
-      overlays = haskellNix.nixpkgsArgs.overlays ++ [ (import ./binaryen.nix) ];
+      overlays = haskellNix.nixpkgsArgs.overlays ++ [
+        (import ./binaryen.nix)
+        (import "${sources.wasi-sdk}/nix/wasmtime.nix")
+      ];
     })
 , ghc ? "ghc8105"
 , toolsGhc ? "ghc8105"
@@ -47,6 +50,7 @@ hsPkgs.shellFor {
     pkgs.nixfmt
     pkgs.nixpkgs-fmt
     pkgs.nodejs_latest
+    pkgs.wasmtime
   ];
 
   exactDeps = true;
