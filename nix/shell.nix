@@ -5,6 +5,7 @@
       overlays = haskellNix.nixpkgsArgs.overlays ++ [
         (import "${sources.wasi-sdk}/nix/binaryen.nix")
         (import "${sources.wasi-sdk}/nix/wasmtime.nix")
+        (import ./wizer.nix)
       ];
     })
 , ghc ? "ghc8105"
@@ -52,6 +53,7 @@ hsPkgs.shellFor {
     pkgs.nodejs_latest
     pkgs.wabt
     pkgs.wasmtime
+    pkgs.wizer
   ];
 
   exactDeps = true;
