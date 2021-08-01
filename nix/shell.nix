@@ -3,7 +3,7 @@
 , pkgs ? import sources.nixpkgs
     (haskellNix.nixpkgsArgs // {
       overlays = haskellNix.nixpkgsArgs.overlays ++ [
-        (import ./binaryen.nix)
+        (import "${sources.wasi-sdk}/nix/binaryen.nix")
         (import "${sources.wasi-sdk}/nix/wasmtime.nix")
       ];
     })
