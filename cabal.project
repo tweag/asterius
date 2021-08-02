@@ -12,7 +12,7 @@ source-repository-package
 source-repository-package
   type:     git
   location: https://github.com/tweag/ghc-asterius.git
-  tag:      6a6dd1c0c90398a2240b5405ca2ef7f7ef1494b3
+  tag:      fdd5b0c0f43a8ec9d19631f4185b58ad0de95d22
   subdir:
     ghc-asterius
     ghc-boot-asterius
@@ -27,10 +27,5 @@ package aeson
 package binaryen
   flags: +system-binaryen
 
-package ghc-asterius
-  flags: +integer-gmp
-
 package hashable
   flags: +random-initial-seed
-
-index-state: 2021-07-27T00:00:00Z

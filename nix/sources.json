@@ -12,10 +12,10 @@
         "homepage": "https://input-output-hk.github.io/haskell.nix",
         "owner": "input-output-hk",
         "repo": "haskell.nix",
-        "rev": "531c9f4cac0e335db245849df3b5036973826d36",
-        "sha256": "0pxvhl20r8fkwpw2yb98jr87v932z0m53j5dx4w7f7q7wccjbsvh",
+        "rev": "1992b910e9b4d880e1f4639f4fe7266bceb9a5ad",
+        "sha256": "15w3wixjnb52f7cj3s94fy0zc0l1gc94p3n2wyq3qqxj10hvirfw",
         "type": "tarball",
-        "url": "https://github.com/input-output-hk/haskell.nix/archive/531c9f4cac0e335db245849df3b5036973826d36.tar.gz",
+        "url": "https://github.com/input-output-hk/haskell.nix/archive/1992b910e9b4d880e1f4639f4fe7266bceb9a5ad.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "nixpkgs": {
@@ -24,10 +24,10 @@
         "homepage": "",
         "owner": "NixOS",
         "repo": "nixpkgs",
-        "rev": "dd98b100651cfbb8804f32d852f75ef7c97a6b74",
-        "sha256": "08ck4y9yhw75qdqh3m6mfk7k0pqcwylffrw30h6dphmgsxq188ip",
+        "rev": "ab5b6828af26215bf2646c31961da5d3749591ef",
+        "sha256": "13mcwbjh8j3mvmgv2z2kdbgpw0qy42jnanbxymj21n3hss0h7qrz",
         "type": "tarball",
-        "url": "https://github.com/NixOS/nixpkgs/archive/dd98b100651cfbb8804f32d852f75ef7c97a6b74.tar.gz",
+        "url": "https://github.com/NixOS/nixpkgs/archive/ab5b6828af26215bf2646c31961da5d3749591ef.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "wasi-sdk": {

@@ -61,8 +61,10 @@ hsPkgs.shellFor {
   WASI_SDK_PREFIX = import "${sources.wasi-sdk}/nix/default.nix" { };
 
   shellHook = ''
+    pushd $(git rev-parse --show-toplevel)
     for pkg in asterius ghc-toolkit wasm-toolkit; do
       hpack $pkg
     done
+    popd
   '';
 }
