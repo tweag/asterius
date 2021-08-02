@@ -43,7 +43,9 @@ hsPkgs.shellFor {
       configureArgs = "--disable-benchmarks --disable-tests";
       modules = [{ dontPatchELF = false; } { dontStrip = false; }];
     }).haskell-language-server.components.exes.haskell-language-server
-    pkgs.haskell-nix.internal-cabal-install
+    (pkgs.writeShellScriptBin "cabal" ''
+      exec ${pkgs.haskell-nix.internal-cabal-install}/bin/cabal --project-file=dummy.project "$@"
+    '')
     pkgs.haskell-nix.internal-nix-tools
     pkgs.cacert
     pkgs.git
