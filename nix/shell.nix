@@ -47,6 +47,7 @@ hsPkgs.shellFor {
       exec ${pkgs.haskell-nix.internal-cabal-install}/bin/cabal --project-file=dummy.project "$@"
     '')
     pkgs.haskell-nix.internal-nix-tools
+    pkgs.binaryen
     pkgs.cacert
     pkgs.git
     pkgs.niv
