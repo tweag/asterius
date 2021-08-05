@@ -12,7 +12,7 @@
 , toolsGhc ? "ghc8105"
 , hsPkgs ? pkgs.callPackage ./pkg-set.nix { inherit pkgs ghc; }
 }:
-hsPkgs.shellFor {
+(hsPkgs.shellFor {
   packages = ps: with ps; [ asterius ghc-toolkit wasm-toolkit ];
 
   withHoogle = true;
@@ -70,4 +70,4 @@ hsPkgs.shellFor {
     done
     popd
   '';
-}
+}).overrideAttrs (_: { installPhase = "printenv | sort > $out"; })
