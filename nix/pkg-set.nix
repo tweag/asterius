@@ -18,6 +18,7 @@ pkgs.callPackage
       modules = [
         { dontPatchELF = false; }
         { dontStrip = false; }
+        { hardeningDisable = [ "all" ]; }
         {
           packages.inline-js-core.preConfigure = ''
             substituteInPlace src/Language/JavaScript/Inline/Core/NodePath.hs --replace '"node"' '"${nodejs_latest}/bin/node"'

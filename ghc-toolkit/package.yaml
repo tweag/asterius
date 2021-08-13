@@ -17,10 +17,6 @@ data-files:
   - boot-libs/**/**
   - ghc-libdir/**/**
 
-include-dirs:
-  - ghc-libdir/include
-  - include-private
-
 c-sources:
   - cbits/ghc_constants.c
 

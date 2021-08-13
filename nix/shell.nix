@@ -22,7 +22,11 @@
       args = {
         version = "latest";
         compiler-nix-name = toolsGhc;
-        modules = [{ dontPatchELF = false; } { dontStrip = false; }];
+        modules = [
+          { dontPatchELF = false; }
+          { dontStrip = false; }
+          { hardeningDisable = [ "all" ]; }
+        ];
       };
     in
     {
@@ -41,7 +45,11 @@
       src = sources.haskell-language-server;
       compiler-nix-name = ghc;
       configureArgs = "--disable-benchmarks --disable-tests";
-      modules = [{ dontPatchELF = false; } { dontStrip = false; }];
+      modules = [
+        { dontPatchELF = false; }
+        { dontStrip = false; }
+        { hardeningDisable = [ "all" ]; }
+      ];
     }).haskell-language-server.components.exes.haskell-language-server
     (pkgs.writeShellScriptBin "cabal" ''
       exec ${pkgs.haskell-nix.internal-cabal-install}/bin/cabal --project-file=dummy.project "$@"
