@@ -5,6 +5,7 @@
       overlays = haskellNix.nixpkgsArgs.overlays ++ [
         (import "${sources.wasi-sdk}/nix/binaryen.nix")
         (import "${sources.wasi-sdk}/nix/wasmtime.nix")
+        (import ./libghcconstants.nix)
         (import ./wizer.nix)
       ];
     })
@@ -68,6 +69,8 @@
   ];
 
   exactDeps = true;
+
+  LD_LIBRARY_PATH = pkgs.lib.makeLibraryPath [ pkgs.ghcconstants ];
 
   WASI_SDK_PREFIX = import "${sources.wasi-sdk}/nix/default.nix" { };
 

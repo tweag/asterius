@@ -2,8 +2,10 @@
 , haskellNix ? import sources.haskell-nix { }
 , pkgs ? import sources.nixpkgs
     (haskellNix.nixpkgsArgs // {
-      overlays = haskellNix.nixpkgsArgs.overlays
-        ++ [ (import "${sources.wasi-sdk}/nix/binaryen.nix") ];
+      overlays = haskellNix.nixpkgsArgs.overlays ++ [
+        (import "${sources.wasi-sdk}/nix/binaryen.nix")
+        (import ./libghcconstants.nix)
+      ];
     })
 , ghc ? "ghc8105"
 }:

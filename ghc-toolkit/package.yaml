@@ -17,11 +17,6 @@ data-files:
   - boot-libs/**/**
   - ghc-libdir/**/**
 
-c-sources:
-  - cbits/ghc_constants.c
-
-cc-options: -Wall -Wextra -DASTERIUS -UTABLES_NEXT_TO_CODE
-
 ghc-options: -Wall
 
 dependencies:
@@ -34,6 +29,7 @@ dependencies:
   - process
 
 library:
+  extra-libraries: ghcconstants
   source-dirs: src
   generated-other-modules:
     - Paths_ghc_toolkit

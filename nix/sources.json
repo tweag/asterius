@@ -1,4 +1,16 @@
 {
+    "ghc-asterius": {
+        "branch": "dist",
+        "description": null,
+        "homepage": null,
+        "owner": "tweag",
+        "repo": "ghc-asterius",
+        "rev": "d2b075a8199acb82aeea9f3d367b9b2c92364b43",
+        "sha256": "1m136zki5az65ssd3xhkxw3dx130kmqvd1nphvv70hpb1v65a9sa",
+        "type": "tarball",
+        "url": "https://github.com/tweag/ghc-asterius/archive/d2b075a8199acb82aeea9f3d367b9b2c92364b43.tar.gz",
+        "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
+    },
     "haskell-language-server": {
         "branch": "master",
         "repo": "https://github.com/haskell/haskell-language-server.git",
