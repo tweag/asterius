@@ -5,10 +5,10 @@
         "homepage": null,
         "owner": "tweag",
         "repo": "ghc-asterius",
-        "rev": "d2b075a8199acb82aeea9f3d367b9b2c92364b43",
+        "rev": "130f2222417af2e59542e814a04f15ace8ec9045",
         "sha256": "1m136zki5az65ssd3xhkxw3dx130kmqvd1nphvv70hpb1v65a9sa",
         "type": "tarball",
-        "url": "https://github.com/tweag/ghc-asterius/archive/d2b075a8199acb82aeea9f3d367b9b2c92364b43.tar.gz",
+        "url": "https://github.com/tweag/ghc-asterius/archive/130f2222417af2e59542e814a04f15ace8ec9045.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "haskell-language-server": {
@@ -24,10 +24,10 @@
         "homepage": "https://input-output-hk.github.io/haskell.nix",
         "owner": "input-output-hk",
         "repo": "haskell.nix",
-        "rev": "ed6d223e9ba8cc1435f872326df923b9a73ef8dc",
-        "sha256": "1j8a5r7wh57p98q74ccq3wbpagihxzkrpam1857msiil3fdzkmnx",
+        "rev": "70212380aa572ee0af0a00effd0a48245c0121f1",
+        "sha256": "15cs543npp3khyrinbggbjypmyld6amyc7zmyhdhnl3b50yqm79h",
         "type": "tarball",
-        "url": "https://github.com/input-output-hk/haskell.nix/archive/ed6d223e9ba8cc1435f872326df923b9a73ef8dc.tar.gz",
+        "url": "https://github.com/input-output-hk/haskell.nix/archive/70212380aa572ee0af0a00effd0a48245c0121f1.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "nixpkgs": {
@@ -45,8 +45,8 @@
     "wasi-sdk": {
         "branch": "main",
         "repo": "https://github.com/tweag/wasi-sdk.git",
-        "rev": "8d009b1d40dba0f0cfad203a1617e857bc7ca15f",
-        "sha256": "0dsbljzkzb0jr7x0ikhp81k2kmprcc68in18ys78gvpb0p32l5r3",
+        "rev": "c9e51d389956f1ac060c702725fa0648d4c256a0",
+        "sha256": "0hdj639fkvid6vjlh45w128q1j5qj5lh8kxlkm9xr92i9fwjlwv2",
         "type": "git"
     }
 }

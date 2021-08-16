@@ -10,7 +10,7 @@ self: super: {
         src = ../ghc-toolkit/cbits;
         installPhase = ''
           mkdir -p $out/lib
-          $CC -I${ghc_asterius}/ghc-asterius/autogen -Os -o $out/lib/libghcconstants.so -shared ghc_constants.c
+          $CC -I${ghc_asterius}/ghc-asterius/autogen -O3 -o $out/lib/libghcconstants.so -shared ghc_constants.c
         '';
       })
     { };

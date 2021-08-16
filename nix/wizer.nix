@@ -15,6 +15,7 @@ self: super: {
         cargoBuildFlags = [ "--all-features" ];
         doCheck = true;
         preCheck = "export HOME=$(mktemp -d)";
+        hardeningDisable = [ "all" ];
       })
     { };
 }
