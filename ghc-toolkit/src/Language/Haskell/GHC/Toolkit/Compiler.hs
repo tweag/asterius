@@ -8,7 +8,6 @@ where
 import Cmm
 import GHC
 import HscTypes
-import PipelineMonad
 import Stream (Stream)
 
 newtype HaskellIR = HaskellIR

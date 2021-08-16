@@ -35,9 +35,6 @@ fakeShow tag val =
     ++ show (showSDoc unsafeGlobalDynFlags $ pprCode AsmStyle $ ppr val)
     ++ ")"
 
-instance Outputable SDoc where
-  ppr = id
-
 instance Show SDoc where
   show = fakeShow "SDoc"
 
@@ -96,6 +93,8 @@ deriving instance Show Coercion
 
 deriving instance (Show var, Show argf) => Show (VarBndr var argf)
 
+deriving instance Show AnonArgFlag
+
 deriving instance Show Type
 
 deriving instance Show LitNumType
@@ -123,10 +122,10 @@ deriving instance Show AltType
 
 deriving instance Show AltCon
 
-instance Show NoExtSilent where
-  show _ = "NoExtSilent"
-
 deriving instance Show StgArg
+
+instance Show NoExtFieldSilent where
+  show = fakeShow "NoExtFieldSilent"
 
 deriving instance
   ( Show (BinderP pass),

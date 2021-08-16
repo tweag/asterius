@@ -29,20 +29,20 @@ hooksFromCompiler Compiler {..} h = do
               this_mod
               (CmmIR cmm_stream)
               filenm
-            pure (filenm, (False, Nothing), []),
+            pure (filenm, (False, Nothing), [], ()),
         GHC.runPhaseHook = Just $ \phase input_fn dflags -> case phase of
-          GHC.HscOut _ _ (GHC.HscRecomp cgguts mod_summary) -> do
+          GHC.HscOut _ _ (GHC.HscRecomp {..}) -> do
             output_fn <- GHC.phaseOutputFilename GHC.StopLn
             liftIO $
               withHaskellIR
                 dflags
-                (GHC.ms_mod mod_summary)
-                (HaskellIR cgguts)
+                (GHC.cg_module hscs_guts)
+                (HaskellIR hscs_guts)
                 output_fn
             GHC.PipeState {hsc_env = hsc_env} <- GHC.getPipeState
             (_, _, _) <-
               liftIO $
-                GHC.hscGenHardCode hsc_env cgguts mod_summary output_fn
+                GHC.hscGenHardCode hsc_env hscs_guts hscs_mod_location output_fn
             GHC.setForeignOs []
             pure (GHC.RealPhase GHC.StopLn, output_fn)
           GHC.RealPhase GHC.CmmCpp -> do
