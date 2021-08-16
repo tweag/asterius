@@ -502,7 +502,8 @@ asteriusHscCompileCoreExpr hsc_env srcspan ds_expr = do
 asteriusLinkExpr :: GHC.HscEnv -> GHC.SrcSpan -> GHC.CoreExpr -> IO ()
 asteriusLinkExpr hsc_env srcspan prepd_expr = do
   GHC.initDynLinker hsc_env
-  GHC.modifyPLS $ \pls0 -> do
+  let dl = GHC.hsc_dynLinker hsc_env
+  GHC.modifyPLS dl $ \pls0 -> do
     (pls, ok) <-
       GHC.linkDependencies hsc_env pls0 srcspan $
         neededModules prepd_expr

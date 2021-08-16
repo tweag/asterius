@@ -21,8 +21,8 @@ import Data.IORef
 import qualified Data.Map.Strict as M
 import Data.String
 import qualified ForeignCall as GHC
+import qualified GHC.Hs as GHC
 import qualified GhcPlugins as GHC
-import qualified HsSyn as GHC
 import qualified Panic as GHC
 import qualified PrelNames as GHC
 import System.IO.Unsafe
@@ -37,7 +37,7 @@ parseFFIValueType accept_prim norm_sig_ty = case norm_sig_ty of
 
 parseFFIFunctionType :: Bool -> GHC.Type -> Maybe FFIFunctionType
 parseFFIFunctionType accept_prim norm_sig_ty = case res_ty of
-  GHC.FunTy norm_t1 norm_t2 -> do
+  GHC.FunTy _ norm_t1 norm_t2 -> do
     vt <- parseFFIValueType accept_prim norm_t1
     ft <- parseFFIFunctionType accept_prim norm_t2
     pure ft {ffiParamTypes = vt : ffiParamTypes ft}
@@ -164,7 +164,7 @@ processFFIExport hook_state_ref norm_sig_ty export_id (GHC.CExport (GHC.unLoc ->
           Just r -> r
           _ -> GHC.panicDoc "processFFIExport" $ GHC.ppr norm_sig_ty
         new_k =
-          mkEntitySymbol $ GHC.fastStringToByteString lbl
+          mkEntitySymbol $ GHC.bytesFS lbl
         export_closure = idClosureSymbol dflags export_id
         new_decl =
           FFIExportDecl

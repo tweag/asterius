@@ -16,7 +16,6 @@ import Asterius.Internals.PrettyShow
 import Asterius.JSFFI
 import Asterius.Types
 import Asterius.TypesConv
-import qualified Config as GHC
 import Control.Exception
 import Control.Monad
 import Control.Monad.IO.Class
@@ -36,6 +35,7 @@ import Language.Haskell.GHC.Toolkit.Orphans.Show
 import qualified Stream
 import System.Environment.Blank
 import System.FilePath
+import qualified ToolSettings as GHC
 
 frontendPlugin :: GHC.Ghc ()
 frontendPlugin = do
@@ -61,11 +61,11 @@ frontendPlugin = do
     dflags <- GHC.getSessionDynFlags
     mySetSessionDynFlags $
       dflags
-        { GHC.settings =
-            (GHC.settings dflags)
-              { GHC.sPgm_L = unlit,
-                GHC.sPgm_l = (ahcLd, []),
-                GHC.sPgm_i = "false"
+        { GHC.toolSettings =
+            (GHC.toolSettings dflags)
+              { GHC.toolSettings_pgm_L = unlit,
+                GHC.toolSettings_pgm_l = (ahcLd, []),
+                GHC.toolSettings_pgm_i = "false"
               }
         }
         `GHC.gopt_set` GHC.Opt_EagerBlackHoling
@@ -116,7 +116,6 @@ frontendPlugin = do
     mySetSessionDynFlags
       dflags
         { GHC.integerLibrary = GHC.IntegerSimple,
-          GHC.tablesNextToCode = False,
           GHC.hooks = h'
         }
 

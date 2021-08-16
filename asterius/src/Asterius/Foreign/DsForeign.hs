@@ -20,12 +20,13 @@ import DsCCall
 import DsForeign
 import DsMonad
 import ForeignCall
+import GHC.Hs
 import GhcPlugins
-import HsSyn
 import MkId
 import OrdList
 import Pair
 import PrelNames
+import RepType
 import TcEnv
 import TcRnMonad
 import TcType
@@ -63,7 +64,7 @@ asteriusDsCImport ::
   SourceText ->
   DsM [Binding]
 asteriusDsCImport id co (CFunction target) cconv safety _ _ =
-  asteriusDsFCall id co (CCall (CCallSpec target cconv safety))
+  asteriusDsFCall id co (CCall (mkCCallSpec target cconv safety (panic "Missing Return PrimRep") (panic "Missing Argument PrimReps")))
 asteriusDsCImport id co CWrapper JavaScriptCallConv _ _ src =
   asteriusDsFExportDynamic id co src
 asteriusDsCImport id co spec cconv safety mHeader _ = do
@@ -83,19 +84,21 @@ asteriusDsFCall fn_id co fcall = do
   work_uniq <- newUnique
   dflags <- getDynFlags
   fcall' <- case fcall of
-    CCall (CCallSpec (StaticTarget _ cName mUnitId _) CApiConv safety) -> do
+    CCall (CCallSpec (StaticTarget _ cName mUnitId _) CApiConv safety _ _) -> do
       wrapperName <- mkWrapperName "ghc_wrapper" (unpackFS cName)
       let fcall' =
             CCall
-              ( CCallSpec
+              ( mkCCallSpec
                   (StaticTarget NoSourceText wrapperName mUnitId True)
                   CApiConv
                   safety
+                  io_res_ty
+                  arg_tys
               )
       return fcall'
     _ -> return fcall
   let worker_ty =
-        mkForAllTys tv_bndrs (mkFunTys (map idType work_arg_ids) ccall_result_ty)
+        mkForAllTys tv_bndrs (mkVisFunTys (map idType work_arg_ids) ccall_result_ty)
       tvs = map binderVar tv_bndrs
       the_ccall_app = mkFCall dflags ccall_uniq fcall' val_args ccall_result_ty
       work_rhs = mkLams tvs (mkLams work_arg_ids the_ccall_app)
@@ -195,7 +198,7 @@ asteriusBoxResult result_ty
                   (coreAltType the_alt)
                   [the_alt]
             ]
-    return (realWorldStatePrimTy `mkFunTy` ccall_res_ty, wrap)
+    return (realWorldStatePrimTy `mkVisFunTy` ccall_res_ty, wrap)
 asteriusBoxResult result_ty = do
   res <- asteriusResultWrapper result_ty
   (ccall_res_ty, the_alt) <- mk_alt return_result res
@@ -205,7 +208,7 @@ asteriusBoxResult result_ty = do
           ccall_res_ty
           (coreAltType the_alt)
           [the_alt]
-  return (realWorldStatePrimTy `mkFunTy` ccall_res_ty, wrap)
+  return (realWorldStatePrimTy `mkVisFunTy` ccall_res_ty, wrap)
   where
     return_result _ [ans] = ans
     return_result _ _ = panic "return_result: expected single result"

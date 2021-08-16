@@ -5,10 +5,10 @@
         "homepage": null,
         "owner": "tweag",
         "repo": "ghc-asterius",
-        "rev": "f634a242f1110e9bd239ca2236459d452bb3454f",
-        "sha256": "13l7vi8px58w1rsaad80pv6azvmb4zcwl83gfh81h7nmyfgdxq3n",
+        "rev": "96bfffee7fa367b8e6bbd12eb2dc7fc4b9923807",
+        "sha256": "0w2sz1aqjy96bl1an67y3pps5q8b3qa0jnyv2xrz6axqkj6d8m1n",
         "type": "tarball",
-        "url": "https://github.com/tweag/ghc-asterius/archive/f634a242f1110e9bd239ca2236459d452bb3454f.tar.gz",
+        "url": "https://github.com/tweag/ghc-asterius/archive/96bfffee7fa367b8e6bbd12eb2dc7fc4b9923807.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "haskell-nix": {
@@ -17,10 +17,10 @@
         "homepage": "https://input-output-hk.github.io/haskell.nix",
         "owner": "input-output-hk",
         "repo": "haskell.nix",
-        "rev": "c87907aca6fe999922d1ad026a93d82770af0cfa",
-        "sha256": "1dlpn9z7cn19nk26awqrqc2plwl9m2bq7jcdj6rbr4zsggxjfgyy",
+        "rev": "1729233076f84649aee3b98100a378df88cc8675",
+        "sha256": "14j1zy94bfvcs415ipz8kghbhlcbvp2n6zq5pakmmld1ba1k3qcd",
         "type": "tarball",
-        "url": "https://github.com/input-output-hk/haskell.nix/archive/c87907aca6fe999922d1ad026a93d82770af0cfa.tar.gz",
+        "url": "https://github.com/input-output-hk/haskell.nix/archive/1729233076f84649aee3b98100a378df88cc8675.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "hs-nix-tools": {
