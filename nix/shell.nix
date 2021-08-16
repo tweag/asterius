@@ -10,52 +10,19 @@
       ];
     })
 , ghc ? "ghc8105"
-, toolsGhc ? "ghc8105"
 , hsPkgs ? pkgs.callPackage ./pkg-set.nix { inherit pkgs ghc; }
 }:
 (hsPkgs.shellFor {
   packages = ps: with ps; [ asterius ghc-toolkit wasm-toolkit ];
 
-  withHoogle = true;
+  withHoogle = false;
 
-  tools =
-    let
-      args = {
-        version = "latest";
-        compiler-nix-name = toolsGhc;
-        modules = [
-          { dontPatchELF = false; }
-          { dontStrip = false; }
-          { hardeningDisable = [ "all" ]; }
-        ];
-      };
-    in
-    {
-      brittany = args;
-      cabal-fmt = args;
-      floskell = args;
-      ghcid = args;
-      hlint = args;
-      hoogle = args;
-      ormolu = args;
-      stylish-haskell = args;
-    };
-
-  nativeBuildInputs = [
-    (pkgs.haskell-nix.cabalProject rec {
-      src = sources.haskell-language-server;
-      compiler-nix-name = ghc;
-      configureArgs = "--disable-benchmarks --disable-tests";
-      modules = [
-        { dontPatchELF = false; }
-        { dontStrip = false; }
-        { hardeningDisable = [ "all" ]; }
-      ];
-    }).haskell-language-server.components.exes.haskell-language-server
+  nativeBuildInputs = pkgs.lib.attrValues
+    (removeAttrs (import sources.hs-nix-tools { inherit ghc; }) [ "cabal" ])
+  ++ [
     (pkgs.writeShellScriptBin "cabal" ''
       exec ${pkgs.haskell-nix.internal-cabal-install}/bin/cabal --project-file=dummy.project "$@"
     '')
-    pkgs.haskell-nix.internal-nix-tools
     pkgs.binaryen
     pkgs.cacert
     pkgs.git
