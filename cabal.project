@@ -12,8 +12,10 @@ source-repository-package
 source-repository-package
   type:     git
   location: https://github.com/tweag/ghc-asterius.git
-  tag:      96bfffee7fa367b8e6bbd12eb2dc7fc4b9923807
+  tag:      bc3b21ba1bb8e97b3bd64c032b12e6e892d70f65
   subdir:
+    ahc-bin
+    ahc-pkg
     ghc-asterius
     ghc-boot-asterius
     ghc-boot-th-asterius

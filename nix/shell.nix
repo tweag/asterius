@@ -20,6 +20,7 @@
   nativeBuildInputs = pkgs.lib.attrValues
     (removeAttrs (import sources.hs-nix-tools { inherit ghc; }) [ "cabal" ])
   ++ [
+    hsPkgs.ahc-pkg.components.exes.ahc-pkg
     (pkgs.writeShellScriptBin "cabal" ''
       exec ${pkgs.haskell-nix.internal-cabal-install}/bin/cabal --project-file=dummy.project "$@"
     '')

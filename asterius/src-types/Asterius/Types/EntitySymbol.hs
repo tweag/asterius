@@ -30,7 +30,7 @@ instance NFData EntitySymbol where
 -- | Convert an 'EntitySymbol' to a 'BS.ByteString'.
 {-# INLINE entityName #-}
 entityName :: EntitySymbol -> BS.ByteString
-entityName (EntitySymbol k) = GHC.fastStringToByteString k
+entityName (EntitySymbol k) = GHC.bytesFS k
 
 -- | Create an 'EntitySymbol' from a 'BS.ByteString'.
 {-# INLINE mkEntitySymbol #-}
