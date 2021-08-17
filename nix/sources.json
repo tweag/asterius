@@ -29,10 +29,10 @@
         "homepage": null,
         "owner": "TerrorJack",
         "repo": "hs-nix-tools",
-        "rev": "d3cd514af2b6f7ec74ffba7a9ac6e54fedca9975",
-        "sha256": "14ryzga1c4ag2pip9nykq7hjzp2rgfl925dyxszgbqs0d07bjzwk",
+        "rev": "43997c57cf5e57461bafc2c5e2f03f423b8be7c9",
+        "sha256": "13xx98mlgnbw82nk1f1sqr1hlgvmgbab68yrk8filrgnlr9dgbba",
         "type": "tarball",
-        "url": "https://github.com/TerrorJack/hs-nix-tools/archive/d3cd514af2b6f7ec74ffba7a9ac6e54fedca9975.tar.gz",
+        "url": "https://github.com/TerrorJack/hs-nix-tools/archive/43997c57cf5e57461bafc2c5e2f03f423b8be7c9.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "nixpkgs": {

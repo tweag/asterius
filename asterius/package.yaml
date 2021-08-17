@@ -95,29 +95,9 @@ executables:
     c-sources:
       - ghc-bin-asterius/hschooks.c
     main: Main.hs
-    default-extensions:
-      - NoImplicitPrelude
-    cpp-options:
-      - -DGHCI
-    ghc-options:
-      - -threaded -fno-warn-name-shadowing -Wnoncanonical-monad-instances -Wnoncanonical-monoid-instances -no-hs-main
-    dependencies:
-      - array
-      - asterius
-      - haskeline
-      - time
-      - unix
-
-  ahc-pkg:
-    source-dirs: ghc-pkg-asterius
-    main: Main.hs
-    cpp-options:
-      - -DWITH_TERMINFO
-    ghc-options: *exe-ghc-options
+    ghc-options: -no-hs-main -threaded -rtsopts "-with-rtsopts=-H512m -I0 -qg"
     dependencies:
       - asterius
-      - terminfo
-      - unix
 
   Setup-ghc-prim:
     source-dirs: app
