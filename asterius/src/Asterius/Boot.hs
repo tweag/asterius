@@ -73,8 +73,8 @@ bootCreateProcess args@BootArgs {..} = do
             kvDedup $
               ("ASTERIUS_BOOT_LIBS_DIR", bootLibsPath) :
               ("ASTERIUS_SANDBOX_GHC_LIBDIR", sandboxGhcLibDir) :
-              ("ASTERIUS_LIB_DIR", bootDir </> "asterius_lib") :
-              ("ASTERIUS_TMP_DIR", bootTmpDir args) :
+              ("AHC_LIBDIR", bootDir </> "asterius_lib") :
+              ("AHC_TMPDIR", bootTmpDir args) :
               ("ASTERIUS_AHCPKG", ahcPkg) :
               ("ASTERIUS_SETUP_GHC_PRIM", setupGhcPrim) :
               ("ASTERIUS_CONFIGURE_OPTIONS", configureOptions) :
