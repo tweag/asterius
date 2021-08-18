@@ -40,4 +40,4 @@ jobs:
 
       - name: check
         run: |
-          nix-build --keep-going --no-out-link nix/shell.nix
+          nix-build --keep-going --no-out-link ./shell.nix
