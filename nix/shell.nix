@@ -38,6 +38,8 @@
 
   exactDeps = true;
 
+  AHC_HOST_CABAL = "${pkgs.haskell-nix.internal-cabal-install}/bin/cabal";
+
   LD_LIBRARY_PATH = pkgs.lib.makeLibraryPath [ pkgs.ghcconstants ];
 
   WASI_SDK_PREFIX = import "${sources.wasi-sdk}/nix/default.nix" { };

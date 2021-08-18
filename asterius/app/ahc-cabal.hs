@@ -1,12 +1,15 @@
 import Asterius.BuildInfo
 import Asterius.FixEnv
-import Data.Foldable
-import Data.List
 import qualified Paths_asterius
 import System.Directory
 import System.Environment.Blank
 import System.FilePath
 import System.Process (callProcess)
+
+hostCabalPath :: IO FilePath
+hostCabalPath = do
+  ms <- getEnv "AHC_HOST_CABAL"
+  maybe (pure "cabal") pure ms
 
 main :: IO ()
 main = do
@@ -30,4 +33,5 @@ main = do
   unsetEnv "CABAL_CONFIG"
   setEnv "CABAL_DIR" ahc_cabal_root True
   args <- getArgs
-  callProcess "cabal" args
+  host_cabal <- hostCabalPath
+  callProcess host_cabal args
