@@ -7,7 +7,6 @@ module Asterius.FrontendPlugin
 where
 
 import Asterius.Binary.File
-import Asterius.BuildInfo
 import Asterius.CodeGen
 import Asterius.Foreign.DsForeign
 import Asterius.Foreign.TcForeign

@@ -8,7 +8,6 @@ module Asterius.Boot
   )
 where
 
-import Asterius.BuildInfo
 import Asterius.Builtins
 import Asterius.Internals
 import Asterius.Internals.Temp

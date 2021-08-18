@@ -16,7 +16,6 @@ import qualified Asterius.Backends.Binaryen as Binaryen
 import qualified Asterius.Backends.Binaryen.RunPass as Binaryen
 import Asterius.Binary.File
 import Asterius.Binary.NameCache
-import Asterius.BuildInfo
 import Asterius.Foreign.ExportStatic
 import Asterius.Internals
 import Asterius.Internals.ByteString

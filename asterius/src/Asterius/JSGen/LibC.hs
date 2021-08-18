@@ -8,7 +8,6 @@ module Asterius.JSGen.LibC
   )
 where
 
-import qualified Asterius.BuildInfo as A
 import Asterius.Internals.Temp
 import qualified Data.ByteString as BS
 import Data.Traversable

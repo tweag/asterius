@@ -3,7 +3,6 @@
 
 module Asterius.JSGen.Bundle where
 
-import Asterius.BuildInfo
 import Asterius.Internals.Temp
 import qualified Data.ByteString as BS
 import Data.Foldable
