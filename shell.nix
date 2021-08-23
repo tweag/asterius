@@ -27,9 +27,6 @@
     pkgs.binaryen
     pkgs.cacert
     pkgs.git
-    pkgs.niv
-    pkgs.nixfmt
-    pkgs.nixpkgs-fmt
     pkgs.nodejs_latest
     pkgs.wabt
     pkgs.wasmtime
@@ -51,4 +48,4 @@
     done
     popd
   '';
-}).overrideAttrs (_: { installPhase = "printenv | sort > $out"; })
+}).overrideAttrs (_: { installPhase = "export > $out"; })
