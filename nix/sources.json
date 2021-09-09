@@ -5,10 +5,10 @@
         "homepage": null,
         "owner": "tweag",
         "repo": "ghc-asterius",
-        "rev": "c5e90f986527965d892ced32fe775a0e1f854d55",
-        "sha256": "0c3wpa66aqgvyjjhgr589ffi3sjx71v2z3icrpflj23q5175y8s2",
+        "rev": "843dd063ae89aa4e47137030d2fe78c7d7d3d1cd",
+        "sha256": "0cf806a2jwkhn8vm1nfx14nddcd9jmjjabq3flnkfqx2wa899052",
         "type": "tarball",
-        "url": "https://github.com/tweag/ghc-asterius/archive/c5e90f986527965d892ced32fe775a0e1f854d55.tar.gz",
+        "url": "https://github.com/tweag/ghc-asterius/archive/843dd063ae89aa4e47137030d2fe78c7d7d3d1cd.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "haskell-nix": {
