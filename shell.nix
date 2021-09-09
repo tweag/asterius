@@ -3,19 +3,19 @@
 , pkgs ? import sources.nixpkgs
     (haskellNix.nixpkgsArgs // {
       overlays = haskellNix.nixpkgsArgs.overlays ++ [
-        (import "${sources.wasi-sdk}/nix/binaryen.nix")
+        (import ./nix/binaryen.nix)
         (import "${sources.wasi-sdk}/nix/wasmtime.nix")
         (import ./nix/libghcconstants.nix)
         (import ./nix/wizer.nix)
       ];
     })
-, ghc ? "ghc8105"
+, ghc ? "ghc8107"
 , hsPkgs ? pkgs.callPackage ./nix/pkg-set.nix { inherit pkgs ghc; }
 }:
 (hsPkgs.shellFor {
   packages = ps: with ps; [ asterius ghc-toolkit wasm-toolkit ];
 
-  withHoogle = false;
+  withHoogle = true;
 
   nativeBuildInputs = pkgs.lib.attrValues
     (removeAttrs (import sources.hs-nix-tools { inherit ghc; }) [ "cabal" ])

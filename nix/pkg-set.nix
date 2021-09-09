@@ -3,11 +3,11 @@
 , pkgs ? import sources.nixpkgs
     (haskellNix.nixpkgsArgs // {
       overlays = haskellNix.nixpkgsArgs.overlays ++ [
-        (import "${sources.wasi-sdk}/nix/binaryen.nix")
+        (import ./binaryen.nix)
         (import ./libghcconstants.nix)
       ];
     })
-, ghc ? "ghc8105"
+, ghc ? "ghc8107"
 }:
 pkgs.callPackage
   ({ callPackage, haskell-nix, nodejs_latest }:
