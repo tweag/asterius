@@ -8,5 +8,5 @@ mkdir -p $AHC_LIBDIR
 cp -r $ASTERIUS_SANDBOX_GHC_LIBDIR/. $AHC_LIBDIR
 mkdir $AHC_LIBDIR/package.conf.d
 cp $ASTERIUS_BOOT_LIBS_DIR/rts/rts.conf $AHC_LIBDIR/package.conf.d/
-$ASTERIUS_AHCPKG --package-db=$AHC_LIBDIR/package.conf.d recache
+ahc-pkg --package-db=$AHC_LIBDIR/package.conf.d recache
 mkdir $AHC_LIBDIR/rts

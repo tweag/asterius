@@ -6,9 +6,9 @@ cp -r $ASTERIUS_BOOT_LIBS_DIR .
 pushd boot-libs
 
 pushd ghc-prim
-$ASTERIUS_SETUP_GHC_PRIM configure --builddir=$AHC_TMPDIR/dist/ghc-prim $ASTERIUS_CONFIGURE_OPTIONS
-$ASTERIUS_SETUP_GHC_PRIM build -j --builddir=$AHC_TMPDIR/dist/ghc-prim
-$ASTERIUS_SETUP_GHC_PRIM install --builddir=$AHC_TMPDIR/dist/ghc-prim
+Setup-ghc-prim configure --builddir=$AHC_TMPDIR/dist/ghc-prim $ASTERIUS_CONFIGURE_OPTIONS
+Setup-ghc-prim build -j --builddir=$AHC_TMPDIR/dist/ghc-prim
+Setup-ghc-prim install --builddir=$AHC_TMPDIR/dist/ghc-prim
 popd
 
 pushd integer-simple
