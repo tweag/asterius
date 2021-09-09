@@ -4,6 +4,7 @@
 module Asterius.JSGen.Bundle where
 
 import Asterius.Internals.Temp
+import Asterius.Sysroot
 import qualified Data.ByteString as BS
 import Data.Foldable
 import System.Directory

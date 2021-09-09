@@ -9,6 +9,7 @@ module Asterius.JSGen.LibC
 where
 
 import Asterius.Internals.Temp
+import qualified Asterius.Sysroot as A
 import qualified Data.ByteString as BS
 import Data.Traversable
 import Distribution.Simple.CCompiler
@@ -27,13 +28,7 @@ defLibCOpts :: LibCOpts
 defLibCOpts =
   LibCOpts
     { globalBase = error "globalBase not set",
-      exports =
-        [ "aligned_alloc",
-          "free",
-          "memchr",
-          "memcpy",
-          "strlen"
-        ]
+      exports = ["aligned_alloc", "free", "memchr", "memcpy", "strlen"]
     }
 
 genLibC :: LibCOpts -> IO BS.ByteString
@@ -50,7 +45,7 @@ genLibC LibCOpts {..} = do
   withTempDir "asterius" $ \tmpdir -> do
     let common_opts =
           [ "--sysroot=" <> wasi_sdk </> "share" </> "wasi-sysroot",
-            "-I" <> (A.ahcLibDir </> "include"),
+            "-I" <> (A.sysroot </> "include"),
             "-Oz",
             "-flto"
           ]

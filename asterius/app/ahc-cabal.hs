@@ -1,4 +1,3 @@
-import Asterius.BuildInfo
 import Asterius.FixEnv
 import qualified Paths_asterius
 import System.Directory
@@ -21,13 +20,9 @@ main = do
     readFile
       =<< Paths_asterius.getDataFileName ("cabal" </> "config")
   writeFile ahc_cabal_config_path $
-    "install-dirs global\n  prefix: "
-      <> ahcLibDir
-      <> "\nprogram-default-options\n  hsc2hs-options: --cross-compile"
-      <> "\nwith-compiler: "
-      <> ahc
-      <> "\nwith-hc-pkg: "
-      <> ahcPkg
+    "program-default-options\n  hsc2hs-options: --cross-compile"
+      <> "\nwith-compiler: ahc"
+      <> "\nwith-hc-pkg: ahc-pkg"
       <> "\n"
       <> ahc_cabal_config
   unsetEnv "CABAL_CONFIG"

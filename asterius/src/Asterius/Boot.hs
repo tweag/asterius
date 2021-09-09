@@ -11,6 +11,7 @@ where
 import Asterius.Builtins
 import Asterius.Internals
 import Asterius.Internals.Temp
+import qualified Asterius.Sysroot as A
 import Control.Monad
 import Data.Foldable
 import Data.Maybe
@@ -46,11 +47,11 @@ defaultBootArgs =
             "--enable-relocatable",
             "-O2",
             "--prefix="
-              <> (bootDir defaultBootArgs </> "asterius_lib"),
+              <> A.sysroot,
             "--global",
             "--ipid=$pkg",
-            "--with-ghc=" <> ahc,
-            "--with-ghc-pkg=" <> ahcPkg,
+            "--with-ghc=ahc",
+            "--with-ghc-pkg=ahc-pkg",
             "--hsc2hs-option=--cross-compile",
             "--ghc-option=-v1",
             "--ghc-option=-dsuppress-ticks"
@@ -72,10 +73,7 @@ bootCreateProcess args@BootArgs {..} = do
             kvDedup $
               ("ASTERIUS_BOOT_LIBS_DIR", bootLibsPath) :
               ("ASTERIUS_SANDBOX_GHC_LIBDIR", sandboxGhcLibDir) :
-              ("AHC_LIBDIR", bootDir </> "asterius_lib") :
               ("AHC_TMPDIR", bootTmpDir args) :
-              ("ASTERIUS_AHCPKG", ahcPkg) :
-              ("ASTERIUS_SETUP_GHC_PRIM", setupGhcPrim) :
               ("ASTERIUS_CONFIGURE_OPTIONS", configureOptions) :
                 [(k, v) | (k, v) <- e, k /= "GHC_PACKAGE_PATH"],
         delegate_ctlc = True
@@ -90,11 +88,11 @@ bootRTSCmm BootArgs {..} = do
   withTempDir "ahc-boot" $ \tmpdir -> do
     for_ cmm_files $ \src ->
       callProcess
-        ahc
+        "ahc"
         [ "-c",
           "-O2",
           "-dcmm-lint",
-          "-I" <> obj_topdir </> "include",
+          "-I" <> A.sysroot </> "include",
           "-this-unit-id",
           "rts",
           "-o",
@@ -102,11 +100,10 @@ bootRTSCmm BootArgs {..} = do
           src
         ]
     callProcess "ar" $
-      ["qDS", obj_topdir </> "rts" </> "libHSrts.a"]
+      ["qDS", A.sysroot </> "rts" </> "libHSrts.a"]
         <> [tmpdir </> takeBaseName src <.> "o" | src <- cmm_files]
   where
     rts_path = bootLibsPath </> "rts"
-    obj_topdir = bootDir </> "asterius_lib"
 
 runBootCreateProcess :: CreateProcess -> IO ()
 runBootCreateProcess = flip withCreateProcess $ \_ _ _ ph -> do
