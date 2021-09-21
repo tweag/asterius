@@ -28,6 +28,7 @@ import Asterius.JSGen.Wasm
 import Asterius.Ld (rtsUsedSymbols)
 import Asterius.Main.Task
 import Asterius.Resolve
+import qualified Asterius.Sysroot as A
 import Asterius.Types
   ( Module,
     entityName,
@@ -254,11 +255,8 @@ ahcLink :: Task -> IO (Asterius.Types.Module, LinkReport)
 ahcLink task = do
   ld_output <- temp (takeBaseName (inputHS task))
   putStrLn $ "[INFO] Compiling " <> inputHS task <> " to WebAssembly"
-  callProcess ahc $
-    [ "--make",
-      "-O2",
-      "-i" <> takeDirectory (inputHS task)
-    ]
+  callProcess "ahc" $
+    ["--make", "-O2", "-i" <> takeDirectory (inputHS task)]
       <> concat [["-no-hs-main", "-optl--no-main"] | not $ hasMain task]
       <> ["-optl--debug" | debug task]
       <> [ "-optl--extra-root-symbol=" <> c8BS (entityName root_sym)
@@ -350,12 +348,12 @@ ahcDistMain logger task (final_m, report) = do
     "[INFO] Writing JavaScript runtime modules to "
       <> show
         (outputDirectory task)
-  rts_files' <- listDirectory $ dataDir </> "rts"
+  rts_files' <- listDirectory $ A.dataDir </> "rts"
   let rts_files = filter (\x -> x /= "browser" && x /= "node") rts_files'
   for_ rts_files $
-    \f -> copyFile (dataDir </> "rts" </> f) (outputDirectory task </> f)
+    \f -> copyFile (A.dataDir </> "rts" </> f) (outputDirectory task </> f)
   let specific_dir =
-        dataDir </> "rts" </> case target task of
+        A.dataDir </> "rts" </> case target task of
           Node -> "node"
           Browser -> "browser"
   specific_contents <- listDirectory specific_dir

@@ -34,7 +34,7 @@ data BootArgs = BootArgs
 defaultBootArgs :: BootArgs
 defaultBootArgs =
   BootArgs
-    { bootDir = dataDir </> ".boot",
+    { bootDir = undefined </> ".boot",
       configureOptions =
         unwords
           [ "--disable-shared",
@@ -67,7 +67,7 @@ bootCreateProcess args@BootArgs {..} = do
   e <- getEnvironment
   pure
     (proc "bash" ["-e", "boot.sh"])
-      { cwd = Just dataDir,
+      { cwd = undefined,
         env =
           Just $
             kvDedup $

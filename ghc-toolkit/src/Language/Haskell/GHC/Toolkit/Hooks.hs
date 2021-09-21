@@ -13,6 +13,7 @@ import qualified Hooks as GHC
 import qualified HscMain as GHC
 import qualified HscTypes as GHC
 import Language.Haskell.GHC.Toolkit.Compiler
+import qualified MkIface as GHC
 import qualified PipelineMonad as GHC
 import System.Directory
 import System.FilePath
@@ -31,7 +32,7 @@ hooksFromCompiler Compiler {..} h = do
               filenm
             pure (filenm, (False, Nothing), [], ()),
         GHC.runPhaseHook = Just $ \phase input_fn dflags -> case phase of
-          GHC.HscOut _ _ (GHC.HscRecomp {..}) -> do
+          GHC.HscOut _ _ GHC.HscRecomp {..} -> do
             output_fn <- GHC.phaseOutputFilename GHC.StopLn
             liftIO $
               withHaskellIR
@@ -39,7 +40,21 @@ hooksFromCompiler Compiler {..} h = do
                 (GHC.cg_module hscs_guts)
                 (HaskellIR hscs_guts)
                 output_fn
-            GHC.PipeState {hsc_env = hsc_env} <- GHC.getPipeState
+            GHC.PipeState {..} <- GHC.getPipeState
+            final_iface <-
+              liftIO
+                ( GHC.mkFullIface
+                    hsc_env {GHC.hsc_dflags = hscs_iface_dflags}
+                    hscs_partial_iface
+                )
+            _ <- GHC.P $
+              \_env state -> pure (state {GHC.iface = Just final_iface}, ())
+            liftIO $
+              GHC.hscMaybeWriteIface
+                hscs_iface_dflags
+                final_iface
+                hscs_old_iface_hash
+                hscs_mod_location
             (_, _, _) <-
               liftIO $
                 GHC.hscGenHardCode hsc_env hscs_guts hscs_mod_location output_fn

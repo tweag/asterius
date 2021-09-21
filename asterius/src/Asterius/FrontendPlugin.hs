@@ -45,7 +45,7 @@ frontendPlugin = do
       dflags
         { GHC.hooks =
             (GHC.hooks dflags)
-              { GHC.dsForeignsHook = Just asteriusDsForeigns,
+              { GHC.dsForeignsHook = Nothing, -- Just asteriusDsForeigns,
                 GHC.tcForeignImportsHook = Just asteriusTcForeignImports,
                 GHC.tcForeignExportsHook = Just asteriusTcForeignExports,
                 GHC.hscCompileCoreExprHook = Just asteriusHscCompileCoreExpr,
@@ -62,8 +62,8 @@ frontendPlugin = do
       dflags
         { GHC.toolSettings =
             (GHC.toolSettings dflags)
-              { GHC.toolSettings_pgm_L = unlit,
-                GHC.toolSettings_pgm_l = (ahcLd, []),
+              { GHC.toolSettings_pgm_L = "unlit",
+                GHC.toolSettings_pgm_l = ("ahc-ld", []),
                 GHC.toolSettings_pgm_i = "false"
               }
         }

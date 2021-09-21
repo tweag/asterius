@@ -18,3 +18,9 @@ write-ghc-environment-files: never
 documentation: False
 minimize-conflict-set: True
 jobs: $ncpus
+
+program-default-options
+  hsc2hs-options: --cross-compile
+
+with-compiler: ahc
+with-hc-pkg: ahc-pkg

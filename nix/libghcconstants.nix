@@ -1,6 +1,6 @@
 let
   sources = import ./sources.nix { };
-  ghc_asterius = sources.ghc-asterius;
+  ghc_asterius = import "${sources.ghc-asterius}/nix/src.nix" { };
 in
 self: super: {
   ghcconstants = self.callPackage
