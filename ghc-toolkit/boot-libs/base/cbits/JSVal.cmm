@@ -1,4 +1,0 @@
-#include "Cmm.h"
-
-INFO_TABLE(stg_JSVAL,0,0,PRIM,"JSVAL","JSVAL")
-{ foreign "C" barf("JSVAL object (%p) entered!", R1) never returns; }

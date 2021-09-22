@@ -2,8 +2,8 @@
     "ghc-asterius": {
         "branch": "asterius-8.10",
         "repo": "https://github.com/tweag/ghc-asterius.git",
-        "rev": "053dfed5532d61afde3de07b77192f0a067fdbf7",
-        "sha256": "0sdwp4kwkh6wf1yvg3rvsxwpi39hc3j94wn5qxp73hg1bmm4mnfz",
+        "rev": "bb44852b8897517c4116d900cf8b93ff74d63c1f",
+        "sha256": "0siirlwzpm9vfxqmjsx1jf1qjs4qr0kklj6jmahkrzbdpdli0p5i",
         "type": "git"
     },
     "haskell-nix": {
@@ -12,10 +12,10 @@
         "homepage": "https://input-output-hk.github.io/haskell.nix",
         "owner": "input-output-hk",
         "repo": "haskell.nix",
-        "rev": "e17be32e5839457125ed81c52b10ab960a9e02bf",
-        "sha256": "1gz3rvkscrriqgbs5pknr3wh95l4mvh6vvm2xr584xc9qg78y3d7",
+        "rev": "f5ec5311fa805b46f5276e2b4f574c8e7544a30b",
+        "sha256": "0640k59wk41bf0z099jyvxs85gx23fxbd131mxzc48n8nanvm7qz",
         "type": "tarball",
-        "url": "https://github.com/input-output-hk/haskell.nix/archive/e17be32e5839457125ed81c52b10ab960a9e02bf.tar.gz",
+        "url": "https://github.com/input-output-hk/haskell.nix/archive/f5ec5311fa805b46f5276e2b4f574c8e7544a30b.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "hs-nix-tools": {

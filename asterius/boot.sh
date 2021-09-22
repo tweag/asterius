@@ -5,50 +5,55 @@ set -euox pipefail
 AHC_TMPDIR=$(mktemp -d)
 export AHC_TMPDIR
 
+cp -r "$AHC_BOOT_SRCDIR"/* "$GHC_ASTERIUS_BOOT"/* "$AHC_TMPDIR"
+chmod u+w -R "$AHC_TMPDIR"
+
 rm -rf "$AHC_LIBDIR"
 mkdir -p "$AHC_LIBDIR"
 
-cp --no-preserve=mode,ownership -r \
+cp -r \
   "$GHC_ASTERIUS"/ghc-asterius/autogen \
   "$AHC_LIBDIR"/include
-cp --no-preserve=mode,ownership \
+cp \
   "$GHC_ASTERIUS_BOOT"/llvm-passes \
   "$GHC_ASTERIUS_BOOT"/llvm-targets \
   "$GHC_ASTERIUS_BOOT"/platformConstants \
   "$GHC_ASTERIUS_BOOT"/settings \
   "$GHC_ASTERIUS_BOOT"/template-hsc.h \
   "$AHC_LIBDIR"
+chmod u+w -R "$AHC_LIBDIR"
 
 mkdir "$AHC_LIBDIR"/package.conf.d
 cp "$AHC_BOOT_SRCDIR"/rts/rts.conf "$AHC_LIBDIR"/package.conf.d
 ahc-pkg --global recache
 
 mkdir "$AHC_LIBDIR"/rts
-find "$GHC_ASTERIUS_BOOT"/rts -name '*.cmm' -exec sh -c 'ahc -c -O2 -dcmm-lint -I"$AHC_LIBDIR"/include -this-unit-id rts -o "$AHC_TMPDIR"/$(basename "$0" .cmm).o "$0"' {} \;
-ar qDS "$AHC_LIBDIR"/rts/libHSrts.a "$AHC_TMPDIR"/*.o
+find "$AHC_TMPDIR"/rts -name '*.cmm' -exec sh -c 'ahc -c -O2 -dcmm-lint -I"$AHC_LIBDIR"/include -this-unit-id rts -o "$AHC_TMPDIR"/rts/$(basename "$0" .cmm).o "$0"' {} \;
+ar qDS "$AHC_LIBDIR"/rts/libHSrts.a "$AHC_TMPDIR"/rts/*.o
 
-pushd "$AHC_BOOT_SRCDIR"
+pushd "$AHC_TMPDIR"
 
-ASTERIUS_CONFIGURE_OPTIONS="--disable-shared --disable-profiling --disable-debug-info --disable-library-for-ghci --disable-split-objs --disable-split-sections --disable-library-stripping --enable-relocatable -O2 --prefix=$AHC_LIBDIR --global --ipid=\$pkg --with-ghc=ahc --with-ghc-pkg=ahc-pkg --hsc2hs-option=--cross-compile --ghc-option=-v1 --ghc-option=-dsuppress-ticks"
+ASTERIUS_CONFIGURE_OPTIONS="--disable-shared --disable-profiling --disable-debug-info --disable-library-for-ghci --disable-split-objs --disable-split-sections --disable-library-stripping --enable-relocatable -O0 --prefix=$AHC_LIBDIR --global --ipid=\$pkg --with-ghc=ahc --with-ghc-pkg=ahc-pkg --hsc2hs-option=--cross-compile --ghc-option=-v1 --ghc-option=-dsuppress-ticks"
 
-pushd "$GHC_ASTERIUS_BOOT"/ghc-prim
-Setup-ghc-prim configure --builddir="$AHC_TMPDIR"/dist/ghc-prim $ASTERIUS_CONFIGURE_OPTIONS
-Setup-ghc-prim build -j4 --builddir="$AHC_TMPDIR"/dist/ghc-prim
-Setup-ghc-prim install --builddir="$AHC_TMPDIR"/dist/ghc-prim
+pushd ghc-prim
+Setup-ghc-prim configure $ASTERIUS_CONFIGURE_OPTIONS
+Setup-ghc-prim build -j4
+Setup-ghc-prim install
 popd
 
 pushd integer-simple
-ahc-cabal act-as-setup --build-type=Simple -- configure --builddir="$AHC_TMPDIR"/dist/integer-simple $ASTERIUS_CONFIGURE_OPTIONS
-ahc-cabal act-as-setup --build-type=Simple -- build -j4 --builddir="$AHC_TMPDIR"/dist/integer-simple
-ahc-cabal act-as-setup --build-type=Simple -- install --builddir="$AHC_TMPDIR"/dist/integer-simple
+ahc-cabal act-as-setup --build-type=Simple -- configure $ASTERIUS_CONFIGURE_OPTIONS
+ahc-cabal act-as-setup --build-type=Simple -- build -j4
+ahc-cabal act-as-setup --build-type=Simple -- install
 popd
 
 pushd base
-autoreconf -i
-ahc-cabal act-as-setup --build-type=Configure -- configure --builddir="$AHC_TMPDIR"/dist/base -finteger-simple $ASTERIUS_CONFIGURE_OPTIONS
-ahc-cabal act-as-setup --build-type=Configure -- build -j4 --builddir="$AHC_TMPDIR"/dist/base
-ahc-cabal act-as-setup --build-type=Configure -- install --builddir="$AHC_TMPDIR"/dist/base
+CFLAGS=-I$AHC_TMPDIR/base ahc-cabal act-as-setup --build-type=Configure -- configure -finteger-simple $ASTERIUS_CONFIGURE_OPTIONS
+ahc-cabal act-as-setup --build-type=Configure -- build -j4
+ahc-cabal act-as-setup --build-type=Configure -- install
 popd
+
+exit
 
 pushd ghc-heap
 ahc-cabal act-as-setup --build-type=Simple -- configure --builddir="$AHC_TMPDIR"/dist/ghc-heap $ASTERIUS_CONFIGURE_OPTIONS
