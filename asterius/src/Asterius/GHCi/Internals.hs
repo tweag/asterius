@@ -134,7 +134,6 @@ newGHCiSession = do
         { nodeExtraArgs =
             [ "--experimental-modules",
               "--experimental-wasi-unstable-preview1",
-              "--experimental-wasm-bigint",
               "--experimental-wasm-return-call",
               "--no-wasm-bounds-checks",
               "--no-wasm-stack-checks",

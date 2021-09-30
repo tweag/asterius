@@ -15,7 +15,6 @@ extra-source-files:
 
 data-files:
   - boot-libs/**/**
-  - ghc-libdir/**/**
 
 ghc-options: -Wall
 

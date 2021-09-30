@@ -11,7 +11,6 @@ main = do
       "node"
       [ "--experimental-modules",
         "--experimental-wasi-unstable-preview1",
-        "--experimental-wasm-bigint",
         "--experimental-wasm-return-call",
         "--unhandled-rejections=strict",
         "argv.mjs",

@@ -1,5 +1,0 @@
-[
-(0, "-mem2reg -globalopt"),
-(1, "-O1 -globalopt"),
-(2, "-O2")
-]

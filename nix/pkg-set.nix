@@ -2,10 +2,8 @@
 , haskellNix ? import sources.haskell-nix { }
 , pkgs ? import sources.nixpkgs
     (haskellNix.nixpkgsArgs // {
-      overlays = haskellNix.nixpkgsArgs.overlays ++ [
-        (import ./binaryen.nix)
-        (import ./libghcconstants.nix)
-      ];
+      overlays = haskellNix.nixpkgsArgs.overlays
+        ++ [ (import ./binaryen.nix) (import ./libghcconstants.nix) ];
     })
 , ghc ? "ghc8107"
 }:
@@ -18,6 +16,7 @@ pkgs.callPackage
       };
       compiler-nix-name = ghc;
       modules = [
+        { configureFlags = [ "-O2" ]; }
         { dontPatchELF = false; }
         { dontStrip = false; }
         { hardeningDisable = [ "all" ]; }

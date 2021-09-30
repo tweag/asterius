@@ -391,7 +391,6 @@ ahcDistMain logger task (final_m, report) = do
         callProcess "node" $
           [ "--experimental-modules",
             "--experimental-wasi-unstable-preview1",
-            "--experimental-wasm-bigint",
             "--experimental-wasm-return-call",
             "--unhandled-rejections=strict",
             takeFileName script

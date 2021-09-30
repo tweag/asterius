@@ -25,3 +25,5 @@ package-lock.json
 
 cabal.project.local
 .vscode
+
+sysroot

@@ -2,8 +2,8 @@
     "ghc-asterius": {
         "branch": "asterius-8.10",
         "repo": "https://github.com/tweag/ghc-asterius.git",
-        "rev": "bb44852b8897517c4116d900cf8b93ff74d63c1f",
-        "sha256": "0siirlwzpm9vfxqmjsx1jf1qjs4qr0kklj6jmahkrzbdpdli0p5i",
+        "rev": "7f4fc3414d21908fd59683ee74201238ee8e9d7f",
+        "sha256": "0dxr1awk1aghdgyb39iilanbwyjmdizm4m4fc9d6lycm42bvcfvx",
         "type": "git"
     },
     "haskell-nix": {
@@ -12,10 +12,10 @@
         "homepage": "https://input-output-hk.github.io/haskell.nix",
         "owner": "input-output-hk",
         "repo": "haskell.nix",
-        "rev": "f5ec5311fa805b46f5276e2b4f574c8e7544a30b",
-        "sha256": "0640k59wk41bf0z099jyvxs85gx23fxbd131mxzc48n8nanvm7qz",
+        "rev": "7421a25fb842e188eff6612f31a766e479f973a5",
+        "sha256": "0879xpcddii5v43r6if298dms8fk0lb433pm2r8mk4k7f2nkjiqc",
         "type": "tarball",
-        "url": "https://github.com/input-output-hk/haskell.nix/archive/f5ec5311fa805b46f5276e2b4f574c8e7544a30b.tar.gz",
+        "url": "https://github.com/input-output-hk/haskell.nix/archive/7421a25fb842e188eff6612f31a766e479f973a5.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "hs-nix-tools": {
@@ -24,29 +24,29 @@
         "homepage": null,
         "owner": "TerrorJack",
         "repo": "hs-nix-tools",
-        "rev": "f04f07c2c0bc5f8998145ce59c0929d734cd2f49",
-        "sha256": "1bsvavwgjw8dys9m3998vqy4a0qpvkxmc69rzi64k23677hqxyz2",
+        "rev": "349267a91d0c674f4251d52b687a7ea82755d786",
+        "sha256": "18rp5132s4khqhpm17mprdjii6950p8wzy34npgik8ngw96b029k",
         "type": "tarball",
-        "url": "https://github.com/TerrorJack/hs-nix-tools/archive/f04f07c2c0bc5f8998145ce59c0929d734cd2f49.tar.gz",
+        "url": "https://github.com/TerrorJack/hs-nix-tools/archive/349267a91d0c674f4251d52b687a7ea82755d786.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "nixpkgs": {
-        "branch": "nixpkgs-unstable",
+        "branch": "nixos-unstable",
         "description": "Nix Packages collection",
         "homepage": "",
         "owner": "NixOS",
         "repo": "nixpkgs",
-        "rev": "e0ce3c683ae677cf5aab597d645520cddd13392b",
-        "sha256": "08ans3w6r4fbs1wx6lzlp4xwhy6p04x3spvvrjz5950w8mzxqm61",
+        "rev": "c21ba4f7bb4a3d621eb1d187e6b5e816bb85380c",
+        "sha256": "1xkycq5sxn9yxiz545lblb2zwk3b3f6adc0bzhgksv74l44i3s1i",
         "type": "tarball",
-        "url": "https://github.com/NixOS/nixpkgs/archive/e0ce3c683ae677cf5aab597d645520cddd13392b.tar.gz",
+        "url": "https://github.com/NixOS/nixpkgs/archive/c21ba4f7bb4a3d621eb1d187e6b5e816bb85380c.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "wasi-sdk": {
         "branch": "main",
         "repo": "https://github.com/tweag/wasi-sdk.git",
-        "rev": "546583c687aa72a48080cc295244c2486c9d23e9",
-        "sha256": "0nbrh7f08wj1bgm8ahzlfpivk104hwv31k2wvv1vny1av9ldi7z6",
+        "rev": "e22a7185c8b6e8fcbb32228ff327c2aa284c1c4a",
+        "sha256": "1if5zbamai933fypdbmpjzlgswsaqlqydlmj6ma8pkn81qxvlahw",
         "type": "git"
     }
 }
