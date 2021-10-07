@@ -182,8 +182,6 @@ genReq task LinkReport {..} =
       genSPT staticsOffsetMap sptEntries,
       ", tableSlots: ",
       intDec tableSlots,
-      ", staticBytes: ",
-      intDec staticBytes,
       ", yolo: ",
       if yolo task then "true" else "false",
       ", pic: ",
@@ -306,7 +304,6 @@ ahcDistMain logger task (final_m, report) = do
   Binaryen.setLowMemoryUnused 1
   m_ref <-
     Binaryen.marshalModule
-      (staticBytes report)
       (pic task)
       (verboseErr task)
       (tailCalls task)
@@ -348,12 +345,13 @@ ahcDistMain logger task (final_m, report) = do
     "[INFO] Writing JavaScript runtime modules to "
       <> show
         (outputDirectory task)
-  rts_files' <- listDirectory $ A.dataDir </> "rts"
+  -- TODO: fixme
+  rts_files' <- listDirectory $ "/home/terrorjack/asterius/asterius/rts"
   let rts_files = filter (\x -> x /= "browser" && x /= "node") rts_files'
   for_ rts_files $
-    \f -> copyFile (A.dataDir </> "rts" </> f) (outputDirectory task </> f)
+    \f -> copyFile ("/home/terrorjack/asterius/asterius/rts" </> f) (outputDirectory task </> f)
   let specific_dir =
-        A.dataDir </> "rts" </> case target task of
+        "/home/terrorjack/asterius/asterius/rts" </> case target task of
           Node -> "node"
           Browser -> "browser"
   specific_contents <- listDirectory specific_dir

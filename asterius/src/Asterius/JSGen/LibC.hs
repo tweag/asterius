@@ -38,7 +38,8 @@ genLibC LibCOpts {..} = do
     case mp of
       Just p -> pure p
       _ -> fail "WASI_SDK_PREFIX not set"
-  let cish_dir = A.dataDir </> "libc"
+  -- TODO: fixme
+  let cish_dir = "/home/terrorjack/asterius/asterius/libc"
   cish <- map (cish_dir </>) <$> listDirectory cish_dir
   let cbits = filter isC cish
       cxxbits = filter isCxx cish

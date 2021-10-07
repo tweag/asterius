@@ -6,7 +6,7 @@
         (import ./nix/binaryen.nix)
         (import "${sources.wasi-sdk}/nix/wasmtime.nix")
         (import ./nix/libghcconstants.nix)
-        (import ./nix/wizer.nix)
+        (import "${sources.ghc-asterius}/nix/wizer.nix")
       ];
     })
 , ghc ? "ghc8107"
@@ -38,11 +38,15 @@
 
   AHC_HOST_CABAL = "${pkgs.haskell-nix.internal-cabal-install}/bin/cabal";
 
+  AHC_RTS =
+    let p = import "${sources.ghc-asterius}/nix/wasi-rts.nix" { };
+    in "${p}/bin/rts.wasm";
+
   LD_LIBRARY_PATH = pkgs.lib.makeLibraryPath [ pkgs.ghcconstants ];
 
   WASI_SDK_PREFIX = import "${sources.wasi-sdk}/nix/default.nix" { };
 
-  GHC_ASTERIUS = import "${sources.ghc-asterius}/nix/src.nix" {};
+  GHC_ASTERIUS = import "${sources.ghc-asterius}/nix/src.nix" { };
 
   GHC_ASTERIUS_BOOT = GHC_ASTERIUS.boot;
 

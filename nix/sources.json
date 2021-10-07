@@ -2,8 +2,8 @@
     "ghc-asterius": {
         "branch": "asterius-8.10",
         "repo": "https://github.com/tweag/ghc-asterius.git",
-        "rev": "7f4fc3414d21908fd59683ee74201238ee8e9d7f",
-        "sha256": "0dxr1awk1aghdgyb39iilanbwyjmdizm4m4fc9d6lycm42bvcfvx",
+        "rev": "ffa44f2c2983e090de4194aa26393726aa27fc10",
+        "sha256": "0kasripgmrglfrgwqgsvzl17fphdr3i2zqm8r98j5q4za5rd2qgp",
         "type": "git"
     },
     "haskell-nix": {
@@ -12,10 +12,10 @@
         "homepage": "https://input-output-hk.github.io/haskell.nix",
         "owner": "input-output-hk",
         "repo": "haskell.nix",
-        "rev": "7421a25fb842e188eff6612f31a766e479f973a5",
-        "sha256": "0879xpcddii5v43r6if298dms8fk0lb433pm2r8mk4k7f2nkjiqc",
+        "rev": "5a9b5dea5ed75d2b67f097da4c6b13992470954b",
+        "sha256": "0nzv3nk78yr0lid49ki6xrznfffcmjvj1gl1sax3kvi1a6p3h35k",
         "type": "tarball",
-        "url": "https://github.com/input-output-hk/haskell.nix/archive/7421a25fb842e188eff6612f31a766e479f973a5.tar.gz",
+        "url": "https://github.com/input-output-hk/haskell.nix/archive/5a9b5dea5ed75d2b67f097da4c6b13992470954b.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "hs-nix-tools": {
@@ -36,17 +36,17 @@
         "homepage": "",
         "owner": "NixOS",
         "repo": "nixpkgs",
-        "rev": "c21ba4f7bb4a3d621eb1d187e6b5e816bb85380c",
-        "sha256": "1xkycq5sxn9yxiz545lblb2zwk3b3f6adc0bzhgksv74l44i3s1i",
+        "rev": "14aef06d9b3ad1d07626bdbb16083b83f92dc6c1",
+        "sha256": "1rfsfaaa1lbrvhdpdnqg4fg5v7bnal1s8xd1sm66pl2vh0dhjzyg",
         "type": "tarball",
-        "url": "https://github.com/NixOS/nixpkgs/archive/c21ba4f7bb4a3d621eb1d187e6b5e816bb85380c.tar.gz",
+        "url": "https://github.com/NixOS/nixpkgs/archive/14aef06d9b3ad1d07626bdbb16083b83f92dc6c1.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "wasi-sdk": {
         "branch": "main",
         "repo": "https://github.com/tweag/wasi-sdk.git",
-        "rev": "e22a7185c8b6e8fcbb32228ff327c2aa284c1c4a",
-        "sha256": "1if5zbamai933fypdbmpjzlgswsaqlqydlmj6ma8pkn81qxvlahw",
+        "rev": "259caed4b9bdf2a90bf12f301a973d96e6ed1131",
+        "sha256": "0mm5rpx98qwckaad3zd7kasim0a0wqr5kx6df3pl33p5lv967n48",
         "type": "git"
     }
 }
