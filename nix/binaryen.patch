@@ -1,0 +1,14 @@
+--- a/src/binaryen-c.cpp
++++ b/src/binaryen-c.cpp
+@@ -3275,6 +3275,11 @@
+ 
+ // Memory. One per module
+ 
++BinaryenIndex BinaryenGetMemoryInitial(BinaryenModuleRef module) {
++  auto* wasm = (Module*)module;
++  return wasm->memory.initial;
++}
++
+ void BinaryenSetMemory(BinaryenModuleRef module,
+                        BinaryenIndex initial,
+                        BinaryenIndex maximum,

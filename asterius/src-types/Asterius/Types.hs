@@ -570,8 +570,7 @@ data Module
         globalExports :: [GlobalExport],
         globalMap :: SymbolMap Global,
         memorySegments :: [DataSegment],
-        memoryImport :: Maybe MemoryImport,
-        memoryMBlocks :: Int
+        memoryImport :: Maybe MemoryImport
       }
   deriving (Show, Data)
 

@@ -28,7 +28,7 @@ defLibCOpts :: LibCOpts
 defLibCOpts =
   LibCOpts
     { globalBase = error "globalBase not set",
-      exports = ["aligned_alloc", "free", "memchr", "memcpy", "strlen"]
+      exports = ["memcpy"]
     }
 
 genLibC :: LibCOpts -> IO BS.ByteString
@@ -39,7 +39,7 @@ genLibC LibCOpts {..} = do
       Just p -> pure p
       _ -> fail "WASI_SDK_PREFIX not set"
   -- TODO: fixme
-  let cish_dir = "/home/terrorjack/asterius/asterius/libc"
+  let cish_dir = "/home/terrorjack/asterius-ng/asterius/libc"
   cish <- map (cish_dir </>) <$> listDirectory cish_dir
   let cbits = filter isC cish
       cxxbits = filter isCxx cish

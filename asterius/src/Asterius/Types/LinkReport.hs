@@ -1,4 +1,5 @@
 {-# LANGUAGE DuplicateRecordFields #-}
+{-# LANGUAGE StrictData #-}
 {-# LANGUAGE TemplateHaskell #-}
 
 module Asterius.Types.LinkReport
@@ -14,6 +15,7 @@ import Data.Word
 data LinkReport
   = LinkReport
       { staticsOffsetMap, functionOffsetMap :: SymbolMap Word32,
+        memoryBase, lastDataOffset :: Word32,
         infoTableOffsetSet :: [Word32],
         tableSlots :: Int,
         sptEntries :: SymbolMap (Word64, Word64),

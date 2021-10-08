@@ -33,7 +33,7 @@ export async function newAsteriusInstance(req) {
     ),
     __asterius_memory_base = new WebAssembly.Global(
       { value: "i32", mutable: false },
-      req.defaultMemoryBase // TODO: make dynamic.
+      req.memoryBase // TODO: make dynamic.
     );
 
   let mkSptEntries = function (spt_offset_entries) {
@@ -81,7 +81,7 @@ export async function newAsteriusInstance(req) {
       __asterius_memory
     ),
     __asterius_heapalloc = new HeapAlloc(
-      __asterius_memory
+      __asterius_components
     ),
     __asterius_jsval_manager = new JSValManager(__asterius_components),
     __asterius_stableptr_manager = new StablePtrManager(),

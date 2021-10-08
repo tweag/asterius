@@ -2,8 +2,8 @@
     "ghc-asterius": {
         "branch": "asterius-8.10",
         "repo": "https://github.com/tweag/ghc-asterius.git",
-        "rev": "ffa44f2c2983e090de4194aa26393726aa27fc10",
-        "sha256": "0kasripgmrglfrgwqgsvzl17fphdr3i2zqm8r98j5q4za5rd2qgp",
+        "rev": "b1554a84cc4874a9cb2cbd1996afab43e95d3944",
+        "sha256": "0292923wlawig8fs1wal7zkr5lh2xa0frmi2x5i8z2vfqrbk27lm",
         "type": "git"
     },
     "haskell-nix": {

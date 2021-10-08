@@ -13,12 +13,8 @@ import * as rtsConstants from "./rts.constants.mjs";
  * {@link https://gitlab.haskell.org/ghc/ghc/wikis/commentary/rts/storage/block-alloc}.
  */
 export class HeapAlloc {
-  constructor(memory) {
-    /**
-     * @type Memory
-     * @name HeapAlloc#memory
-     */
-    this.memory = memory;
+  constructor(components) {
+    this.components = components;
     /**
      * An array with two entries:
      * 1. The unpinned pool, i.e. the address of the
@@ -101,12 +97,12 @@ export class HeapAlloc {
     pinned = pinned || b >= rtsConstants.block_size;
     let pool = this.currentPools[Number(pinned)],
       current_start = Number(
-        this.memory.i64Load(pool + rtsConstants.offset_bdescr_start)
+        this.components.memory.i64Load(pool + rtsConstants.offset_bdescr_start)
       ),
       current_free = Number(
-        this.memory.i64Load(pool + rtsConstants.offset_bdescr_free)
+        this.components.memory.i64Load(pool + rtsConstants.offset_bdescr_free)
       );
-    const current_blocks = this.memory.i32Load(
+    const current_blocks = this.components.memory.i32Load(
         pool + rtsConstants.offset_bdescr_blocks
       ),
       current_limit = current_start + rtsConstants.block_size * current_blocks,
@@ -114,7 +110,7 @@ export class HeapAlloc {
 
     if (new_free <= current_limit) {
       // if the pool has enough space
-      this.memory.i64Store(
+      this.components.memory.i64Store(
         pool + rtsConstants.offset_bdescr_free,
         new_free
       );
@@ -125,17 +121,17 @@ export class HeapAlloc {
         pool = this.hpAlloc(b, true);
         this.currentPools[1] = pool;
       } else {
-        const gen_no = this.memory.i16Load(pool + rtsConstants.offset_bdescr_gen_no);
+        const gen_no = this.components.memory.i16Load(pool + rtsConstants.offset_bdescr_gen_no);
         pool = this.hpAlloc(b, false, gen_no);
         this.currentPools[0] = pool;
         this.generations[gen_no] = pool;
       }
       current_free = Number(
-        this.memory.i64Load(
+        this.components.memory.i64Load(
           pool + rtsConstants.offset_bdescr_free
         )
       );
-      this.memory.i64Store(
+      this.components.memory.i64Store(
         pool + rtsConstants.offset_bdescr_free,
         current_free + b
       );
@@ -163,19 +159,19 @@ export class HeapAlloc {
     const req_blocks =
         (rtsConstants.mblock_size * n - rtsConstants.offset_first_block) /
         rtsConstants.block_size,
-      mblock = this.memory.getMBlocks(n),
+      mblock = this.components.exports.getMBlocks(n),
       bd = mblock + rtsConstants.offset_first_bdescr,
       block_addr = mblock + rtsConstants.offset_first_block;
-    this.memory.i64Store(bd + rtsConstants.offset_bdescr_start, block_addr);
-    this.memory.i64Store(bd + rtsConstants.offset_bdescr_free, block_addr);
-    this.memory.i64Store(bd + rtsConstants.offset_bdescr_link, 0);
-    this.memory.i16Store(bd + rtsConstants.offset_bdescr_node, n);
-    this.memory.i32Store(bd + rtsConstants.offset_bdescr_blocks, req_blocks);
-    this.memory.i16Store(
+    this.components.memory.i64Store(bd + rtsConstants.offset_bdescr_start, block_addr);
+    this.components.memory.i64Store(bd + rtsConstants.offset_bdescr_free, block_addr);
+    this.components.memory.i64Store(bd + rtsConstants.offset_bdescr_link, 0);
+    this.components.memory.i16Store(bd + rtsConstants.offset_bdescr_node, n);
+    this.components.memory.i32Store(bd + rtsConstants.offset_bdescr_blocks, req_blocks);
+    this.components.memory.i16Store(
       bd + rtsConstants.offset_bdescr_flags,
       pinned ? rtsConstants.BF_PINNED : 0
     );
-    this.memory.i16Store(bd + rtsConstants.offset_bdescr_gen_no, gen_no);
+    this.components.memory.i16Store(bd + rtsConstants.offset_bdescr_gen_no, gen_no);
     this.mgroups.add(bd);
     return bd;
   }
@@ -205,16 +201,16 @@ export class HeapAlloc {
       }
       this.mgroups.delete(bd);
       const p = bd - rtsConstants.offset_first_bdescr;
-      this.memory.freeMBlocks(p);
+      this.components.memory.freeMBlocks(p, 1);
     }
 
     // Free unreachable MBlocks
     for (const bd of Array.from(this.mgroups)) {
       if (!live_mblocks.has(bd)) {
         const
-          gen_no = this.memory.i16Load(bd + rtsConstants.offset_bdescr_gen_no),
+          gen_no = this.components.memory.i16Load(bd + rtsConstants.offset_bdescr_gen_no),
           pinned = Boolean(
-            this.memory.i16Load(bd + rtsConstants.offset_bdescr_flags) & rtsConstants.BF_PINNED
+            this.components.memory.i16Load(bd + rtsConstants.offset_bdescr_flags) & rtsConstants.BF_PINNED
           );
         // Note: not all unreachable MBlocks can be
         // freed during a minor collection. This is because
@@ -224,8 +220,8 @@ export class HeapAlloc {
         if(major || (!pinned && gen_no == 0)) {
           this.mgroups.delete(bd);
           const p = bd - rtsConstants.offset_first_bdescr,
-            n = this.memory.i16Load(bd + rtsConstants.offset_bdescr_node);
-          this.memory.freeMBlocks(p, n);
+            n = this.components.memory.i16Load(bd + rtsConstants.offset_bdescr_node);
+          this.components.memory.freeMBlocks(p, n);
         }
       }
     }
@@ -249,7 +245,7 @@ export class HeapAlloc {
   liveSize() {
     let acc = 0;
     for (const bd of this.mgroups) {
-      acc += this.memory.i16Load(bd + rtsConstants.offset_bdescr_node);
+      acc += this.components.memory.i16Load(bd + rtsConstants.offset_bdescr_node);
     }
     return acc;
   }

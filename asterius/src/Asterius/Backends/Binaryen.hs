@@ -70,6 +70,7 @@ import Foreign hiding
 import Foreign.C
 import GHC.Exts
 import Language.Haskell.GHC.Toolkit.Constants
+import Asterius.JSGen.Wizer
 
 newtype MarshalError
   = UnsupportedExpression Expression
@@ -267,6 +268,7 @@ data MarshalEnv = MarshalEnv
     envStaticsOffsetMap :: SM.SymbolMap Word32,
     -- | The offset map for the current module (functions).
     envFunctionsOffsetMap :: SM.SymbolMap Word32,
+    envMemoryBase :: Word32,
     -- | The current module reference.
     envModuleRef :: Binaryen.Module
   }
@@ -296,6 +298,9 @@ askStaticsOffsetMap = reader envStaticsOffsetMap
 -- | Retrieve the offset map from the local environment (functions).
 askFunctionsOffsetMap :: CodeGen (SM.SymbolMap Word32)
 askFunctionsOffsetMap = reader envFunctionsOffsetMap
+
+askMemoryBase :: CodeGen Word32
+askMemoryBase = reader envMemoryBase
 
 -- | Retrieve the reference to the current module.
 askModuleRef :: CodeGen Binaryen.Module
@@ -531,12 +536,13 @@ marshalExpression e' = do
     verbose_err <- isVerboseErrOn
     ss_off_map <- askStaticsOffsetMap
     fn_off_map <- askFunctionsOffsetMap
+    memory_base <- askMemoryBase
     m <- askModuleRef
     if  | Just off <- SM.lookup unresolvedSymbol ss_off_map ->
           marshalExpression $
             if pic_is_on
               then mkDynamicDataAddress $ off + fromIntegral symbolOffset
-              else ConstI64 $ mkStaticDataAddress $ off + fromIntegral symbolOffset
+              else ConstI64 $ mkStaticDataAddress memory_base $ off + fromIntegral symbolOffset
         | Just off <- SM.lookup unresolvedSymbol fn_off_map ->
           marshalExpression $
             if pic_is_on
@@ -613,8 +619,8 @@ marshalFunctionTable m tbl_slots FunctionTable {..} = do
       (fromIntegral fnl)
       o
 
-marshalMemorySegments :: Int -> [DataSegment] -> CodeGen ()
-marshalMemorySegments mbs segs = do
+marshalMemorySegments :: [DataSegment] -> CodeGen ()
+marshalMemorySegments segs = do
   env <- ask
   m <- askModuleRef
   a <- askArena
@@ -630,9 +636,10 @@ marshalMemorySegments mbs segs = do
               flip runReaderT env $ marshalExpression offset
           )
     (seg_sizes, _) <- marshalV a $ map (fromIntegral . BS.length . content) segs
+    i <- c_BinaryenGetMemoryInitial m
     Binaryen.setMemory
       m
-      (fromIntegral $ mbs * (mblock_size `quot` wasmPageSize))
+      i
       (-1)
       nullPtr
       seg_bufs
@@ -696,20 +703,18 @@ marshalModule ::
   Bool ->
   SM.SymbolMap Word32 ->
   SM.SymbolMap Word32 ->
+  Word32 ->
   [String] ->
   Module ->
   IO Binaryen.Module
-marshalModule pic_on verbose_err tail_calls ss_off_map fn_off_map used_ccalls hs_mod@Module {..} = do
-  let exports_keep = exports defLibCOpts
-  m <- do
-    bs <-
-      genLibC
-        defLibCOpts
-          { globalBase = (fromIntegral defaultMemoryBase + error "TODO static_bytes") `roundup` 0x400,
-            exports = exports_keep <> used_ccalls
-          }
-    BS.unsafeUseAsCStringLen bs $
+marshalModule pic_on verbose_err tail_calls ss_off_map fn_off_map last_data_offset used_ccalls hs_mod@Module {..} = do
+  let exports_keep = ["__ahc_HEAP_ALLOCED", "freeMBlocks", "getMBlocks", "memcpy"]
+  (m, memory_base) <- do
+    (bs, memory_base) <- wizer last_data_offset
+    BS.writeFile "wizer.output.wasm" bs
+    m <- BS.unsafeUseAsCStringLen bs $
         \(p, l) -> Binaryen.Module.read p (fromIntegral l)
+    pure (m, memory_base)
   checkOverlapDataSegment m
   Binaryen.setFeatures m
     $ foldl1' (.|.)
@@ -717,11 +722,11 @@ marshalModule pic_on verbose_err tail_calls ss_off_map fn_off_map used_ccalls hs
       <> [Binaryen.mvp]
   A.with $ \a -> do
     libc_func_names <- binaryenModuleExportNames m
-    for_ libc_func_names $
+    {-for_ libc_func_names $
       \(_, ext_name) ->
         unless (CBS.unpack ext_name `elem` exports_keep) $ do
           p <- marshalBS a ext_name
-          Binaryen.removeExport m p
+          Binaryen.removeExport m p-}
     libc_func_info <- fmap M.fromList $ for libc_func_names $ \(in_name, ext_name) -> (ext_name,) . (in_name,) <$> binaryenFunctionType m in_name
     let env =
           MarshalEnv
@@ -733,6 +738,7 @@ marshalModule pic_on verbose_err tail_calls ss_off_map fn_off_map used_ccalls hs
               envAreTailCallsOn = tail_calls,
               envStaticsOffsetMap = ss_off_map,
               envFunctionsOffsetMap = fn_off_map,
+              envMemoryBase = memory_base,
               envModuleRef = m
             }
         fts = generateWasmFunctionTypeSet hs_mod
@@ -753,7 +759,8 @@ marshalModule pic_on verbose_err tail_calls ss_off_map fn_off_map used_ccalls hs
       case tableImport of
         Just tbl_import -> marshalTableImport m tbl_import
         _ -> pure ()
-      marshalMemorySegments memoryMBlocks memorySegments
+      liftIO $ putStrLn $ "[DEBUG] memory_base: " <> show memory_base <> ", last_data_offset: " <> show last_data_offset
+      marshalMemorySegments memorySegments
       unless pic_on $ lift $ checkOverlapDataSegment m
       case memoryImport of
         Just mem_import -> marshalMemoryImport m mem_import
@@ -867,3 +874,5 @@ binaryenModuleExportNames m = do
           ext_name <- BS.packCString =<< Binaryen.Export.getName e
           pure $ Just (in_name, ext_name)
         else pure Nothing
+
+foreign import ccall unsafe "BinaryenGetMemoryInitial" c_BinaryenGetMemoryInitial :: Binaryen.Module -> IO Binaryen.Index
