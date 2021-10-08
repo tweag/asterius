@@ -722,11 +722,11 @@ marshalModule pic_on verbose_err tail_calls ss_off_map fn_off_map last_data_offs
       <> [Binaryen.mvp]
   A.with $ \a -> do
     libc_func_names <- binaryenModuleExportNames m
-    {-for_ libc_func_names $
+    for_ libc_func_names $
       \(_, ext_name) ->
-        unless (CBS.unpack ext_name `elem` exports_keep) $ do
+        when (ext_name `elem` ["_initialize"]) $ do
           p <- marshalBS a ext_name
-          Binaryen.removeExport m p-}
+          Binaryen.removeExport m p
     libc_func_info <- fmap M.fromList $ for libc_func_names $ \(in_name, ext_name) -> (ext_name,) . (in_name,) <$> binaryenFunctionType m in_name
     let env =
           MarshalEnv
