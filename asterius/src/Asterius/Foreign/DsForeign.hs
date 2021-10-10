@@ -48,7 +48,7 @@ asteriusDsForeigns fos = do
       traceIf (text "fi end" <+> ppr id)
       return bs
     do_decl ForeignExport {} = return []
-    do_decl (XForeignDecl _) = panic "asteriusDsForeigns"
+    do_decl (XForeignDecl nec) = noExtCon nec
 
 asteriusDsFImport :: Id -> Coercion -> ForeignImport -> DsM [Binding]
 asteriusDsFImport id co (CImport cconv safety mHeader spec (unLoc -> src)) =
@@ -63,7 +63,10 @@ asteriusDsCImport ::
   Maybe Header ->
   SourceText ->
   DsM [Binding]
-asteriusDsCImport id co (CFunction target) cconv safety _ _ =
+-- TODO: special treatment for prim call conv?
+-- TODO: add arg/return primreps?
+-- see https://github.com/ghc/ghc/commit/ff04eb5973b69fcc60e7d0945a74becd068c1888#diff-c101aeb1e72786c2c6e5035cda85ebc8369c91bbd0daba3abaa21b508d7156f8R103
+asteriusDsCImport id co (CFunction target) cconv safety _ _ | cconv /= PrimCallConv =
   asteriusDsFCall id co (CCall (mkCCallSpec target cconv safety (panic "Missing Return PrimRep") (panic "Missing Argument PrimReps")))
 asteriusDsCImport id co CWrapper JavaScriptCallConv _ _ src =
   asteriusDsFExportDynamic id co src
@@ -72,7 +75,7 @@ asteriusDsCImport id co spec cconv safety mHeader _ = do
   pure r
 
 asteriusDsFCall :: Id -> Coercion -> ForeignCall -> DsM [(Id, Expr TyVar)]
-asteriusDsFCall fn_id co fcall = do
+asteriusDsFCall fn_id co (CCall (CCallSpec target cconv safety _ _)) = do
   let ty = pFst $ coercionKind co
       (tv_bndrs, rho) = tcSplitForAllVarBndrs ty
       (arg_tys, io_res_ty) = tcSplitFunTys rho
@@ -83,6 +86,7 @@ asteriusDsFCall fn_id co fcall = do
   ccall_uniq <- newUnique
   work_uniq <- newUnique
   dflags <- getDynFlags
+  let fcall = CCall (mkCCallSpec target cconv safety io_res_ty arg_tys)
   fcall' <- case fcall of
     CCall (CCallSpec (StaticTarget _ cName mUnitId _) CApiConv safety _ _) -> do
       wrapperName <- mkWrapperName "ghc_wrapper" (unpackFS cName)

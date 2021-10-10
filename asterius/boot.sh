@@ -33,7 +33,7 @@ ar qDS "$AHC_LIBDIR"/rts/libHSrts.a "$AHC_TMPDIR"/rts/*.o
 
 pushd "$AHC_TMPDIR"
 
-ASTERIUS_CONFIGURE_OPTIONS="--disable-shared --disable-profiling --disable-debug-info --disable-library-for-ghci --disable-split-objs --disable-split-sections --disable-library-stripping --enable-relocatable -O2 --prefix=$AHC_LIBDIR --global --ipid=\$pkg --with-compiler=ahc --with-hc-pkg=ahc-pkg --hsc2hs-option=--cross-safe --ghc-option=-v1 --ghc-option=-dsuppress-ticks"
+ASTERIUS_CONFIGURE_OPTIONS="--disable-shared --disable-profiling --disable-debug-info --disable-library-for-ghci --disable-split-objs --disable-split-sections --disable-library-stripping --disable-relocatable -O2 --prefix=$AHC_LIBDIR --global --ipid=\$pkg --with-compiler=ahc --with-hc-pkg=ahc-pkg --hsc2hs-option=--cross-safe --ghc-option=-v1 --ghc-option=-dsuppress-ticks"
 
 pushd ghc-prim
 Setup-ghc-prim configure $ASTERIUS_CONFIGURE_OPTIONS

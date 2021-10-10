@@ -9,11 +9,12 @@
 }:
 pkgs.callPackage
   ({ callPackage, haskell-nix, nodejs_latest }:
-    haskell-nix.cabalProject {
+    haskell-nix.cabalProject rec {
       src = haskell-nix.haskellLib.cleanGit {
         name = "asterius_src";
         src = ../.;
       };
+      cabalProject = builtins.readFile "${src}/cabal.project.nix";
       compiler-nix-name = ghc;
       modules = [
         { configureFlags = [ "-O2" ]; }

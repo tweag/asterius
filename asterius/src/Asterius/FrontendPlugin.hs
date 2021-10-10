@@ -45,7 +45,7 @@ frontendPlugin = do
       dflags
         { GHC.hooks =
             (GHC.hooks dflags)
-              { GHC.dsForeignsHook = Nothing, -- Just asteriusDsForeigns,
+              { GHC.dsForeignsHook = Just asteriusDsForeigns,
                 GHC.tcForeignImportsHook = Just asteriusTcForeignImports,
                 GHC.tcForeignExportsHook = Just asteriusTcForeignExports,
                 GHC.hscCompileCoreExprHook = Just asteriusHscCompileCoreExpr,
