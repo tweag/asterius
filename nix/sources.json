@@ -12,10 +12,10 @@
         "homepage": "https://input-output-hk.github.io/haskell.nix",
         "owner": "input-output-hk",
         "repo": "haskell.nix",
-        "rev": "9d454d3e6f37a2fced4723d0f5bbde50c45dcc57",
-        "sha256": "15vpfp2ki607mnp26bwhwqa52l7sallyxxknmp4jvmclfqgcdb6y",
+        "rev": "89a69afd820506f6032cd805bc18e127c2af47a5",
+        "sha256": "0qr5wlypvxwqy8kqd7524xdbqcd9s47rhnpvsa2wf60jrs4axbb9",
         "type": "tarball",
-        "url": "https://github.com/input-output-hk/haskell.nix/archive/9d454d3e6f37a2fced4723d0f5bbde50c45dcc57.tar.gz",
+        "url": "https://github.com/input-output-hk/haskell.nix/archive/89a69afd820506f6032cd805bc18e127c2af47a5.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "hs-nix-tools": {
@@ -24,10 +24,10 @@
         "homepage": null,
         "owner": "TerrorJack",
         "repo": "hs-nix-tools",
-        "rev": "ca9b1016df3b8d36a0c2acd5b0ccf337602c7536",
-        "sha256": "10n7zy55cbx0lp8k4g8zvyygcnirx4fhn3bas55k8kxqh3ndr8r7",
+        "rev": "bf7ea6e6bdeb228856459e9c1bfc4432caaa2111",
+        "sha256": "1n10qwvqpy2zlp0mifcg7qgmxa0qz4skmnhbd0w2sqlgjk99vby8",
         "type": "tarball",
-        "url": "https://github.com/TerrorJack/hs-nix-tools/archive/ca9b1016df3b8d36a0c2acd5b0ccf337602c7536.tar.gz",
+        "url": "https://github.com/TerrorJack/hs-nix-tools/archive/bf7ea6e6bdeb228856459e9c1bfc4432caaa2111.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "nixpkgs": {
