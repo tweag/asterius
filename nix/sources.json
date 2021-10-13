@@ -2,8 +2,8 @@
     "ghc-asterius": {
         "branch": "asterius-8.10",
         "repo": "https://github.com/tweag/ghc-asterius.git",
-        "rev": "67686a125cc504840acfe94d4b1a52c5df52a8c3",
-        "sha256": "0n6fwaspr5ygz2vw05whj4v2j10g5qxzh525n3nvhxf94xyvgmx2",
+        "rev": "c12161b70029a639570c3844130f2b9ef85bc186",
+        "sha256": "0xxpdp26n9x2kp1p07vn53bdkg7mvqng7p7khajh975h3vpclb5x",
         "type": "git"
     },
     "haskell-nix": {
@@ -36,10 +36,10 @@
         "homepage": "",
         "owner": "NixOS",
         "repo": "nixpkgs",
-        "rev": "9bf75dd50b7b6d3ce6aaf6563db95f41438b9bdb",
-        "sha256": "0ii3z5v9p21la8gc8l136s5rax932awz7mk757jciai766lp2fhz",
+        "rev": "e4ef597edfd8a0ba5f12362932fc9b1dd01a0aef",
+        "sha256": "1w6y7ma2crcsfph60z8j1k3af0v2m110cbjrb62z287mn4skhqjs",
         "type": "tarball",
-        "url": "https://github.com/NixOS/nixpkgs/archive/9bf75dd50b7b6d3ce6aaf6563db95f41438b9bdb.tar.gz",
+        "url": "https://github.com/NixOS/nixpkgs/archive/e4ef597edfd8a0ba5f12362932fc9b1dd01a0aef.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "wasi-sdk": {
