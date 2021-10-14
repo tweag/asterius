@@ -1,3 +1,7 @@
+repository hackage.haskell.org
+  url: http://hackage.haskell.org/
+  secure: True
+
 library-vanilla: True
 shared: False
 executable-dynamic: False

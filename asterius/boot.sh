@@ -37,80 +37,70 @@ ASTERIUS_CONFIGURE_OPTIONS="--disable-shared --disable-profiling --disable-debug
 
 pushd ghc-prim
 Setup-ghc-prim configure $ASTERIUS_CONFIGURE_OPTIONS
-Setup-ghc-prim build -j4
+Setup-ghc-prim build -j
 Setup-ghc-prim install
 popd
 
 pushd integer-simple
 ahc-cabal act-as-setup --build-type=Simple -- configure $ASTERIUS_CONFIGURE_OPTIONS
-ahc-cabal act-as-setup --build-type=Simple -- build -j4
+ahc-cabal act-as-setup --build-type=Simple -- build -j
 ahc-cabal act-as-setup --build-type=Simple -- install
 popd
 
 pushd base
 CFLAGS=-I$AHC_TMPDIR/base ahc-cabal act-as-setup --build-type=Configure -- configure -finteger-simple $ASTERIUS_CONFIGURE_OPTIONS
-ahc-cabal act-as-setup --build-type=Configure -- build -j4
+ahc-cabal act-as-setup --build-type=Configure -- build -j
 ahc-cabal act-as-setup --build-type=Configure -- install
 popd
 
-exit
-
 pushd ghc-heap
 ahc-cabal act-as-setup --build-type=Simple -- configure $ASTERIUS_CONFIGURE_OPTIONS
-ahc-cabal act-as-setup --build-type=Simple -- build -j4
+ahc-cabal act-as-setup --build-type=Simple -- build -j
 ahc-cabal act-as-setup --build-type=Simple -- install
 popd
 
 pushd ghc-boot-th
 ahc-cabal act-as-setup --build-type=Simple -- configure $ASTERIUS_CONFIGURE_OPTIONS
-ahc-cabal act-as-setup --build-type=Simple -- build -j4
+ahc-cabal act-as-setup --build-type=Simple -- build -j
 ahc-cabal act-as-setup --build-type=Simple -- install
 popd
 
 ahc-cabal v1-update || true
 
-ahc-cabal v1-install --only-dependencies $ASTERIUS_CONFIGURE_OPTIONS \
-  unix
-
-pushd "$(mktemp -d)"
-ahc-cabal get unix-2.7.2.2
-cd unix-2.7.2.2
-ahc-cabal act-as-setup --build-type=Configure -- configure --ghc-option=-this-unit-id=unix $ASTERIUS_CONFIGURE_OPTIONS
-ahc-cabal act-as-setup --build-type=Configure -- build -j4
-ahc-cabal act-as-setup --build-type=Configure -- install
-popd
+ahc-cabal v1-install --allow-newer $ASTERIUS_CONFIGURE_OPTIONS array-0.5.4.0
 
 ahc-cabal v1-install $ASTERIUS_CONFIGURE_OPTIONS \
-  binary \
-  directory \
-  mtl \
-  pretty
+  binary-0.8.8.0 \
+  bytestring-0.10.12.0 \
+  directory-1.3.6.0 \
+  mtl-2.2.2 \
+  pretty-1.1.3.6
 
 pushd ghc-boot
 ahc-cabal act-as-setup --build-type=Simple -- configure $ASTERIUS_CONFIGURE_OPTIONS
-ahc-cabal act-as-setup --build-type=Simple -- build -j4
+ahc-cabal act-as-setup --build-type=Simple -- build -j
 ahc-cabal act-as-setup --build-type=Simple -- install
 popd
 
 pushd template-haskell
 ahc-cabal act-as-setup --build-type=Simple -- configure $ASTERIUS_CONFIGURE_OPTIONS
-ahc-cabal act-as-setup --build-type=Simple -- build -j4
+ahc-cabal act-as-setup --build-type=Simple -- build -j
 ahc-cabal act-as-setup --build-type=Simple -- install
 popd
 
 pushd ghci
 ahc-cabal act-as-setup --build-type=Simple -- configure -fghci --ghc-option=-this-unit-id=ghci $ASTERIUS_CONFIGURE_OPTIONS
-ahc-cabal act-as-setup --build-type=Simple -- build -j4
+ahc-cabal act-as-setup --build-type=Simple -- build -j
 ahc-cabal act-as-setup --build-type=Simple -- install
 popd
 
 ahc-cabal v1-install $ASTERIUS_CONFIGURE_OPTIONS \
-  aeson \
-  parsec
+  aeson-1.5.6.0 \
+  parsec-3.1.14.0
 
 pushd asterius-prelude
 ahc-cabal act-as-setup --build-type=Simple -- configure --ghc-option=-this-unit-id=asterius-prelude $ASTERIUS_CONFIGURE_OPTIONS
-ahc-cabal act-as-setup --build-type=Simple -- build -j4
+ahc-cabal act-as-setup --build-type=Simple -- build -j
 ahc-cabal act-as-setup --build-type=Simple -- install
 popd
 

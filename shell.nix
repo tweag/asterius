@@ -31,6 +31,10 @@
     pkgs.wizer
   ];
 
+  buildInputs = [
+    pkgs.libffi
+  ];
+
   exactDeps = true;
 
   AHC_RTS =
