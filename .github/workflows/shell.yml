@@ -22,7 +22,7 @@ jobs:
           submodules: recursive
 
       - name: setup-nix
-        uses: cachix/install-nix-action@v13
+        uses: cachix/install-nix-action@v14.1
         with:
           extra_nix_config: |
             substituters = https://cache.nixos.org https://hydra.iohk.io
@@ -38,6 +38,6 @@ jobs:
         run: |
           cachix watch-store -c9 asterius &
 
-      - name: check
+      - name: shell
         run: |
-          nix-build --keep-going --no-out-link ./shell.nix
+          nix-shell --keep-going --run "cabal build asterius && asterius/boot.sh"

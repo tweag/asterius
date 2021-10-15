@@ -26,8 +26,6 @@ dependencies:
 library:
   extra-libraries: ghcconstants
   source-dirs: src
-  generated-other-modules:
-    - Paths_ghc_toolkit
   other-extensions:
     - DuplicateRecordFields
     - FlexibleInstances
