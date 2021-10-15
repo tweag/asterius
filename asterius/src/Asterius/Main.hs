@@ -16,7 +16,6 @@ import qualified Asterius.Backends.Binaryen as Binaryen
 import qualified Asterius.Backends.Binaryen.RunPass as Binaryen
 import Asterius.Binary.File
 import Asterius.Binary.NameCache
-import Asterius.BuildInfo
 import Asterius.Foreign.ExportStatic
 import Asterius.Internals
 import Asterius.Internals.ByteString
@@ -29,6 +28,7 @@ import Asterius.JSGen.Wasm
 import Asterius.Ld (rtsUsedSymbols)
 import Asterius.Main.Task
 import Asterius.Resolve
+import qualified Asterius.Sysroot as A
 import Asterius.Types
   ( Module,
     entityName,
@@ -182,16 +182,14 @@ genReq task LinkReport {..} =
       genSPT staticsOffsetMap sptEntries,
       ", tableSlots: ",
       intDec tableSlots,
-      ", staticBytes: ",
-      intDec staticBytes,
       ", yolo: ",
       if yolo task then "true" else "false",
       ", pic: ",
       if pic task then "true" else "false",
       ", defaultTableBase: ",
       intHex defaultTableBase,
-      ", defaultMemoryBase: ",
-      intHex defaultMemoryBase,
+      ", memoryBase: ",
+      intHex memoryBase,
       ", consoleHistory: ",
       if consoleHistory task then "true" else "false",
       ", gcThreshold: ",
@@ -255,11 +253,8 @@ ahcLink :: Task -> IO (Asterius.Types.Module, LinkReport)
 ahcLink task = do
   ld_output <- temp (takeBaseName (inputHS task))
   putStrLn $ "[INFO] Compiling " <> inputHS task <> " to WebAssembly"
-  callProcess ahc $
-    [ "--make",
-      "-O2",
-      "-i" <> takeDirectory (inputHS task)
-    ]
+  callProcess "ahc" $
+    ["--make", "-O2", "-i" <> takeDirectory (inputHS task)]
       <> concat [["-no-hs-main", "-optl--no-main"] | not $ hasMain task]
       <> ["-optl--debug" | debug task]
       <> [ "-optl--extra-root-symbol=" <> c8BS (entityName root_sym)
@@ -309,13 +304,12 @@ ahcDistMain logger task (final_m, report) = do
   Binaryen.setLowMemoryUnused 1
   m_ref <-
     Binaryen.marshalModule
-      (staticBytes report)
       (pic task)
       (verboseErr task)
       (tailCalls task)
       (staticsOffsetMap report)
       (functionOffsetMap report)
-      (usedCCalls report)
+      (lastDataOffset report)
       final_m
   when (optimizeLevel task > 0 || shrinkLevel task > 0) $ do
     logger "[INFO] Running binaryen optimization"
@@ -351,12 +345,12 @@ ahcDistMain logger task (final_m, report) = do
     "[INFO] Writing JavaScript runtime modules to "
       <> show
         (outputDirectory task)
-  rts_files' <- listDirectory $ dataDir </> "rts"
+  rts_files' <- listDirectory $ A.srcDir </> "asterius" </> "rts"
   let rts_files = filter (\x -> x /= "browser" && x /= "node") rts_files'
   for_ rts_files $
-    \f -> copyFile (dataDir </> "rts" </> f) (outputDirectory task </> f)
+    \f -> copyFile (A.srcDir </> "asterius" </> "rts" </> f) (outputDirectory task </> f)
   let specific_dir =
-        dataDir </> "rts" </> case target task of
+        A.srcDir </> "asterius" </> "rts" </> case target task of
           Node -> "node"
           Browser -> "browser"
   specific_contents <- listDirectory specific_dir
@@ -394,7 +388,6 @@ ahcDistMain logger task (final_m, report) = do
         callProcess "node" $
           [ "--experimental-modules",
             "--experimental-wasi-unstable-preview1",
-            "--experimental-wasm-bigint",
             "--experimental-wasm-return-call",
             "--unhandled-rejections=strict",
             takeFileName script

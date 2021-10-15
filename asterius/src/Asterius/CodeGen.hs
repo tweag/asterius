@@ -155,7 +155,7 @@ marshalCmmStatic st = case st of
       pure $ SymbolStatic sym o
     _ -> liftIO $ throwIO $ UnsupportedCmmLit $ showBS lit
   GHC.CmmUninitialised s -> pure $ Uninitialized s
-  GHC.CmmString s -> pure $ Serialized $ BS.pack $ s <> [0]
+  GHC.CmmString s -> pure $ Serialized $ s `BS.snoc` 0
 
 marshalCmmSectionType :: EntitySymbol -> GHC.Section -> AsteriusStaticsType
 marshalCmmSectionType _ (GHC.Section GHC.ReadOnlyData16 _) =
@@ -163,7 +163,7 @@ marshalCmmSectionType _ (GHC.Section GHC.ReadOnlyData16 _) =
 marshalCmmSectionType sym sec@(GHC.Section _ clbl)
   | GHC.isGcPtrLabel clbl = Closure
   | "_info" `BS.isSuffixOf` entityName sym = InfoTable
-  | GHC.isSecConstant sec = ConstBytes
+  | GHC.sectionProtection sec /= GHC.ReadWriteSection = ConstBytes
   | otherwise = Bytes
 
 marshalCmmData ::
@@ -1419,7 +1419,7 @@ marshalCmmUnsafeCall ::
   [GHC.LocalReg] ->
   [GHC.CmmExpr] ->
   CodeGen [Expression]
-marshalCmmUnsafeCall p@(GHC.CmmLit (GHC.CmmLabel clbl)) f@(GHC.ForeignConvention _ xs_hint rs_hint _) rs xs = do
+marshalCmmUnsafeCall p@(GHC.CmmLit (GHC.CmmLabel clbl)) f@(GHC.ForeignConvention _ xs_hint rs_hint _ _ _) rs xs = do
   sym <- marshalCLabel clbl
   xes <- for xs $ \x -> do
     (xe, _) <- marshalCmmExpr x

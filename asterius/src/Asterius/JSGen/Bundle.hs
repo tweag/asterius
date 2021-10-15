@@ -3,8 +3,8 @@
 
 module Asterius.JSGen.Bundle where
 
-import Asterius.BuildInfo
 import Asterius.Internals.Temp
+import qualified Asterius.Sysroot as A
 import qualified Data.ByteString as BS
 import Data.Foldable
 import System.Directory
@@ -38,7 +38,7 @@ bundle BundleTask {..} =
 
 bundleRTS :: IO BS.ByteString
 bundleRTS = withTempDir "asterius" $ \tmpdir -> do
-  let rts_dir = dataDir </> "rts"
+  let rts_dir = A.srcDir </> "asterius" </> "rts"
       rts_browser_dir = rts_dir </> "browser"
   rts_mjs <- filter ((== ".mjs") . takeExtension) <$> listDirectory rts_dir
   for_ rts_mjs $ \mjs -> copyFile (rts_dir </> mjs) (tmpdir </> mjs)

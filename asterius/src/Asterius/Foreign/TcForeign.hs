@@ -15,8 +15,8 @@ import Data.Maybe
 import DsMonad
 import ErrUtils
 import ForeignCall
+import GHC.Hs
 import GhcPlugins
-import HsSyn
 import Outputable
 import PrelNames
 import TcEnv

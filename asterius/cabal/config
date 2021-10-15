@@ -1,5 +1,5 @@
-repository hackage.fpcomplete.com
-  url: https://s3.amazonaws.com/hackage.fpcomplete.com/
+repository hackage.haskell.org
+  url: https://hackage.haskell.org/
   secure: True
   root-keys:
     0a5c7ea47cd1b15f01f5f51a33adda7e655bc0f0b0615baa8e271f4c3351e21d
@@ -33,3 +33,9 @@ write-ghc-environment-files: never
 documentation: False
 minimize-conflict-set: True
 jobs: $ncpus
+
+program-default-options
+  hsc2hs-options: --cross-compile
+
+with-compiler: ahc
+with-hc-pkg: ahc-pkg

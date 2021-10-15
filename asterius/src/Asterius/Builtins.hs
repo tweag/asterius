@@ -1232,7 +1232,7 @@ threadPausedFunction _ = runEDSL "threadPaused" $ do
 
 dirtyMutVarFunction :: BuiltinsOptions -> AsteriusModule
 dirtyMutVarFunction _ = runEDSL "dirty_MUT_VAR" $ do
-  [_, p] <- params [I64, I64]
+  [_, p, _] <- params [I64, I64, I64]
   if'
     []
     (loadI64 p 0 `eqInt64` symbol "stg_MUT_VAR_CLEAN_info")
@@ -1241,7 +1241,7 @@ dirtyMutVarFunction _ = runEDSL "dirty_MUT_VAR" $ do
 
 dirtyMVarFunction :: BuiltinsOptions -> AsteriusModule
 dirtyMVarFunction _ = runEDSL "dirty_MVAR" $ do
-  [_basereg, _mvar] <- params [I64, I64]
+  [_basereg, _mvar, _] <- params [I64, I64, I64]
   mempty
 
 dirtyStackFunction :: BuiltinsOptions -> AsteriusModule

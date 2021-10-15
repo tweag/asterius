@@ -262,7 +262,7 @@ export class GC {
       // The closure is either pinned or static, and has
       // already been enqueued for scavenging: just return it
       return c;
-    } else if (!this.memory.heapAlloced(untagged_c)) {
+    } else if (!this.components.exports.__ahc_HEAP_ALLOCED(untagged_c)) {
       // Object in the static part of the memory:
       // it won't be copied ...
       this.nonMovedObjects.add(untagged_c);

@@ -33,7 +33,7 @@ export async function newAsteriusInstance(req) {
     ),
     __asterius_memory_base = new WebAssembly.Global(
       { value: "i32", mutable: false },
-      req.defaultMemoryBase // TODO: make dynamic.
+      req.memoryBase // TODO: make dynamic.
     );
 
   let mkSptEntries = function (spt_offset_entries) {
@@ -74,10 +74,6 @@ export async function newAsteriusInstance(req) {
     __asterius_fs = new FS(__asterius_components),
     __asterius_logger = new EventLogManager(),
     __asterius_tracer = new Tracer(__asterius_logger, __asterius_symbol_table),
-    __asterius_static_mblocks = Math.ceil(
-      (__asterius_memory_base.value + req.staticBytes) /
-        rtsConstants.mblock_size
-    ),
     __asterius_memory = new Memory(__asterius_components),
     __asterius_memory_trap = new MemoryTrap(
       __asterius_logger,
@@ -85,7 +81,7 @@ export async function newAsteriusInstance(req) {
       __asterius_memory
     ),
     __asterius_heapalloc = new HeapAlloc(
-      __asterius_memory
+      __asterius_components
     ),
     __asterius_jsval_manager = new JSValManager(__asterius_components),
     __asterius_stableptr_manager = new StablePtrManager(),
@@ -233,7 +229,7 @@ export async function newAsteriusInstance(req) {
 
     Object.assign(__asterius_exports, i.exports);
 
-    __asterius_memory.init(i.exports.memory, __asterius_static_mblocks);
+    __asterius_memory.init(i.exports.memory);
     __asterius_heapalloc.init();
     __asterius_scheduler.setGC(__asterius_gc);
 

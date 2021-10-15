@@ -1,6 +1,6 @@
-#include <Rts.h>
-#include <Schedule.h>
-#include <Capability.h>
+#include "Rts.h"
+#include "Schedule.h"
+#include "Capability.h"
 
 HsInt offset_timespec_tv_sec() { return offsetof(struct timespec, tv_sec); }
 

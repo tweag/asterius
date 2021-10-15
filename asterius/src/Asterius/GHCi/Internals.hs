@@ -134,7 +134,6 @@ newGHCiSession = do
         { nodeExtraArgs =
             [ "--experimental-modules",
               "--experimental-wasi-unstable-preview1",
-              "--experimental-wasm-bigint",
               "--experimental-wasm-return-call",
               "--no-wasm-bounds-checks",
               "--no-wasm-stack-checks",
@@ -322,7 +321,7 @@ asteriusWriteIServ hsc_env i a
           asteriusRunTH
             i
             st
-            (fromIntegral (mkStaticDataAddress $ staticsOffsetMap link_report ! sym)) -- TODO: make dynamic.
+            (fromIntegral (mkStaticDataAddress (error "TODO") $ staticsOffsetMap link_report ! sym)) -- TODO: make dynamic.
             ty
             loc
             js_s
@@ -502,7 +501,8 @@ asteriusHscCompileCoreExpr hsc_env srcspan ds_expr = do
 asteriusLinkExpr :: GHC.HscEnv -> GHC.SrcSpan -> GHC.CoreExpr -> IO ()
 asteriusLinkExpr hsc_env srcspan prepd_expr = do
   GHC.initDynLinker hsc_env
-  GHC.modifyPLS $ \pls0 -> do
+  let dl = GHC.hsc_dynLinker hsc_env
+  GHC.modifyPLS dl $ \pls0 -> do
     (pls, ok) <-
       GHC.linkDependencies hsc_env pls0 srcspan $
         neededModules prepd_expr

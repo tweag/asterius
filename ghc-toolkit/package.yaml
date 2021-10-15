@@ -8,23 +8,9 @@ license: BSD3
 github: tweag/asterius
 
 extra-source-files:
-  - genapply/**/**
   - CHANGELOG.md
   - LICENSE
   - README.md
-
-data-files:
-  - boot-libs/**/**
-  - ghc-libdir/**/**
-
-include-dirs:
-  - ghc-libdir/include
-  - include-private
-
-c-sources:
-  - cbits/ghc_constants.c
-
-cc-options: -Wall -Wextra -DASTERIUS -UTABLES_NEXT_TO_CODE
 
 ghc-options: -Wall
 
@@ -38,9 +24,8 @@ dependencies:
   - process
 
 library:
+  extra-libraries: ghcconstants
   source-dirs: src
-  generated-other-modules:
-    - Paths_ghc_toolkit
   other-extensions:
     - DuplicateRecordFields
     - FlexibleInstances
@@ -51,11 +36,3 @@ library:
     - StandaloneDeriving
     - StrictData
     - UndecidableInstances
-
-executables:
-  genapply:
-    source-dirs: genapply
-    main: Main.hs
-    ghc-options: -threaded -rtsopts
-    dependencies:
-      - pretty

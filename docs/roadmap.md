@@ -73,6 +73,70 @@ sync and also useful to regular Haskell developers.
 
 ## Quarterly roadmap
 
+### 2021 Q3
+
+For the past months before this update, I took a break from the Asterius project
+and worked on a client project instead. There's a saying "less is more", and I
+believe my absense in this project for a few months is beneficial in multiple
+ways:
+
+- I gained a lot more nix-related knowledge.
+- Purging the short-term memory on the project and coming back, this gives me
+  some insight on the difficulties of onboarding new contributors.
+- After all, it was a great mental relief to work on something which I was
+  definitely not a bottleneck of the whole project.
+
+Before I took the break, Asterius was stuck with a very complex & ad-hoc build
+system, and it was based on ghc-8.8. The most production-ready major version of
+ghc is ghc-8.10 today. Therefore, Q3 goals and roadmap has been adjusted
+accordingly:
+
+- Upgrade Asterius to use ghc-8.10. The upgrade procedure should be principled &
+  documented, so someone else can repeat this when Asterius upgrades to ghc-9.2
+  in the future.
+- Use cabal & nix as the primary build system.
+
+What has been achieved so far:
+
+- There is a new ghc fork dedicated for asterius at
+  https://github.com/tweag/ghc-asterius. It's based on `ghc-8.10` branch, the
+  previous asterius-specific patches have all been ported, and I implemented
+  nix-based logic to generate cabal-buildable ghc api packages to be used by
+  Asterius, replacing the previous ad-hoc python script.
+- There is a WIP branch of ghc-8.10 & nix support at
+  https://github.com/tweag/asterius/pull/860. Most build errors in the host
+  compiler have been fixed, and the booting logic will be fixed next.
+- A wasi-sdk/wasi-libc fork is also maintained in the tweag namespace. It's
+  possible to configure our ghc fork with `wasm32-unknown-wasi` triple now, so
+  that's a good start for future work of proper transition of Asterius to a
+  wasi32 backend of ghc.
+
+Remaining work of Q3 will be wrapping up #860 and merging it to `master`.
+
+Beyond Q3, the overall plan is also guided by the "less is more" principle: to
+reduce code rather than to add, leveraging upstream logic whenever possible,
+while still maintaing and even improving end-user experience. Many hacks were
+needed in the past due to various reasons, and after all the lessons learned
+along the way, there are many things that should be shaved off:
+
+- The hacks related to 64-bit virtual address space. Reusing host GHC API which
+  targets 64-bit platform for Asterius was the easiest way to get the MVP
+  working, but given we have much better knowledge about how cross-compiling in
+  ghc works, these hacks needs to go away.
+- Custom object format and linking logic. This was required since Asterius
+  needed to record a lot of Haskell-specific info in the object files: JSFFI
+  imports/exports, static pointer table, etc. However, with runtime support,
+  these custom info can all be replaced by vanilla data sections in the wasm or
+  llvm bitcode object files.
+- Following the entry above, most of the existing wasm codegen logic. It looks
+  possible to leverage the llvm codegen, only adding specific patches to support
+  features like JSFFI.
+- Most of the existing JavaScript runtime. They will be gradually replaced by
+  cross-compiled ghc rts for the wasi32 target, component after component. The
+  ultimate goal is to support generating self-contained JavaScript-less wasm
+  modules which work in runtimes beyond browsers/nodejs (that's why we stick to
+  `wasi-sdk` instead of `emscripten` in the first place).
+
 ### 2021 Q1
 
 In 2020 Q4 we mainly delivered:

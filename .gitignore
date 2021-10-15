@@ -22,3 +22,8 @@ package-lock.json
 /test
 
 /lib
+
+cabal.project.local
+.vscode
+
+sysroot

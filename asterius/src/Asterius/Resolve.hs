@@ -51,11 +51,12 @@ resolveAsteriusModule ::
     AsteriusModule,
     SM.SymbolMap Word32,
     SM.SymbolMap Word32,
-    Int,
+    Word32,
+    Word32,
     Int
   )
 resolveAsteriusModule pic_is_on debug m_globals_resolved =
-  (new_mod, final_m, ss_off_map, fn_off_map, table_slots, initial_bytes)
+  (new_mod, final_m, ss_off_map, fn_off_map, memory_base, last_data_offset, table_slots)
   where
     -- Create the function offset table first. A dummy relocation function
     -- already so the map will be created correctly.
@@ -65,16 +66,13 @@ resolveAsteriusModule pic_is_on debug m_globals_resolved =
     -- on), the relocation function must be replaced, and new data segments
     -- (and corresponding statics) must be added, to hold the offsets needed by
     -- the relocation function. All this is handled by @makeMemory@.
-    (segs, ss_off_map, last_data_offset, final_m) = makeMemory pic_is_on m_globals_resolved fn_off_map
+    (segs, ss_off_map, memory_base, last_data_offset, final_m) = makeMemory pic_is_on m_globals_resolved fn_off_map
     func_table = makeFunctionTable fn_off_map
     table_slots = fromIntegral last_func_offset
     func_imports =
       rtsFunctionImports debug <> generateFFIFunctionImports (ffiMarshalState final_m)
     new_function_map =
       LM.mapKeys entityName $ SM.toMap $ functionMap final_m
-    initial_bytes = fromIntegral last_data_offset
-    initial_mblocks = -- minimum limit
-      (fromIntegral last_data_offset `roundup` mblock_size) `quot` mblock_size
     new_mod = Module
       { functionMap' = new_function_map,
         functionImports = func_imports,
@@ -97,8 +95,7 @@ resolveAsteriusModule pic_is_on debug m_globals_resolved =
         globalExports = rtsGlobalExports,
         globalMap = globalsMap final_m, -- Copy as-is.
         memorySegments = segs,
-        memoryImport = Nothing,
-        memoryMBlocks = initial_mblocks
+        memoryImport = Nothing
       }
 
 linkStart ::
@@ -115,9 +112,10 @@ linkStart pic_on debug gc_sections store root_syms export_funcs =
     LinkReport
       { staticsOffsetMap = ss_off_map,
         functionOffsetMap = fn_off_map,
+        memoryBase = memory_base,
+        lastDataOffset = last_data_offset,
         infoTableOffsetSet = makeInfoTableOffsetSet merged_m ss_off_map,
         Asterius.Types.LinkReport.tableSlots = tbl_slots,
-        staticBytes = static_bytes,
         sptEntries = sptMap merged_m,
         bundledFFIMarshalState = ffiMarshalState merged_m,
         usedCCalls =
@@ -133,5 +131,5 @@ linkStart pic_on debug gc_sections store root_syms export_funcs =
     !merged_m1
       | debug = traceModule $ addMemoryTrap merged_m0_evaluated
       | otherwise = merged_m0_evaluated
-    (!result_m, !merged_m, !ss_off_map, !fn_off_map, !tbl_slots, !static_bytes) =
+    (!result_m, !merged_m, !ss_off_map, !fn_off_map, !memory_base, !last_data_offset, !tbl_slots) =
       resolveAsteriusModule pic_on debug merged_m1

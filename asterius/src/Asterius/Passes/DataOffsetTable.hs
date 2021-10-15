@@ -23,6 +23,7 @@ import qualified Data.Set as Set
 import Data.Tuple
 import Foreign
 import Language.Haskell.GHC.Toolkit.Constants
+import Asterius.JSGen.Wizer
 
 -- | Segments are 8-bytes aligned.
 {-# INLINE segAlignment #-}
@@ -138,9 +139,10 @@ makeStaticSegment ::
   SM.SymbolMap Word32 ->
   SM.SymbolMap Word32 ->
   Word32 ->
+  Word32 ->
   AsteriusStatic ->
   (Word32, Bag DataSegment)
-makeStaticSegment fn_off_map ss_off_map current_off static =
+makeStaticSegment fn_off_map ss_off_map memory_base current_off static =
   ( current_off + sizeofStatic static,
     case static of
       SymbolStatic sym o
@@ -148,26 +150,26 @@ makeStaticSegment fn_off_map ss_off_map current_off static =
           unitBag
             DataSegment
               { content = encodeStorable $ mkStaticFunctionAddress (off + fromIntegral o),
-                offset = ConstI32 $ fromIntegral $ defaultMemoryBase + current_off
+                offset = ConstI32 $ fromIntegral $ memory_base + current_off
               }
         | Just off <- SM.lookup sym ss_off_map ->
           unitBag
             DataSegment
-              { content = encodeStorable $ mkStaticDataAddress (off + fromIntegral o),
-                offset = ConstI32 $ fromIntegral $ defaultMemoryBase + current_off
+              { content = encodeStorable $ mkStaticDataAddress memory_base (off + fromIntegral o),
+                offset = ConstI32 $ fromIntegral $ memory_base + current_off
               }
         | otherwise ->
           unitBag
             DataSegment
               { content = encodeStorable invalidAddress,
-                offset = ConstI32 $ fromIntegral $ defaultMemoryBase + current_off
+                offset = ConstI32 $ fromIntegral $ memory_base + current_off
               }
       Uninitialized {} -> emptyBag
       Serialized buf ->
         unitBag
           DataSegment
             { content = buf,
-              offset = ConstI32 $ fromIntegral $ defaultMemoryBase + current_off
+              offset = ConstI32 $ fromIntegral $ memory_base + current_off
             }
   )
 
@@ -176,8 +178,9 @@ makeStaticMemory ::
   AsteriusModule ->
   SM.SymbolMap Word32 ->
   SM.SymbolMap Word32 ->
+  Word32 ->
   [DataSegment]
-makeStaticMemory AsteriusModule {..} fn_off_map ss_off_map =
+makeStaticMemory AsteriusModule {..} fn_off_map ss_off_map _memory_base =
   concat
     $ SM.elems
     $ flip SM.mapWithKey staticsMap
@@ -186,7 +189,7 @@ makeStaticMemory AsteriusModule {..} fn_off_map ss_off_map =
         $ unionManyBags
         $ snd
         $ mapAccumL
-          (makeStaticSegment fn_off_map ss_off_map)
+          (makeStaticSegment fn_off_map ss_off_map _memory_base)
           (ss_off_map SM.! statics_sym)
           asteriusStatics
 
@@ -293,20 +296,21 @@ makeMemory ::
   Bool ->
   AsteriusModule ->
   SM.SymbolMap Word32 ->
-  ([DataSegment], SM.SymbolMap Word32, Word32, AsteriusModule) -- relocation function implementation
+  ([DataSegment], SM.SymbolMap Word32, Word32, Word32, AsteriusModule) -- relocation function implementation
 makeMemory pic_is_on m_globals_resolved fn_off_map
   | pic_is_on =
     let (seg, reloc, new_seg_len, new_seg_offs) = makeDynamicMemory m_globals_resolved fn_off_map _ss_off_map
      in ( [seg],
           _ss_off_map <> new_seg_offs,
-          _last_data_offset + new_seg_len,
+          _last_data_offset + new_seg_len, error "TODO",
           reloc <> m_globals_resolved
         )
   | otherwise =
-    ( makeStaticMemory m_globals_resolved fn_off_map _ss_off_map,
+    ( makeStaticMemory m_globals_resolved fn_off_map _ss_off_map _memory_base,
       _ss_off_map,
-      _last_data_offset,
+      _memory_base, _last_data_offset,
       m_globals_resolved
     )
   where
     (_ss_off_map, _last_data_offset) = makeDataOffsetTable m_globals_resolved
+    _memory_base = wizerInitAddr _last_data_offset

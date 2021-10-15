@@ -1,7 +1,6 @@
 module Asterius.Internals.MagicNumber
   ( invalidAddress,
     defaultTableBase,
-    defaultMemoryBase,
     mkStaticDataAddress,
     mkStaticFunctionAddress,
   )
@@ -17,13 +16,8 @@ invalidAddress = 0x001fffffffff0000
 defaultTableBase :: Word32
 defaultTableBase = 1024
 
--- | Base address for data segments. NOTE: leave 1KB empty for the
--- @--low-memory-unused@ optimization to work.
-defaultMemoryBase :: Word32
-defaultMemoryBase = 1024
-
-mkStaticDataAddress :: Word32 -> Int64
-mkStaticDataAddress off = fromIntegral (defaultMemoryBase + off)
+mkStaticDataAddress :: Word32 -> Word32 -> Int64
+mkStaticDataAddress memory_base off = fromIntegral (memory_base + off)
 
 mkStaticFunctionAddress :: Word32 -> Int64
 mkStaticFunctionAddress off = fromIntegral (defaultTableBase + off)

@@ -1,0 +1,52 @@
+{
+    "ghc-asterius": {
+        "branch": "asterius-8.10",
+        "repo": "https://github.com/tweag/ghc-asterius.git",
+        "rev": "042f3e428cca55233567eb000f0521a5194ad844",
+        "sha256": "0max5rjw8gbks76a8s3zjbivfdz4m0iv1lafzk6wbfd3cd5ljd0z",
+        "type": "git"
+    },
+    "haskell-nix": {
+        "branch": "master",
+        "description": "Alternative Haskell Infrastructure for Nixpkgs",
+        "homepage": "https://input-output-hk.github.io/haskell.nix",
+        "owner": "input-output-hk",
+        "repo": "haskell.nix",
+        "rev": "e6a0d20e06aa16134446468c3f3f59ea92eb745b",
+        "sha256": "07fyygw5sbzzq3j96imn9imparfsaymvbbfxaq4wj6h8kng76clp",
+        "type": "tarball",
+        "url": "https://github.com/input-output-hk/haskell.nix/archive/e6a0d20e06aa16134446468c3f3f59ea92eb745b.tar.gz",
+        "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
+    },
+    "hs-nix-tools": {
+        "branch": "master",
+        "description": null,
+        "homepage": null,
+        "owner": "TerrorJack",
+        "repo": "hs-nix-tools",
+        "rev": "a922abb7ecffa678c830dd3198a422787d156f0f",
+        "sha256": "1waj70r475kha8wyk6fk729ai21hqykc1phw0vsvyjy5h3l43ywx",
+        "type": "tarball",
+        "url": "https://github.com/TerrorJack/hs-nix-tools/archive/a922abb7ecffa678c830dd3198a422787d156f0f.tar.gz",
+        "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
+    },
+    "nixpkgs": {
+        "branch": "nixos-unstable",
+        "description": "Nix Packages collection",
+        "homepage": "",
+        "owner": "NixOS",
+        "repo": "nixpkgs",
+        "rev": "2cf9db0e3d45b9d00f16f2836cb1297bcadc475e",
+        "sha256": "0sij1a5hlbigwcgx10dkw6mdbjva40wzz4scn0wchv7yyi9ph48l",
+        "type": "tarball",
+        "url": "https://github.com/NixOS/nixpkgs/archive/2cf9db0e3d45b9d00f16f2836cb1297bcadc475e.tar.gz",
+        "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
+    },
+    "wasi-sdk": {
+        "branch": "main",
+        "repo": "https://github.com/tweag/wasi-sdk.git",
+        "rev": "259caed4b9bdf2a90bf12f301a973d96e6ed1131",
+        "sha256": "0mm5rpx98qwckaad3zd7kasim0a0wqr5kx6df3pl33p5lv967n48",
+        "type": "git"
+    }
+}

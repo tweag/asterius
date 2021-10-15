@@ -1,19 +1,9 @@
-import * as rtsConstants from "./rts.constants.mjs";
-
-function checkNullAndTag(p) {
-  if (!p) {
-    throw new WebAssembly.RuntimeError(`Allocator returned NULL`);
-  }
-  return p;
-}
-
 /**
  * Class acting as the low-level interface to Wasm memory.
  * It mainly provides methods to load/store data in memory
  * (e.g. {@link Memory#i64Load}, {@link Memory#i64Store}),
  * static methods to handle pointer tagging (e.g.
- * {@link Memory#getDynTag}), and a MBlock allocator
- * ({@link Memory#getMBlocks} and {@link Memory#freeMBlocks}).
+ * {@link Memory#getDynTag}).
  */
 export class Memory {
   constructor(components) {
@@ -24,16 +14,6 @@ export class Memory {
      * @name Memory#memory
      */
     this.memory = undefined;
-    /**
-     * The number of MBlock slots reserved for
-     * the static part of memory (vs the dynamic part
-     * where heap objects are allocated at runtime).
-     * The static MBlocks contain the initial compiled
-     * Wasm code plus auxiliary static data structures
-     * like info tables.
-     * @name Memory#staticMBlocks
-     */
-    this.staticMBlocks = undefined;
     /**
      * Low-level interfaces for reading/writing the contents
      * of {@link Memory#memory}.
@@ -54,9 +34,8 @@ export class Memory {
   /**
    * Initializes the {@link Memory} object.
    */
-  init(memory, static_mblocks) {
+  init(memory) {
     this.memory = memory;
-    this.staticMBlocks = static_mblocks;
   }
 
   static unDynTag(p) {
@@ -151,40 +130,6 @@ export class Memory {
 
   i64LoadU16(p) {
     return BigInt(this.dataView.getUint16(p, true));
-  }
-
-  /**
-   * Checks whether the object at address {@param p} is
-   * heap-allocated, i.e. whether it resides in the dynamic
-   * part of the memory. Used during garbage collection
-   * (in {@link GC#evacuateClosure}) to avoid evacuating
-   * objects in the static MBlocks.
-   */
-  heapAlloced(p) {
-    return (
-      p >= this.staticMBlocks << rtsConstants.mblock_size_log2
-    );
-  }
-
-  /**
-   * Obtains {@param n} MBlocks from {@link Memory#memory}.
-   * @returns The memory address at the beginning of the
-   *   requested free memory area.
-   */
-  getMBlocks(n) {
-    return checkNullAndTag(
-      this.components.exports.aligned_alloc(
-        rtsConstants.mblock_size,
-        rtsConstants.mblock_size * n
-      )
-    );
-  }
-
-  /**
-   * Frees MBlocks starting at address {@param p}.
-   */
-  freeMBlocks(p) {
-    this.components.exports.free(p);
   }
 
   expose(p, len, t) {
