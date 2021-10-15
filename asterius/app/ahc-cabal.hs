@@ -1,4 +1,5 @@
 import Asterius.FixEnv
+import qualified Asterius.Sysroot as A
 import System.Directory
 import System.Environment.Blank
 import System.Process (callProcess)
@@ -10,7 +11,7 @@ main = do
   ahc_cabal_root <- getAppUserDataDirectory "ahc-cabal"
   createDirectoryIfMissing True ahc_cabal_root
   let ahc_cabal_config_path = ahc_cabal_root </> "config"
-  ahc_cabal_config <- readFile "/home/terrorjack/asterius-ng/asterius/cabal/config"
+  ahc_cabal_config <- readFile $ A.srcDir </> "asterius" </> "cabal" </> "config"
   writeFile ahc_cabal_config_path ahc_cabal_config
   unsetEnv "CABAL_CONFIG"
   setEnv "CABAL_DIR" ahc_cabal_root True

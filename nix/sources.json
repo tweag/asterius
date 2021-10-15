@@ -12,10 +12,10 @@
         "homepage": "https://input-output-hk.github.io/haskell.nix",
         "owner": "input-output-hk",
         "repo": "haskell.nix",
-        "rev": "3720ee48fde907036a2be5081cceac1e1d360f25",
-        "sha256": "1jdx9pr2jwzl42rif71z0sbfd301bzm5knfj72vdk12gjajbk8nf",
+        "rev": "e6a0d20e06aa16134446468c3f3f59ea92eb745b",
+        "sha256": "07fyygw5sbzzq3j96imn9imparfsaymvbbfxaq4wj6h8kng76clp",
         "type": "tarball",
-        "url": "https://github.com/input-output-hk/haskell.nix/archive/3720ee48fde907036a2be5081cceac1e1d360f25.tar.gz",
+        "url": "https://github.com/input-output-hk/haskell.nix/archive/e6a0d20e06aa16134446468c3f3f59ea92eb745b.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "hs-nix-tools": {
@@ -24,10 +24,10 @@
         "homepage": null,
         "owner": "TerrorJack",
         "repo": "hs-nix-tools",
-        "rev": "bf7ea6e6bdeb228856459e9c1bfc4432caaa2111",
-        "sha256": "1n10qwvqpy2zlp0mifcg7qgmxa0qz4skmnhbd0w2sqlgjk99vby8",
+        "rev": "a922abb7ecffa678c830dd3198a422787d156f0f",
+        "sha256": "1waj70r475kha8wyk6fk729ai21hqykc1phw0vsvyjy5h3l43ywx",
         "type": "tarball",
-        "url": "https://github.com/TerrorJack/hs-nix-tools/archive/bf7ea6e6bdeb228856459e9c1bfc4432caaa2111.tar.gz",
+        "url": "https://github.com/TerrorJack/hs-nix-tools/archive/a922abb7ecffa678c830dd3198a422787d156f0f.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "nixpkgs": {
@@ -36,10 +36,10 @@
         "homepage": "",
         "owner": "NixOS",
         "repo": "nixpkgs",
-        "rev": "e4ef597edfd8a0ba5f12362932fc9b1dd01a0aef",
-        "sha256": "1w6y7ma2crcsfph60z8j1k3af0v2m110cbjrb62z287mn4skhqjs",
+        "rev": "2cf9db0e3d45b9d00f16f2836cb1297bcadc475e",
+        "sha256": "0sij1a5hlbigwcgx10dkw6mdbjva40wzz4scn0wchv7yyi9ph48l",
         "type": "tarball",
-        "url": "https://github.com/NixOS/nixpkgs/archive/e4ef597edfd8a0ba5f12362932fc9b1dd01a0aef.tar.gz",
+        "url": "https://github.com/NixOS/nixpkgs/archive/2cf9db0e3d45b9d00f16f2836cb1297bcadc475e.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "wasi-sdk": {

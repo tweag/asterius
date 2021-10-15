@@ -8,13 +8,9 @@ license: BSD3
 github: tweag/asterius
 
 extra-source-files:
-  - genapply/**/**
   - CHANGELOG.md
   - LICENSE
   - README.md
-
-data-files:
-  - boot-libs/**/**
 
 ghc-options: -Wall
 
@@ -42,11 +38,3 @@ library:
     - StandaloneDeriving
     - StrictData
     - UndecidableInstances
-
-executables:
-  genapply:
-    source-dirs: genapply
-    main: Main.hs
-    ghc-options: -threaded -rtsopts
-    dependencies:
-      - pretty

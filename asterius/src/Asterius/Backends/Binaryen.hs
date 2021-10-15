@@ -30,7 +30,6 @@ import qualified Asterius.Internals.Arena as A
 import Asterius.Internals.Barf
 import Asterius.Internals.MagicNumber
 import Asterius.Internals.Marshal
-import Asterius.JSGen.LibC
 import Asterius.Passes.CCall
 import Asterius.Types
 import qualified Asterius.Types.SymbolMap as SM

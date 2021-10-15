@@ -347,12 +347,12 @@ ahcDistMain logger task (final_m, report) = do
       <> show
         (outputDirectory task)
   -- TODO: fixme
-  rts_files' <- listDirectory $ "/home/terrorjack/asterius-ng/asterius/rts"
+  rts_files' <- listDirectory $ A.srcDir </> "asterius" </> "rts"
   let rts_files = filter (\x -> x /= "browser" && x /= "node") rts_files'
   for_ rts_files $
-    \f -> copyFile ("/home/terrorjack/asterius-ng/asterius/rts" </> f) (outputDirectory task </> f)
+    \f -> copyFile (A.srcDir </> "asterius" </> "rts" </> f) (outputDirectory task </> f)
   let specific_dir =
-        "/home/terrorjack/asterius-ng/asterius/rts" </> case target task of
+        A.srcDir </> "asterius" </> "rts" </> case target task of
           Node -> "node"
           Browser -> "browser"
   specific_contents <- listDirectory specific_dir

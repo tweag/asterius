@@ -1,13 +1,16 @@
 module Asterius.Sysroot where
 
-import qualified Paths_asterius as A
 import System.Directory
 import System.Environment.Blank
 import System.IO.Unsafe
 
-{-# NOINLINE dataDir #-}
-dataDir :: FilePath
-dataDir = unsafePerformIO $ canonicalizePath =<< A.getDataDir
+{-# NOINLINE srcDir #-}
+srcDir :: FilePath
+srcDir = unsafePerformIO $ do
+  mp <- getEnv "AHC_SRCDIR"
+  case mp of
+    Nothing -> fail "AHC_SRCDIR is not set"
+    Just s -> canonicalizePath s
 
 {-# NOINLINE sysroot #-}
 sysroot :: FilePath

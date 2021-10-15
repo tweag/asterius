@@ -42,13 +42,6 @@ extra-source-files:
   - test/argv/**/*.hs
   - test/endianness/**/*.hs
 
-data-files:
-  - cabal/**
-  - libc/**
-  - rts/**/*.mjs
-  - boot-init.sh
-  - boot.sh
-
 ghc-options: -Wall
 
 _exe-ghc-options: &exe-ghc-options
@@ -77,13 +70,11 @@ dependencies:
 internal-libraries:
   asterius-types:
     source-dirs: src-types
-    generated-other-modules: Paths_asterius
     dependencies:
       - template-haskell
 
 library:
   source-dirs: src
-  generated-other-modules: Paths_asterius
   dependencies:
     - asterius-types
     - binaryen

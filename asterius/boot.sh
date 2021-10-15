@@ -5,7 +5,7 @@ set -euox pipefail
 AHC_TMPDIR=$(mktemp -d)
 export AHC_TMPDIR
 
-cp -r "$AHC_BOOT_SRCDIR"/* "$GHC_ASTERIUS_BOOT"/* "$AHC_TMPDIR"
+cp -r "$AHC_SRCDIR"/ghc-toolkit/boot-libs/* "$GHC_ASTERIUS_BOOT"/* "$AHC_TMPDIR"
 chmod u+w -R "$AHC_TMPDIR"
 
 rm -rf "$AHC_LIBDIR"
@@ -24,7 +24,7 @@ cp \
 chmod u+w -R "$AHC_LIBDIR"
 
 mkdir "$AHC_LIBDIR"/package.conf.d
-cp "$AHC_BOOT_SRCDIR"/rts/rts.conf "$AHC_LIBDIR"/package.conf.d
+cp "$AHC_SRCDIR"/ghc-toolkit/boot-libs/rts/rts.conf "$AHC_LIBDIR"/package.conf.d
 ahc-pkg --global recache
 
 mkdir "$AHC_LIBDIR"/rts
@@ -65,13 +65,25 @@ ahc-cabal act-as-setup --build-type=Simple -- build -j
 ahc-cabal act-as-setup --build-type=Simple -- install
 popd
 
-ahc-cabal v1-update || true
+ahc-cabal update || true
 
 ahc-cabal v1-install --allow-newer $ASTERIUS_CONFIGURE_OPTIONS array-0.5.4.0
 
 ahc-cabal v1-install $ASTERIUS_CONFIGURE_OPTIONS \
-  binary-0.8.8.0 \
   bytestring-0.10.12.0 \
+  deepseq-1.4.5.0 \
+  time-1.9.3
+
+pushd $(mktemp -d)
+ahc-cabal get unix-2.7.2.2
+cd unix-2.7.2.2
+ahc-cabal act-as-setup --build-type=Configure -- configure --ghc-option=-this-unit-id=unix $ASTERIUS_CONFIGURE_OPTIONS
+ahc-cabal act-as-setup --build-type=Configure -- build -j
+ahc-cabal act-as-setup --build-type=Configure -- install
+popd
+
+ahc-cabal v1-install $ASTERIUS_CONFIGURE_OPTIONS \
+  binary-0.8.8.0 \
   directory-1.3.6.0 \
   mtl-2.2.2 \
   pretty-1.1.3.6

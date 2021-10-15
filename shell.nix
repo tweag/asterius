@@ -58,7 +58,7 @@
       hpack $pkg
     done
 
-    export AHC_BOOT_SRCDIR=$PWD/ghc-toolkit/boot-libs
+    export AHC_SRCDIR=$PWD
     export AHC_LIBDIR=$PWD/sysroot
     export PATH=$PATH:$PWD/dist-newstyle/build/x86_64-linux/ghc-8.10.7/asterius-0.0.1/x/ahc/build/ahc:$PWD/dist-newstyle/build/x86_64-linux/ghc-8.10.7/asterius-0.0.1/x/ahc-cabal/build/ahc-cabal:$PWD/dist-newstyle/build/x86_64-linux/ghc-8.10.7/asterius-0.0.1/x/ahc-ld/build/ahc-ld:$PWD/dist-newstyle/build/x86_64-linux/ghc-8.10.7/asterius-0.0.1/x/ahc-link/build/ahc-link:$PWD/dist-newstyle/build/x86_64-linux/ghc-8.10.7/asterius-0.0.1/x/Setup-ghc-prim/build/Setup-ghc-prim
 
