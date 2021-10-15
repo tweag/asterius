@@ -24,7 +24,6 @@ module Asterius.Backends.Binaryen
 where
 
 import Asterius.Backends.Binaryen.CheckOverlapDataSegment
-import Asterius.Builtins
 import Asterius.EDSL (mkDynamicDataAddress, mkDynamicFunctionAddress)
 import qualified Asterius.Internals.Arena as A
 import Asterius.Internals.Barf
@@ -54,7 +53,6 @@ import Control.Monad
 import Control.Monad.Cont
 import Control.Monad.Reader
 import qualified Data.ByteString as BS
-import qualified Data.ByteString.Char8 as CBS
 import qualified Data.ByteString.Unsafe as BS
 import Data.Foldable
 import Data.List
@@ -68,7 +66,6 @@ import Foreign hiding
   )
 import Foreign.C
 import GHC.Exts
-import Language.Haskell.GHC.Toolkit.Constants
 import Asterius.JSGen.Wizer
 
 newtype MarshalError
@@ -703,11 +700,9 @@ marshalModule ::
   SM.SymbolMap Word32 ->
   SM.SymbolMap Word32 ->
   Word32 ->
-  [String] ->
   Module ->
   IO Binaryen.Module
-marshalModule pic_on verbose_err tail_calls ss_off_map fn_off_map last_data_offset used_ccalls hs_mod@Module {..} = do
-  let exports_keep = ["__ahc_HEAP_ALLOCED", "freeMBlocks", "getMBlocks", "memcpy"]
+marshalModule pic_on verbose_err tail_calls ss_off_map fn_off_map last_data_offset hs_mod@Module {..} = do
   (m, memory_base) <- do
     (bs, memory_base) <- wizer last_data_offset
     BS.writeFile "wizer.output.wasm" bs
@@ -758,7 +753,6 @@ marshalModule pic_on verbose_err tail_calls ss_off_map fn_off_map last_data_offs
       case tableImport of
         Just tbl_import -> marshalTableImport m tbl_import
         _ -> pure ()
-      liftIO $ putStrLn $ "[DEBUG] memory_base: " <> show memory_base <> ", last_data_offset: " <> show last_data_offset
       marshalMemorySegments memorySegments
       unless pic_on $ lift $ checkOverlapDataSegment m
       case memoryImport of

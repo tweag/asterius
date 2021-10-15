@@ -310,16 +310,15 @@ ahcDistMain logger task (final_m, report) = do
       (staticsOffsetMap report)
       (functionOffsetMap report)
       (lastDataOffset report)
-      (usedCCalls report)
       final_m
   when (optimizeLevel task > 0 || shrinkLevel task > 0) $ do
     logger "[INFO] Running binaryen optimization"
-    -- Binaryen.optimize m_ref
+    Binaryen.optimize m_ref
   Binaryen.runPass m_ref ["limit-segments"]
   when (validate task) $ do
     logger "[INFO] Validating binaryen IR"
-    -- pass_validation <- Binaryen.validate m_ref
-    -- when (pass_validation /= 1) $ fail "[ERROR] binaryen validation failed"
+    pass_validation <- Binaryen.validate m_ref
+    when (pass_validation /= 1) $ fail "[ERROR] binaryen validation failed"
   m_bin <- Binaryen.serializeModule m_ref
   logger $ "[INFO] Writing WebAssembly binary to " <> show out_wasm
   BS.writeFile out_wasm m_bin
@@ -346,7 +345,6 @@ ahcDistMain logger task (final_m, report) = do
     "[INFO] Writing JavaScript runtime modules to "
       <> show
         (outputDirectory task)
-  -- TODO: fixme
   rts_files' <- listDirectory $ A.srcDir </> "asterius" </> "rts"
   let rts_files = filter (\x -> x /= "browser" && x /= "node") rts_files'
   for_ rts_files $
