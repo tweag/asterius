@@ -159,7 +159,7 @@ export class HeapAlloc {
     const req_blocks =
         (rtsConstants.mblock_size * n - rtsConstants.offset_first_block) /
         rtsConstants.block_size,
-      mblock = this.components.exports.aligned_alloc(rtsConstants.mblock_size * n, rtsConstants.mblock_size),
+      mblock = this.components.exports.aligned_alloc(rtsConstants.mblock_size, rtsConstants.mblock_size * n),
       bd = mblock + rtsConstants.offset_first_bdescr,
       block_addr = mblock + rtsConstants.offset_first_block;
     this.components.memory.i64Store(bd + rtsConstants.offset_bdescr_start, block_addr);
