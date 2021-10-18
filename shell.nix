@@ -17,23 +17,21 @@
 
   withHoogle = true;
 
-  nativeBuildInputs = pkgs.lib.attrValues
-    (import sources.hs-nix-tools { inherit ghc; })
-  ++ [
-    hsPkgs.ahc-pkg.components.exes.ahc-pkg
-    pkgs.binaryen
-    pkgs.cacert
-    pkgs.git
-    pkgs.nodejs_latest
-    pkgs.util-linux
-    pkgs.wabt
-    pkgs.wasmtime
-    pkgs.wizer
-  ];
+  nativeBuildInputs =
+    pkgs.lib.attrValues (import sources.hs-nix-tools { inherit ghc; }) ++ [
+      hsPkgs.ahc-pkg.components.exes.ahc-pkg
+      pkgs.binaryen
+      pkgs.cacert
+      pkgs.git
+      pkgs.nodejs_latest
+      pkgs.util-linux
+      pkgs.wabt
+      pkgs.wasmtime
+      (import ./webpack/default.nix { inherit pkgs; })
+      pkgs.wizer
+    ];
 
-  buildInputs = [
-    pkgs.libffi
-  ];
+  buildInputs = [ pkgs.libffi ];
 
   exactDeps = true;
 
