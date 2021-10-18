@@ -159,7 +159,7 @@ export class HeapAlloc {
     const req_blocks =
         (rtsConstants.mblock_size * n - rtsConstants.offset_first_block) /
         rtsConstants.block_size,
-      mblock = this.components.exports.getMBlocks(n),
+      mblock = this.components.exports.aligned_alloc(rtsConstants.mblock_size, rtsConstants.mblock_size * n),
       bd = mblock + rtsConstants.offset_first_bdescr,
       block_addr = mblock + rtsConstants.offset_first_block;
     this.components.memory.i64Store(bd + rtsConstants.offset_bdescr_start, block_addr);
@@ -201,7 +201,7 @@ export class HeapAlloc {
       }
       this.mgroups.delete(bd);
       const p = bd - rtsConstants.offset_first_bdescr;
-      this.components.memory.freeMBlocks(p, 1);
+      this.components.exports.free(p);
     }
 
     // Free unreachable MBlocks
@@ -221,7 +221,7 @@ export class HeapAlloc {
           this.mgroups.delete(bd);
           const p = bd - rtsConstants.offset_first_bdescr,
             n = this.components.memory.i16Load(bd + rtsConstants.offset_bdescr_node);
-          this.components.memory.freeMBlocks(p, n);
+          this.components.exports.free(p);
         }
       }
     }
