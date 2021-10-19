@@ -4,9 +4,7 @@
     (haskellNix.nixpkgsArgs // {
       overlays = haskellNix.nixpkgsArgs.overlays ++ [
         (import ./nix/binaryen.nix)
-        (import "${sources.wasi-sdk}/nix/wasmtime.nix")
         (import ./nix/libghcconstants.nix)
-        (import "${sources.ghc-asterius}/nix/wizer.nix")
       ];
     })
 , ghc ? "ghc8107"
@@ -26,9 +24,9 @@
       pkgs.nodejs_latest
       pkgs.util-linux
       pkgs.wabt
-      pkgs.wasmtime
+      (pkgs.callPackage "${sources.wasi-sdk}/nix/wasmtime.nix" { })
       (import ./webpack/default.nix { inherit pkgs; })
-      pkgs.wizer
+      (pkgs.callPackage "${sources.ghc-asterius}/nix/wizer.nix" { })
     ];
 
   buildInputs = [ pkgs.libffi ];
