@@ -34,7 +34,6 @@ module Asterius.Types.SymbolMap
     insert,
 
     -- * Filtering
-    filterWithKey,
     filter,
     restrictKeys,
 
@@ -42,7 +41,6 @@ module Asterius.Types.SymbolMap
     foldrWithKey',
     mapWithKey,
     mapAccum,
-    mapKeys,
 
     -- * Conversion
     elems,
@@ -55,7 +53,6 @@ module Asterius.Types.SymbolMap
 
     -- ** Maps
     toMap,
-    fromMap,
   )
 where
 
@@ -146,12 +143,6 @@ lookup k (SymbolMap m) = snd <$> IM.lookup (getKeyES k) m
 
 infixl 9 !
 
--- | /O(n)/. Filter all keys/values that satisfy some predicate. NOTE: since we
--- use 'Key' for indexing and not 'EntitySymbol', the filtering happens on the
--- elements alone (which contain the corresponding 'EntitySymbol').
-filterWithKey :: (EntitySymbol -> a -> Bool) -> SymbolMap a -> SymbolMap a
-filterWithKey p (SymbolMap m) = SymbolMap $ IM.filter (uncurry p) m
-
 -- | The restriction of a map to the keys in a set.
 restrictKeys :: SymbolMap a -> SS.SymbolSet -> SymbolMap a
 restrictKeys (SymbolMap m) s = SymbolMap $ IM.restrictKeys m (SS.toIntSet s)
@@ -195,13 +186,6 @@ foldrWithKey' f z (SymbolMap m) = IM.foldrWithKey' (\_ (k, e) b -> f k e b) z m
 filter :: (a -> Bool) -> SymbolMap a -> SymbolMap a
 filter p (SymbolMap m) = SymbolMap $ IM.filter (p . snd) m
 
--- | /O(n*log n)/. Apply a function to each key in a map. The size of the
--- result may be smaller if two old 'EntitySymbol's are mapped to the same new
--- 'EntitySymbol'. In this case the value at the greates of the original keys
--- is retained.
-mapKeys :: (EntitySymbol -> EntitySymbol) -> SymbolMap a -> SymbolMap a
-mapKeys fn = fromListSM . (map (\(k, e) -> (fn k, e))) . toListSM
-
 -- GEORGE: Given that EntitySymbol appears both in a co- and a contra- variant
 -- position in the function, there is no direct way to utilize IM.mapKeys for
 -- implementing mapKeys (getUnique is irreversible). TODO: reduce usage.
@@ -235,8 +219,3 @@ toListSM (SymbolMap m) = IM.elems m
 {-# INLINE toMap #-}
 toMap :: SymbolMap a -> Map.Map EntitySymbol a
 toMap = Map.fromList . toListSM
-
--- | /O(n*log n)/. Build a symbol map from a 'Map.Map'.
-{-# INLINE fromMap #-}
-fromMap :: Map.Map EntitySymbol a -> SymbolMap a
-fromMap = fromListSM . Map.toList

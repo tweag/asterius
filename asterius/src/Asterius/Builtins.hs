@@ -11,7 +11,6 @@ module Asterius.Builtins
     rtsGlobalImports,
     rtsGlobalExports,
     emitErrorMessage,
-    wasmPageSize,
     generateWrapperFunction,
     ShouldSext (..),
     genWrap,
@@ -43,9 +42,6 @@ import Data.Foldable
 import Data.String
 import Data.Word
 import Language.Haskell.GHC.Toolkit.Constants
-
-wasmPageSize :: Int
-wasmPageSize = 65536
 
 data BuiltinsOptions
   = BuiltinsOptions

@@ -28,7 +28,6 @@ module Asterius.EDSL
     params,
     local,
     i64Local,
-    i32Local,
     i64MutLocal,
     global,
     newGlobal,
@@ -38,50 +37,36 @@ module Asterius.EDSL
     pointerI16,
     pointerI8,
     pointerF64,
-    pointerF32,
     loadI64,
     loadI32,
-    loadI16,
-    loadI8,
     loadF64,
-    loadF32,
     storeI64,
     storeI32,
     storeI16,
     storeI8,
     storeF64,
-    storeF32,
     unTagClosure,
     dynamicTableBase,
-    mkDynamicFunctionAddress,
     call,
     call',
     callImport,
     callImport',
     callIndirect,
     Label,
-    block',
     loop',
     if',
     break',
     whileLoop,
-    switchI64,
     module Asterius.EDSL.BinaryOp,
     module Asterius.EDSL.UnaryOp,
     module Asterius.EDSL.LibC,
-    notInt64,
     nandInt64,
     symbol,
-    symbol',
     constI32,
     constI64,
     constF64,
-    baseReg,
-    r1,
     currentNursery,
     currentTSO,
-    currentTID,
-    hpAlloc,
     mainCapability,
   )
 where
@@ -99,7 +84,6 @@ import Control.Monad.State.Strict
 import qualified Data.ByteString as BS
 import Data.Traversable
 import Data.Word
-import Language.Haskell.GHC.Toolkit.Constants
 
 -- | State maintained by the EDSL builder.
 data EDSLState
@@ -225,9 +209,6 @@ local vt v = do
   putLVal lr v
   pure $ getLVal lr
 
-i32Local :: Expression -> EDSL Expression
-i32Local = local I32
-
 i64Local :: Expression -> EDSL Expression
 i64Local = local I64
 
@@ -282,26 +263,14 @@ pointerI8 = pointer I32 1
 pointerF64 :: Expression -> Int -> LVal
 pointerF64 = pointer F64 8
 
-pointerF32 :: Expression -> Int -> LVal
-pointerF32 = pointer F32 4
-
 loadI64 :: Expression -> Int -> Expression
 loadI64 bp o = getLVal $ pointerI64 bp o
 
 loadI32 :: Expression -> Int -> Expression
 loadI32 bp o = getLVal $ pointerI32 bp o
 
-loadI16 :: Expression -> Int -> Expression
-loadI16 bp o = getLVal $ pointerI16 bp o
-
-loadI8 :: Expression -> Int -> Expression
-loadI8 bp o = getLVal $ pointerI8 bp o
-
 loadF64 :: Expression -> Int -> Expression
 loadF64 bp o = getLVal $ pointerF64 bp o
-
-loadF32 :: Expression -> Int -> Expression
-loadF32 bp o = getLVal $ pointerF32 bp o
 
 storeI64 :: Expression -> Int -> Expression -> EDSL ()
 storeI64 bp o = putLVal $ pointerI64 bp o
@@ -317,9 +286,6 @@ storeI8 bp o = putLVal $ pointerI8 bp o
 
 storeF64 :: Expression -> Int -> Expression -> EDSL ()
 storeF64 bp o = putLVal $ pointerF64 bp o
-
-storeF32 :: Expression -> Int -> Expression -> EDSL ()
-storeF32 bp o = putLVal $ pointerF32 bp o
 
 -- | Encode not using xor.
 notInt64 :: Expression -> Expression
@@ -338,10 +304,6 @@ dynamicTableBase =
     { globalSymbol = "__asterius_table_base",
       valueType = I32
     }
-
-mkDynamicFunctionAddress :: Word32 -> Expression
-mkDynamicFunctionAddress off =
-  extendUInt32 (dynamicTableBase `addInt32` ConstI32 (fromIntegral off))
 
 call :: EntitySymbol -> [Expression] -> EDSL ()
 call f xs =
@@ -415,25 +377,6 @@ newScope m = do
   m
   EDSL $ state $ \s@EDSLState {..} -> (exprBuf, s {exprBuf = orig_buf})
 
-block' :: [ValueType] -> (Label -> EDSL ()) -> EDSL ()
-block' vts cont = do
-  lbl <- newLabel
-  es <- newScope $ cont lbl
-  emit Block
-    { name = unLabel lbl,
-      bodys = bagToList es,
-      blockReturnTypes = vts
-    }
-
-blockWithLabel :: [ValueType] -> Label -> EDSL () -> EDSL ()
-blockWithLabel vts lbl m = do
-  es <- newScope m
-  emit Block
-    { name = unLabel lbl,
-      bodys = bagToList es,
-      blockReturnTypes = vts
-    }
-
 loop' :: [ValueType] -> (Label -> EDSL ()) -> EDSL ()
 loop' vts cont = do
   lbl <- newLabel
@@ -457,59 +400,6 @@ whileLoop :: Expression -> EDSL () -> EDSL ()
 whileLoop cond body =
   loop' [] $ \lbl -> if' [] cond (body *> break' lbl Nothing) mempty
 
-switchI64 :: Expression -> (EDSL () -> ([(Int, EDSL ())], EDSL ())) -> EDSL ()
-switchI64 cond make_clauses = block' [] $ \switch_lbl ->
-  let exit_switch = break' switch_lbl Nothing
-      (clauses, def_clause) = make_clauses exit_switch
-      switch_block = do
-        switch_def_lbl <- newLabel
-        blockWithLabel [] switch_def_lbl $ do
-          clause_seq <- for (reverse clauses) $ \(clause_i, clause_m) -> do
-            clause_lbl <- newLabel
-            pure (clause_i, clause_lbl, clause_m)
-          foldr
-            ( \(_, clause_lbl, clause_m) tot_m -> do
-                blockWithLabel [] clause_lbl tot_m
-                clause_m
-            )
-            ( foldr
-                ( \(clause_i, clause_lbl, _) br_m -> do
-                    break' clause_lbl $ Just $ cond `eqInt64` constI64 clause_i
-                    br_m
-                )
-                (break' switch_def_lbl Nothing)
-                clause_seq
-            )
-            clause_seq
-        def_clause
-   in switch_block
-
--- | Allocate a static region of bytes in the global section. Returns a
--- reference to the variable (symbol). Usage:
---
--- >  runEDSL $ do
--- >    x <- allocStaticBytes "x"
--- >          (Serialized $ BS.pack $ replicate 8 1)
--- >    loadi64 x 0
--- >
--- >    y <- allocStaticBytes "y" (Uninitialized 8)
--- >    storei64 x 0 (constI32 32)
-allocStaticBytes ::
-  -- | Name of the static region
-  EntitySymbol ->
-  -- | Initializer
-  AsteriusStatic ->
-  -- | Expression to access the static, referenced by name.
-  EDSL Expression
-allocStaticBytes n v = EDSL $ state $ \st ->
-  let st' =
-        st
-          { staticsBuf =
-              (n, AsteriusStatics {staticsType = Bytes, asteriusStatics = [v]})
-                : staticsBuf st
-          }
-   in (symbol n, st')
-
 symbol :: EntitySymbol -> Expression
 symbol = flip symbol' 0
 
@@ -525,23 +415,11 @@ constI64 = ConstI64 . fromIntegral
 constF64 :: Int -> Expression
 constF64 = ConstF64 . fromIntegral
 
-baseReg :: LVal
-baseReg = global BaseReg
-
-r1 :: LVal
-r1 = global $ VanillaReg 1
-
 currentNursery :: LVal
 currentNursery = global CurrentNursery
 
 currentTSO :: LVal
 currentTSO = global CurrentTSO
 
-hpAlloc :: LVal
-hpAlloc = global HpAlloc
-
 mainCapability :: Expression
 mainCapability = symbol "MainCapability"
-
-currentTID :: Expression
-currentTID = loadI32 (getLVal currentTSO) offset_StgTSO_id

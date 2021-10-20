@@ -7,7 +7,6 @@
 module Asterius.Internals.Temp
   ( temp,
     withTempDir,
-    newTempFile,
   )
 where
 
@@ -33,9 +32,3 @@ withTempDir :: String -> (FilePath -> IO r) -> IO r
 withTempDir t c = do
   tmpdir <- getTemporaryDirectory
   withTempDirectory silent tmpdir t c
-
-newTempFile :: FilePath -> String -> IO FilePath
-newTempFile tmpdir p = do
-  (r, h) <- openBinaryTempFile tmpdir p
-  hClose h
-  pure $ tmpdir </> r
