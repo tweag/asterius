@@ -6,7 +6,7 @@ packages:
 source-repository-package
   type:     git
   location: https://github.com/tweag/inline-js.git
-  tag:      0fc7444c552820e44ea54ae82eb1f8542dd56f36
+  tag:      8512b09d2c0533a41d5d2aef182b11a58c420c10
   subdir:   inline-js-core
 
 source-repository-package
