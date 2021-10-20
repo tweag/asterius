@@ -85,7 +85,6 @@ parseTask args = case err_msgs of
           str_opt "output-directory" $ \s t -> t {outputDirectory = s},
           str_opt "output-prefix" $ \s t -> t {outputBaseName = s},
           bool_opt "no-main" $ \t -> t {hasMain = False},
-          bool_opt "no-validate" $ \t -> t {validate = False},
           bool_opt "tail-calls" $ \t -> t {tailCalls = True},
           bool_opt "bundle" $ \t -> t {bundle = True},
           str_opt "optimize-level" $ \s t ->
@@ -307,10 +306,6 @@ ahcDistMain logger task (final_m, report) = do
     logger "[INFO] Running binaryen optimization"
     Binaryen.optimize m_ref
   Binaryen.runPass m_ref ["limit-segments"]
-  when (validate task) $ do
-    logger "[INFO] Validating binaryen IR"
-    pass_validation <- Binaryen.validate m_ref
-    when (pass_validation /= 1) $ fail "[ERROR] binaryen validation failed"
   m_bin <- Binaryen.serializeModule m_ref
   logger $ "[INFO] Writing WebAssembly binary to " <> show out_wasm
   BS.writeFile out_wasm m_bin
