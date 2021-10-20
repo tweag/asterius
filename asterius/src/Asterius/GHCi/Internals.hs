@@ -303,7 +303,6 @@ asteriusWriteIServ hsc_env i a
                 debug = False,
                 gcSections = True,
                 verboseErr = True,
-                pic = False,
                 outputIR = Nothing,
                 rootSymbols =
                   [ run_q_exp_sym,

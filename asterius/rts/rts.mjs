@@ -221,10 +221,6 @@ export async function newAsteriusInstance(req) {
   );
 
   return WebAssembly.instantiate(req.module, importObject).then(i => {
-    if (req.pic) {
-      i.exports.__wasm_apply_relocs();
-    }
-
     __asterius_wasi.initialize(i);
 
     Object.assign(__asterius_exports, i.exports);

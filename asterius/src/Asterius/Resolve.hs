@@ -45,7 +45,6 @@ makeInfoTableOffsetSet AsteriusModule {..} ss_off_map =
 
 resolveAsteriusModule ::
   Bool ->
-  Bool ->
   AsteriusModule ->
   ( Module,
     AsteriusModule,
@@ -55,7 +54,7 @@ resolveAsteriusModule ::
     Word32,
     Int
   )
-resolveAsteriusModule pic_is_on debug m_globals_resolved =
+resolveAsteriusModule debug m_globals_resolved =
   (new_mod, final_m, ss_off_map, fn_off_map, memory_base, last_data_offset, table_slots)
   where
     -- Create the function offset table first. A dummy relocation function
@@ -66,7 +65,7 @@ resolveAsteriusModule pic_is_on debug m_globals_resolved =
     -- on), the relocation function must be replaced, and new data segments
     -- (and corresponding statics) must be added, to hold the offsets needed by
     -- the relocation function. All this is handled by @makeMemory@.
-    (segs, ss_off_map, memory_base, last_data_offset, final_m) = makeMemory pic_is_on m_globals_resolved fn_off_map
+    (segs, ss_off_map, memory_base, last_data_offset, final_m) = makeMemory m_globals_resolved fn_off_map
     func_table = makeFunctionTable fn_off_map
     table_slots = fromIntegral last_func_offset
     func_imports =
@@ -87,7 +86,7 @@ resolveAsteriusModule pic_is_on debug m_globals_resolved =
                     )
                     func_imports
             )
-            $ rtsFunctionExports pic_is_on debug,
+            $ rtsFunctionExports debug,
         functionTable = func_table,
         tableImport = Nothing,
         tableSlots = table_slots,
@@ -101,12 +100,11 @@ resolveAsteriusModule pic_is_on debug m_globals_resolved =
 linkStart ::
   Bool ->
   Bool ->
-  Bool ->
   AsteriusCachedModule ->
   SS.SymbolSet ->
   [EntitySymbol] ->
   (AsteriusModule, Module, LinkReport)
-linkStart pic_on debug gc_sections store root_syms export_funcs =
+linkStart debug gc_sections store root_syms export_funcs =
   ( merged_m,
     result_m,
     LinkReport
@@ -132,4 +130,4 @@ linkStart pic_on debug gc_sections store root_syms export_funcs =
       | debug = traceModule $ addMemoryTrap merged_m0_evaluated
       | otherwise = merged_m0_evaluated
     (!result_m, !merged_m, !ss_off_map, !fn_off_map, !memory_base, !last_data_offset, !tbl_slots) =
-      resolveAsteriusModule pic_on debug merged_m1
+      resolveAsteriusModule debug merged_m1

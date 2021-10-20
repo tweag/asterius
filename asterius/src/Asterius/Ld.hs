@@ -30,7 +30,7 @@ data LinkTask
       { progName, linkOutput :: FilePath,
         linkObjs, linkLibs :: [FilePath],
         linkModule :: AsteriusCachedModule,
-        hasMain, debug, gcSections, verboseErr, pic :: Bool,
+        hasMain, debug, gcSections, verboseErr :: Bool,
         outputIR :: Maybe FilePath,
         rootSymbols, exportFunctions :: [EntitySymbol]
       }
@@ -77,7 +77,6 @@ linkModules ::
   LinkTask -> AsteriusCachedModule -> (AsteriusModule, Module, LinkReport)
 linkModules LinkTask {..} m =
   linkStart
-    pic
     debug
     gcSections
     ( toCachedModule
@@ -96,7 +95,7 @@ linkModules LinkTask {..} m =
           rtsPrivateSymbols,
           SS.fromList
             [ mkEntitySymbol internalName
-              | FunctionExport {..} <- rtsFunctionExports pic debug
+              | FunctionExport {..} <- rtsFunctionExports debug
             ]
         ]
     )

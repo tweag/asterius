@@ -549,8 +549,8 @@ rtsFunctionImports debug =
     <> primitiveImports
     <> barfImports
 
-rtsFunctionExports :: Bool -> Bool -> [FunctionExport]
-rtsFunctionExports pic debug =
+rtsFunctionExports :: Bool -> [FunctionExport]
+rtsFunctionExports debug =
   [ FunctionExport {internalName = f <> "_wrapper", externalName = f}
     | f <-
         [ "loadI64",
@@ -599,7 +599,6 @@ rtsFunctionExports pic debug =
                  else []
              )
                <> ["hs_init"]
-               <> ["__wasm_apply_relocs" | pic]
        ] <> [ FunctionExport
       { internalName = "stg_returnToSchedNotPaused",
         externalName = "stg_returnToSchedNotPaused"

@@ -110,7 +110,6 @@ parseTask args = case err_msgs of
           bool_opt "output-ir" $ \t -> t {outputIR = True},
           bool_opt "run" $ \t -> t {run = True},
           bool_opt "verbose-err" $ \t -> t {verboseErr = True},
-          bool_opt "pic" $ \t -> t {pic = True},
           bool_opt "yolo" $ \t -> t {yolo = True},
           bool_opt "console-history" $ \t -> t {consoleHistory = True},
           str_opt "ghc-option" $
@@ -183,8 +182,6 @@ genReq task LinkReport {..} =
       intDec tableSlots,
       ", yolo: ",
       if yolo task then "true" else "false",
-      ", pic: ",
-      if pic task then "true" else "false",
       ", defaultTableBase: ",
       intHex defaultTableBase,
       ", memoryBase: ",
@@ -263,7 +260,6 @@ ahcLink task = do
            | export_func <- exportFunctions task
          ]
       <> ["-optl--no-gc-sections" | not (gcSections task)]
-      <> ["-optl--pic" | pic task]
       <> ["-optl--verbose-err" | verboseErr task]
       <> extraGHCFlags task
       <> [ "-optl--output-ir="
@@ -303,7 +299,6 @@ ahcDistMain logger task (final_m, report) = do
   Binaryen.setLowMemoryUnused 1
   m_ref <-
     Binaryen.marshalModule
-      (pic task)
       (verboseErr task)
       (tailCalls task)
       (staticsOffsetMap report)

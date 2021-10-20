@@ -254,8 +254,6 @@ data MarshalEnv = MarshalEnv
     envLibCFuncNames :: Set.Set BS.ByteString,
     -- | The 'A.Arena' for allocating temporary buffers.
     envArena :: A.Arena,
-    -- | Whether the @pic@ extension is on.
-    envIsPicOn :: Bool,
     -- | Whether the @verbose_err@ extension is on.
     envIsVerboseErrOn :: Bool,
     -- | Whether the tail call extension is on.
@@ -274,10 +272,6 @@ type CodeGen a = ReaderT MarshalEnv IO a
 -- | Retrieve the 'A.Arena'.
 askArena :: CodeGen A.Arena
 askArena = reader envArena
-
--- | Check whether the @verbose_err@ extension is on.
-isPicOn :: CodeGen Bool
-isPicOn = reader envIsPicOn
 
 -- | Check whether the @verbose_err@ extension is on.
 isVerboseErrOn :: CodeGen Bool
@@ -471,15 +465,11 @@ marshalExpression e' = do
       fn_off_map <- askFunctionsOffsetMap
       case SM.lookup returnCallTarget64 fn_off_map of
         Just off -> do
-          pic_is_on <- isPicOn
           s <-
             marshalExpression
               SetGlobal
                 { globalSymbol = "__asterius_pc",
-                  value =
-                   if pic_is_on
-                     then mkDynamicFunctionAddress off
-                     else ConstI64 $ mkStaticFunctionAddress off
+                  value = ConstI64 $ mkStaticFunctionAddress off
                 }
           m <- askModuleRef
           a <- askArena
@@ -528,7 +518,6 @@ marshalExpression e' = do
     lift $ Binaryen.Expression.unreachable m
   CFG {..} -> relooperRun graph
   Symbol {..} -> do
-    pic_is_on <- isPicOn
     verbose_err <- isVerboseErrOn
     ss_off_map <- askStaticsOffsetMap
     fn_off_map <- askFunctionsOffsetMap
@@ -536,14 +525,10 @@ marshalExpression e' = do
     m <- askModuleRef
     if  | Just off <- SM.lookup unresolvedSymbol ss_off_map ->
           marshalExpression $
-            if pic_is_on
-              then mkDynamicDataAddress $ off + fromIntegral symbolOffset
-              else ConstI64 $ mkStaticDataAddress memory_base $ off + fromIntegral symbolOffset
+            ConstI64 $ mkStaticDataAddress memory_base $ off + fromIntegral symbolOffset
         | Just off <- SM.lookup unresolvedSymbol fn_off_map ->
           marshalExpression $
-            if pic_is_on
-              then mkDynamicFunctionAddress $ off + fromIntegral symbolOffset
-              else ConstI64 $ mkStaticFunctionAddress $ off + fromIntegral symbolOffset
+            ConstI64 $ mkStaticFunctionAddress $ off + fromIntegral symbolOffset
         | verbose_err ->
           marshalExpression $ barf (entityName unresolvedSymbol) [I64]
         | otherwise ->
@@ -696,13 +681,12 @@ marshalGlobal k Global {..} = do
 marshalModule ::
   Bool ->
   Bool ->
-  Bool ->
   SM.SymbolMap Word32 ->
   SM.SymbolMap Word32 ->
   Word32 ->
   Module ->
   IO Binaryen.Module
-marshalModule pic_on verbose_err tail_calls ss_off_map fn_off_map last_data_offset hs_mod@Module {..} = do
+marshalModule verbose_err tail_calls ss_off_map fn_off_map last_data_offset hs_mod@Module {..} = do
   (m, memory_base) <- do
     (bs, memory_base) <- wizer last_data_offset
     BS.writeFile "wizer.output.wasm" bs
@@ -727,7 +711,6 @@ marshalModule pic_on verbose_err tail_calls ss_off_map fn_off_map last_data_offs
               { envLibCFuncInfo = libc_func_info,
               envLibCFuncNames = Set.fromList $ map fst libc_func_names,
               envArena = a,
-              envIsPicOn = pic_on,
               envIsVerboseErrOn = verbose_err,
               envAreTailCallsOn = tail_calls,
               envStaticsOffsetMap = ss_off_map,
@@ -754,7 +737,7 @@ marshalModule pic_on verbose_err tail_calls ss_off_map fn_off_map last_data_offs
         Just tbl_import -> marshalTableImport m tbl_import
         _ -> pure ()
       marshalMemorySegments memorySegments
-      unless pic_on $ lift $ checkOverlapDataSegment m
+      lift $ checkOverlapDataSegment m
       case memoryImport of
         Just mem_import -> marshalMemoryImport m mem_import
         _ -> pure ()
