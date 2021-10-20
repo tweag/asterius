@@ -18,8 +18,6 @@ module Asterius.Backends.Binaryen
   ( MarshalError (..),
     marshalModule,
     serializeModule,
-    serializeModuleSExpr,
-    setColorsEnabled,
   )
 where
 
@@ -754,13 +752,6 @@ serializeModule m = alloca $ \(buf_p :: Ptr (Ptr ())) ->
       buf <- peek buf_p
       len <- peek len_p
       BS.unsafePackMallocCStringLen (castPtr buf, fromIntegral len)
-
-serializeModuleSExpr :: Binaryen.Module -> IO BS.ByteString
-serializeModuleSExpr m =
-  Binaryen.allocateAndWriteText m >>= BS.unsafePackCString
-
-setColorsEnabled :: Bool -> IO ()
-setColorsEnabled b = Binaryen.setColorsEnabled . toEnum . fromEnum $ b
 
 binaryenTypeToValueType :: Binaryen.Type -> ValueType
 binaryenTypeToValueType ty =
