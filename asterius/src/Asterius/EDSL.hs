@@ -53,8 +53,6 @@ module Asterius.EDSL
     storeF32,
     unTagClosure,
     dynamicTableBase,
-    dynamicMemoryBase,
-    mkDynamicDataAddress,
     mkDynamicFunctionAddress,
     call,
     call',
@@ -334,23 +332,12 @@ nandInt64 e1 e2 = notInt64 $ andInt64 e1 e2
 unTagClosure :: Expression -> Expression
 unTagClosure p = p `andInt64` constI64 0xFFFFFFFFFFFFFFF8
 
-dynamicMemoryBase :: Expression
-dynamicMemoryBase =
-  GetGlobal
-    { globalSymbol = "__asterius_memory_base",
-      valueType = I32
-    }
-
 dynamicTableBase :: Expression
 dynamicTableBase =
   GetGlobal
     { globalSymbol = "__asterius_table_base",
       valueType = I32
     }
-
-mkDynamicDataAddress :: Word32 -> Expression
-mkDynamicDataAddress off =
-  extendUInt32 (dynamicMemoryBase `addInt32` ConstI32 (fromIntegral off))
 
 mkDynamicFunctionAddress :: Word32 -> Expression
 mkDynamicFunctionAddress off =

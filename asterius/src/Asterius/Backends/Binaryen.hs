@@ -24,7 +24,6 @@ module Asterius.Backends.Binaryen
 where
 
 import Asterius.Backends.Binaryen.CheckOverlapDataSegment
-import Asterius.EDSL (mkDynamicDataAddress, mkDynamicFunctionAddress)
 import qualified Asterius.Internals.Arena as A
 import Asterius.Internals.Barf
 import Asterius.Internals.MagicNumber
@@ -689,7 +688,6 @@ marshalModule ::
 marshalModule verbose_err tail_calls ss_off_map fn_off_map last_data_offset hs_mod@Module {..} = do
   (m, memory_base) <- do
     (bs, memory_base) <- wizer last_data_offset
-    BS.writeFile "wizer.output.wasm" bs
     m <- BS.unsafeUseAsCStringLen bs $
         \(p, l) -> Binaryen.Module.read p (fromIntegral l)
     pure (m, memory_base)
