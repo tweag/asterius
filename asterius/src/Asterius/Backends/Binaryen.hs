@@ -255,8 +255,6 @@ data MarshalEnv = MarshalEnv
     envArena :: A.Arena,
     -- | Whether the @verbose_err@ extension is on.
     envIsVerboseErrOn :: Bool,
-    -- | Whether the tail call extension is on.
-    envAreTailCallsOn :: Bool,
     -- | The offset map for the current module (statics).
     envStaticsOffsetMap :: SM.SymbolMap Word32,
     -- | The offset map for the current module (functions).
@@ -275,10 +273,6 @@ askArena = reader envArena
 -- | Check whether the @verbose_err@ extension is on.
 isVerboseErrOn :: CodeGen Bool
 isVerboseErrOn = reader envIsVerboseErrOn
-
--- | Check whether the tail call extension is on.
-areTailCallsOn :: CodeGen Bool
-areTailCallsOn = reader envAreTailCallsOn
 
 -- | Retrieve the offset map from the local environment (statics).
 askStaticsOffsetMap :: CodeGen (SM.SymbolMap Word32)
@@ -451,16 +445,7 @@ marshalExpression e' = do
     x <- marshalExpression dropValue
     m <- askModuleRef
     lift $ Binaryen.drop m x
-  ReturnCall {..} -> areTailCallsOn >>= \case
-    -- Case 1: Tail calls are on
-    True -> do
-      m <- askModuleRef
-      a <- askArena
-      lift $ do
-        dst <- marshalBS a (entityName returnCallTarget64)
-        Binaryen.returnCall m dst nullPtr 0 Binaryen.none
-    -- Case 2: Tail calls are off
-    False -> do
+  ReturnCall {..} -> do
       fn_off_map <- askFunctionsOffsetMap
       case SM.lookup returnCallTarget64 fn_off_map of
         Just off -> do
@@ -477,26 +462,7 @@ marshalExpression e' = do
             (arr, _) <- marshalV a [s, r]
             Binaryen.block m (coerce nullPtr) arr 2 Binaryen.none
         Nothing -> marshalExpression $ barf (entityName returnCallTarget64) []
-  ReturnCallIndirect {..} -> areTailCallsOn >>= \case
-    -- Case 1: Tail calls are on
-    True -> do
-      t <-
-        marshalExpression
-          Unary
-            { unaryOp = WrapInt64,
-              operand0 = returnCallIndirectTarget64
-            }
-      m <- askModuleRef
-      lift $
-        Binaryen.returnCallIndirect
-          m
-          t
-          nullPtr
-          0
-          Binaryen.none
-          Binaryen.none
-    -- Case 2: Tail calls are off
-    False -> do
+  ReturnCallIndirect {..} -> do
       s <-
         marshalExpression
           SetGlobal
@@ -679,13 +645,12 @@ marshalGlobal k Global {..} = do
 
 marshalModule ::
   Bool ->
-  Bool ->
   SM.SymbolMap Word32 ->
   SM.SymbolMap Word32 ->
   Word32 ->
   Module ->
   IO Binaryen.Module
-marshalModule verbose_err tail_calls ss_off_map fn_off_map last_data_offset hs_mod@Module {..} = do
+marshalModule verbose_err ss_off_map fn_off_map last_data_offset hs_mod@Module {..} = do
   (m, memory_base) <- do
     (bs, memory_base) <- wizer last_data_offset
     m <- BS.unsafeUseAsCStringLen bs $
@@ -693,9 +658,7 @@ marshalModule verbose_err tail_calls ss_off_map fn_off_map last_data_offset hs_m
     pure (m, memory_base)
   checkOverlapDataSegment m
   Binaryen.setFeatures m
-    $ foldl1' (.|.)
-    $ [Binaryen.tailCall | tail_calls]
-      <> [Binaryen.mvp]
+    $ foldl1' (.|.) [Binaryen.mvp]
   A.with $ \a -> do
     libc_func_names <- binaryenModuleExportNames m
     for_ libc_func_names $
@@ -710,7 +673,6 @@ marshalModule verbose_err tail_calls ss_off_map fn_off_map last_data_offset hs_m
               envLibCFuncNames = Set.fromList $ map fst libc_func_names,
               envArena = a,
               envIsVerboseErrOn = verbose_err,
-              envAreTailCallsOn = tail_calls,
               envStaticsOffsetMap = ss_off_map,
               envFunctionsOffsetMap = fn_off_map,
               envMemoryBase = memory_base,

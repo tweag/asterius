@@ -85,7 +85,6 @@ parseTask args = case err_msgs of
           str_opt "output-directory" $ \s t -> t {outputDirectory = s},
           str_opt "output-prefix" $ \s t -> t {outputBaseName = s},
           bool_opt "no-main" $ \t -> t {hasMain = False},
-          bool_opt "tail-calls" $ \t -> t {tailCalls = True},
           bool_opt "bundle" $ \t -> t {bundle = True},
           str_opt "optimize-level" $ \s t ->
             let i = read s
@@ -282,7 +281,6 @@ ahcDistMain logger task (final_m, report) = do
   m_ref <-
     Binaryen.marshalModule
       (verboseErr task)
-      (tailCalls task)
       (staticsOffsetMap report)
       (functionOffsetMap report)
       (lastDataOffset report)
@@ -342,7 +340,6 @@ ahcDistMain logger task (final_m, report) = do
         callProcess "node" $
           [ "--experimental-modules",
             "--experimental-wasi-unstable-preview1",
-            "--experimental-wasm-return-call",
             "--unhandled-rejections=strict",
             takeFileName script
           ]
