@@ -102,10 +102,9 @@ linkStart ::
   AsteriusCachedModule ->
   SS.SymbolSet ->
   [EntitySymbol] ->
-  (AsteriusModule, Module, LinkReport)
+  (Module, LinkReport)
 linkStart debug store root_syms export_funcs =
-  ( merged_m,
-    result_m,
+  ( result_m,
     LinkReport
       { staticsOffsetMap = ss_off_map,
         functionOffsetMap = fn_off_map,

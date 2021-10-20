@@ -291,7 +291,7 @@ asteriusWriteIServ hsc_env i a
             this_id = remoteRefToInt q
             (sym, m) = ghciCompiledCoreExprs s IM.! this_id
             (js_s, p, _) = ghciSession s
-        (_, final_m, link_report) <-
+        (final_m, link_report) <-
           linkExeInMemory
             LinkTask
               { progName = "",
@@ -302,7 +302,6 @@ asteriusWriteIServ hsc_env i a
                 hasMain = False,
                 debug = False,
                 verboseErr = True,
-                outputIR = Nothing,
                 rootSymbols =
                   [ run_q_exp_sym,
                     run_q_pat_sym,

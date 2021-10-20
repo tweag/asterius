@@ -23,9 +23,6 @@ parseLinkTask args = do
         hasMain = "--no-main" `notElem` args,
         debug = "--debug" `elem` args,
         verboseErr = "--verbose-err" `elem` args,
-        outputIR =
-          find ("--output-ir=" `isPrefixOf`) args
-            >>= stripPrefix "--output-ir=",
         rootSymbols = map fromString $ str_args "--extra-root-symbol=",
         exportFunctions =
           ("main" :) $ map fromString $

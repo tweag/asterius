@@ -31,7 +31,6 @@ data LinkTask
         linkObjs, linkLibs :: [FilePath],
         linkModule :: AsteriusCachedModule,
         hasMain, debug, verboseErr :: Bool,
-        outputIR :: Maybe FilePath,
         rootSymbols, exportFunctions :: [EntitySymbol]
       }
   deriving (Show)
@@ -74,7 +73,7 @@ rtsPrivateSymbols =
     ]
 
 linkModules ::
-  LinkTask -> AsteriusCachedModule -> (AsteriusModule, Module, LinkReport)
+  LinkTask -> AsteriusCachedModule -> (Module, LinkReport)
 linkModules LinkTask {..} m =
   linkStart
     debug
@@ -100,15 +99,12 @@ linkModules LinkTask {..} m =
     )
     exportFunctions
 
-linkExeInMemory :: LinkTask -> IO (AsteriusModule, Module, LinkReport)
+linkExeInMemory :: LinkTask -> IO (Module, LinkReport)
 linkExeInMemory ld_task = do
   final_store <- loadTheWorld ld_task
   evaluate $ linkModules ld_task final_store
 
 linkExe :: LinkTask -> IO ()
 linkExe ld_task@LinkTask {..} = do
-  (pre_m, m, link_report) <- linkExeInMemory ld_task
+  (m, link_report) <- linkExeInMemory ld_task
   putFile linkOutput (m, link_report)
-  case outputIR of
-    Just p -> putFile p $ toCachedModule pre_m
-    _ -> pure ()

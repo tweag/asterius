@@ -102,10 +102,8 @@ parseTask args = case err_msgs of
               { optimizeLevel = 0,
                 shrinkLevel = 0,
                 debug = True,
-                outputIR = True,
                 verboseErr = True
               },
-          bool_opt "output-ir" $ \t -> t {outputIR = True},
           bool_opt "run" $ \t -> t {run = True},
           bool_opt "verbose-err" $ \t -> t {verboseErr = True},
           bool_opt "yolo" $ \t -> t {yolo = True},
@@ -259,11 +257,6 @@ ahcLink task = do
          ]
       <> ["-optl--verbose-err" | verboseErr task]
       <> extraGHCFlags task
-      <> [ "-optl--output-ir="
-             <> outputDirectory task
-             </> (outputBaseName task <.> "unlinked.bin")
-           | outputIR task
-         ]
       <> ["-optl--prog-name=" <> takeBaseName (inputHS task)]
       <> ["-o", ld_output, inputHS task]
   ncu <- newNameCacheUpdater
@@ -281,14 +274,6 @@ ahcDistMain logger task (final_m, report) = do
       out_entry = outputDirectory task </> outputBaseName task <.> "mjs"
       out_js = outputDirectory task </> outputBaseName task <.> "js"
       out_html = outputDirectory task </> outputBaseName task <.> "html"
-      out_link = outputDirectory task </> outputBaseName task <.> "link.txt"
-  when (outputIR task) $ do
-    logger $ "[INFO] Writing linking report to " <> show out_link
-    writeFile out_link $ show report
-  when (outputIR task) $ do
-    let p = out_wasm -<.> "linked.txt"
-    logger $ "[INFO] Printing linked IR to " <> show p
-    writeFile p $ show final_m
   logger "[INFO] Converting linked IR to binaryen IR"
   Binaryen.setDebugInfo $ if verboseErr task then 1 else 0
   Binaryen.setOptimizeLevel $ fromIntegral $ optimizeLevel task
@@ -309,17 +294,6 @@ ahcDistMain logger task (final_m, report) = do
   m_bin <- Binaryen.serializeModule m_ref
   logger $ "[INFO] Writing WebAssembly binary to " <> show out_wasm
   BS.writeFile out_wasm m_bin
-  when (outputIR task) $ do
-    let out_wasm_binaryen_sexpr = out_wasm -<.> "binaryen-sexpr.txt"
-    logger $
-      "[info] writing re-parsed wasm-toolkit ir as s-expresions to "
-        <> show out_wasm_binaryen_sexpr
-    -- disable colors when writing out the binaryen module
-    -- to a file, so that we don't get ANSI escape sequences
-    -- for colors. Reset the state after
-    Asterius.Backends.Binaryen.setColorsEnabled False
-    m_sexpr <- Binaryen.serializeModuleSExpr m_ref
-    BS.writeFile out_wasm_binaryen_sexpr m_sexpr
   Binaryen.dispose m_ref
   logger $
     "[INFO] Writing JavaScript runtime modules to "
