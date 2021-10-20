@@ -1,7 +1,6 @@
 packages:
   asterius
   ghc-toolkit
-  wasm-toolkit
 
 source-repository-package
   type:     git

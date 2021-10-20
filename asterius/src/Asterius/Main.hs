@@ -46,7 +46,6 @@ import Data.Foldable
 import Data.List
 import Data.String
 import Foreign
-import qualified Language.WebAssembly.WireFormat as Wasm
 import System.Console.GetOpt
 import System.Directory
 import System.Environment.Blank
@@ -323,13 +322,6 @@ ahcDistMain logger task (final_m, report) = do
   logger $ "[INFO] Writing WebAssembly binary to " <> show out_wasm
   BS.writeFile out_wasm m_bin
   when (outputIR task) $ do
-    let p = out_wasm -<.> "binaryen-show.txt"
-    logger $ "[info] writing re-parsed wasm-toolkit ir to " <> show p
-    case runGetOrFail Wasm.getModule (LBS.fromStrict m_bin) of
-      Right (rest, _, r)
-        | LBS.null rest -> writeFile p (show r)
-        | otherwise -> fail "[ERROR] Re-parsing produced residule"
-      _ -> fail "[ERROR] Re-parsing failed"
     let out_wasm_binaryen_sexpr = out_wasm -<.> "binaryen-sexpr.txt"
     logger $
       "[info] writing re-parsed wasm-toolkit ir as s-expresions to "
