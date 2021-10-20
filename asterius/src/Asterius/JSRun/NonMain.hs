@@ -36,7 +36,6 @@ linkNonMain store_m extra_syms = (m, link_report)
             linkModule = mempty,
             Asterius.Ld.hasMain = False,
             Asterius.Ld.debug = False,
-            Asterius.Ld.gcSections = True,
             Asterius.Ld.verboseErr = True,
             Asterius.Ld.outputIR = Nothing,
             rootSymbols = extra_syms,

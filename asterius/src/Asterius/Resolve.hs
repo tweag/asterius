@@ -99,12 +99,11 @@ resolveAsteriusModule debug m_globals_resolved =
 
 linkStart ::
   Bool ->
-  Bool ->
   AsteriusCachedModule ->
   SS.SymbolSet ->
   [EntitySymbol] ->
   (AsteriusModule, Module, LinkReport)
-linkStart debug gc_sections store root_syms export_funcs =
+linkStart debug store root_syms export_funcs =
   ( merged_m,
     result_m,
     LinkReport
@@ -122,9 +121,7 @@ linkStart debug gc_sections store root_syms export_funcs =
       }
   )
   where
-    merged_m0
-      | gc_sections = gcSections store root_syms export_funcs
-      | otherwise = fromCachedModule store
+    merged_m0 = gcSections store root_syms export_funcs
     !merged_m0_evaluated = force merged_m0
     !merged_m1
       | debug = traceModule $ addMemoryTrap merged_m0_evaluated

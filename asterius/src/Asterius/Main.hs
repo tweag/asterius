@@ -87,7 +87,6 @@ parseTask args = case err_msgs of
           bool_opt "no-main" $ \t -> t {hasMain = False},
           bool_opt "no-validate" $ \t -> t {validate = False},
           bool_opt "tail-calls" $ \t -> t {tailCalls = True},
-          bool_opt "no-gc-sections" $ \t -> t {gcSections = False},
           bool_opt "bundle" $ \t -> t {bundle = True},
           str_opt "optimize-level" $ \s t ->
             let i = read s
@@ -259,7 +258,6 @@ ahcLink task = do
       <> [ "-optl--export-function=" <> c8BS (entityName export_func)
            | export_func <- exportFunctions task
          ]
-      <> ["-optl--no-gc-sections" | not (gcSections task)]
       <> ["-optl--verbose-err" | verboseErr task]
       <> extraGHCFlags task
       <> [ "-optl--output-ir="

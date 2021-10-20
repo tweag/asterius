@@ -301,7 +301,6 @@ asteriusWriteIServ hsc_env i a
                 linkModule = m <> M.foldr' (<>) (ghciLibs s) (ghciObjs s),
                 hasMain = False,
                 debug = False,
-                gcSections = True,
                 verboseErr = True,
                 outputIR = Nothing,
                 rootSymbols =

@@ -30,7 +30,7 @@ data LinkTask
       { progName, linkOutput :: FilePath,
         linkObjs, linkLibs :: [FilePath],
         linkModule :: AsteriusCachedModule,
-        hasMain, debug, gcSections, verboseErr :: Bool,
+        hasMain, debug, verboseErr :: Bool,
         outputIR :: Maybe FilePath,
         rootSymbols, exportFunctions :: [EntitySymbol]
       }
@@ -78,7 +78,6 @@ linkModules ::
 linkModules LinkTask {..} m =
   linkStart
     debug
-    gcSections
     ( toCachedModule
         ( (if hasMain then mainBuiltins else mempty)
             <> rtsAsteriusModule
