@@ -11,7 +11,7 @@
 , hsPkgs ? pkgs.callPackage ./nix/pkg-set.nix { inherit pkgs ghc; }
 }:
 (hsPkgs.shellFor rec {
-  packages = ps: with ps; [ asterius ghc-toolkit wasm-toolkit ];
+  packages = ps: with ps; [ asterius ghc-toolkit ];
 
   withHoogle = true;
 
@@ -50,7 +50,7 @@
 
     pushd $(git rev-parse --show-toplevel)
 
-    for pkg in asterius ghc-toolkit wasm-toolkit; do
+    for pkg in asterius ghc-toolkit; do
       hpack $pkg
     done
 

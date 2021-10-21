@@ -18,13 +18,10 @@ module Asterius.Backends.Binaryen
   ( MarshalError (..),
     marshalModule,
     serializeModule,
-    serializeModuleSExpr,
-    setColorsEnabled,
   )
 where
 
 import Asterius.Backends.Binaryen.CheckOverlapDataSegment
-import Asterius.EDSL (mkDynamicDataAddress, mkDynamicFunctionAddress)
 import qualified Asterius.Internals.Arena as A
 import Asterius.Internals.Barf
 import Asterius.Internals.MagicNumber
@@ -254,12 +251,8 @@ data MarshalEnv = MarshalEnv
     envLibCFuncNames :: Set.Set BS.ByteString,
     -- | The 'A.Arena' for allocating temporary buffers.
     envArena :: A.Arena,
-    -- | Whether the @pic@ extension is on.
-    envIsPicOn :: Bool,
     -- | Whether the @verbose_err@ extension is on.
     envIsVerboseErrOn :: Bool,
-    -- | Whether the tail call extension is on.
-    envAreTailCallsOn :: Bool,
     -- | The offset map for the current module (statics).
     envStaticsOffsetMap :: SM.SymbolMap Word32,
     -- | The offset map for the current module (functions).
@@ -276,16 +269,8 @@ askArena :: CodeGen A.Arena
 askArena = reader envArena
 
 -- | Check whether the @verbose_err@ extension is on.
-isPicOn :: CodeGen Bool
-isPicOn = reader envIsPicOn
-
--- | Check whether the @verbose_err@ extension is on.
 isVerboseErrOn :: CodeGen Bool
 isVerboseErrOn = reader envIsVerboseErrOn
-
--- | Check whether the tail call extension is on.
-areTailCallsOn :: CodeGen Bool
-areTailCallsOn = reader envAreTailCallsOn
 
 -- | Retrieve the offset map from the local environment (statics).
 askStaticsOffsetMap :: CodeGen (SM.SymbolMap Word32)
@@ -458,28 +443,15 @@ marshalExpression e' = do
     x <- marshalExpression dropValue
     m <- askModuleRef
     lift $ Binaryen.drop m x
-  ReturnCall {..} -> areTailCallsOn >>= \case
-    -- Case 1: Tail calls are on
-    True -> do
-      m <- askModuleRef
-      a <- askArena
-      lift $ do
-        dst <- marshalBS a (entityName returnCallTarget64)
-        Binaryen.returnCall m dst nullPtr 0 Binaryen.none
-    -- Case 2: Tail calls are off
-    False -> do
+  ReturnCall {..} -> do
       fn_off_map <- askFunctionsOffsetMap
       case SM.lookup returnCallTarget64 fn_off_map of
         Just off -> do
-          pic_is_on <- isPicOn
           s <-
             marshalExpression
               SetGlobal
                 { globalSymbol = "__asterius_pc",
-                  value =
-                   if pic_is_on
-                     then mkDynamicFunctionAddress off
-                     else ConstI64 $ mkStaticFunctionAddress off
+                  value = ConstI64 $ mkStaticFunctionAddress off
                 }
           m <- askModuleRef
           a <- askArena
@@ -488,26 +460,7 @@ marshalExpression e' = do
             (arr, _) <- marshalV a [s, r]
             Binaryen.block m (coerce nullPtr) arr 2 Binaryen.none
         Nothing -> marshalExpression $ barf (entityName returnCallTarget64) []
-  ReturnCallIndirect {..} -> areTailCallsOn >>= \case
-    -- Case 1: Tail calls are on
-    True -> do
-      t <-
-        marshalExpression
-          Unary
-            { unaryOp = WrapInt64,
-              operand0 = returnCallIndirectTarget64
-            }
-      m <- askModuleRef
-      lift $
-        Binaryen.returnCallIndirect
-          m
-          t
-          nullPtr
-          0
-          Binaryen.none
-          Binaryen.none
-    -- Case 2: Tail calls are off
-    False -> do
+  ReturnCallIndirect {..} -> do
       s <-
         marshalExpression
           SetGlobal
@@ -528,7 +481,6 @@ marshalExpression e' = do
     lift $ Binaryen.Expression.unreachable m
   CFG {..} -> relooperRun graph
   Symbol {..} -> do
-    pic_is_on <- isPicOn
     verbose_err <- isVerboseErrOn
     ss_off_map <- askStaticsOffsetMap
     fn_off_map <- askFunctionsOffsetMap
@@ -536,14 +488,10 @@ marshalExpression e' = do
     m <- askModuleRef
     if  | Just off <- SM.lookup unresolvedSymbol ss_off_map ->
           marshalExpression $
-            if pic_is_on
-              then mkDynamicDataAddress $ off + fromIntegral symbolOffset
-              else ConstI64 $ mkStaticDataAddress memory_base $ off + fromIntegral symbolOffset
+            ConstI64 $ mkStaticDataAddress memory_base $ off + fromIntegral symbolOffset
         | Just off <- SM.lookup unresolvedSymbol fn_off_map ->
           marshalExpression $
-            if pic_is_on
-              then mkDynamicFunctionAddress $ off + fromIntegral symbolOffset
-              else ConstI64 $ mkStaticFunctionAddress $ off + fromIntegral symbolOffset
+            ConstI64 $ mkStaticFunctionAddress $ off + fromIntegral symbolOffset
         | verbose_err ->
           marshalExpression $ barf (entityName unresolvedSymbol) [I64]
         | otherwise ->
@@ -695,25 +643,20 @@ marshalGlobal k Global {..} = do
 
 marshalModule ::
   Bool ->
-  Bool ->
-  Bool ->
   SM.SymbolMap Word32 ->
   SM.SymbolMap Word32 ->
   Word32 ->
   Module ->
   IO Binaryen.Module
-marshalModule pic_on verbose_err tail_calls ss_off_map fn_off_map last_data_offset hs_mod@Module {..} = do
+marshalModule verbose_err ss_off_map fn_off_map last_data_offset hs_mod@Module {..} = do
   (m, memory_base) <- do
     (bs, memory_base) <- wizer last_data_offset
-    BS.writeFile "wizer.output.wasm" bs
     m <- BS.unsafeUseAsCStringLen bs $
         \(p, l) -> Binaryen.Module.read p (fromIntegral l)
     pure (m, memory_base)
   checkOverlapDataSegment m
   Binaryen.setFeatures m
-    $ foldl1' (.|.)
-    $ [Binaryen.tailCall | tail_calls]
-      <> [Binaryen.mvp]
+    $ foldl1' (.|.) [Binaryen.mvp]
   A.with $ \a -> do
     libc_func_names <- binaryenModuleExportNames m
     for_ libc_func_names $
@@ -727,9 +670,7 @@ marshalModule pic_on verbose_err tail_calls ss_off_map fn_off_map last_data_offs
               { envLibCFuncInfo = libc_func_info,
               envLibCFuncNames = Set.fromList $ map fst libc_func_names,
               envArena = a,
-              envIsPicOn = pic_on,
               envIsVerboseErrOn = verbose_err,
-              envAreTailCallsOn = tail_calls,
               envStaticsOffsetMap = ss_off_map,
               envFunctionsOffsetMap = fn_off_map,
               envMemoryBase = memory_base,
@@ -754,7 +695,7 @@ marshalModule pic_on verbose_err tail_calls ss_off_map fn_off_map last_data_offs
         Just tbl_import -> marshalTableImport m tbl_import
         _ -> pure ()
       marshalMemorySegments memorySegments
-      unless pic_on $ lift $ checkOverlapDataSegment m
+      lift $ checkOverlapDataSegment m
       case memoryImport of
         Just mem_import -> marshalMemoryImport m mem_import
         _ -> pure ()
@@ -811,13 +752,6 @@ serializeModule m = alloca $ \(buf_p :: Ptr (Ptr ())) ->
       buf <- peek buf_p
       len <- peek len_p
       BS.unsafePackMallocCStringLen (castPtr buf, fromIntegral len)
-
-serializeModuleSExpr :: Binaryen.Module -> IO BS.ByteString
-serializeModuleSExpr m =
-  Binaryen.allocateAndWriteText m >>= BS.unsafePackCString
-
-setColorsEnabled :: Bool -> IO ()
-setColorsEnabled b = Binaryen.setColorsEnabled . toEnum . fromEnum $ b
 
 binaryenTypeToValueType :: Binaryen.Type -> ValueType
 binaryenTypeToValueType ty =

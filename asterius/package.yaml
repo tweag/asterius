@@ -65,7 +65,6 @@ dependencies:
   - mtl
   - process
   - transformers
-  - wasm-toolkit
 
 internal-libraries:
   asterius-types:

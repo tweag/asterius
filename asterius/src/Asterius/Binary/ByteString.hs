@@ -1,7 +1,6 @@
 module Asterius.Binary.ByteString
   ( tryGetBS,
     getBS,
-    putBS,
   )
 where
 
@@ -32,9 +31,3 @@ tryGetBS ::
   BS.ByteString ->
   IO (Either SomeException a)
 tryGetBS ncu = try . getBS ncu
-
-putBS :: GHC.Binary a => a -> IO BS.ByteString
-putBS a = do
-  bh <- GHC.openBinMem 1048576
-  GHC.putWithUserData (const (pure ())) bh a
-  GHC.withBinBuffer bh $ evaluate . BS.copy

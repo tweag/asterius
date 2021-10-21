@@ -30,8 +30,7 @@ data LinkTask
       { progName, linkOutput :: FilePath,
         linkObjs, linkLibs :: [FilePath],
         linkModule :: AsteriusCachedModule,
-        hasMain, debug, gcSections, verboseErr, pic :: Bool,
-        outputIR :: Maybe FilePath,
+        hasMain, debug, verboseErr :: Bool,
         rootSymbols, exportFunctions :: [EntitySymbol]
       }
   deriving (Show)
@@ -74,12 +73,10 @@ rtsPrivateSymbols =
     ]
 
 linkModules ::
-  LinkTask -> AsteriusCachedModule -> (AsteriusModule, Module, LinkReport)
+  LinkTask -> AsteriusCachedModule -> (Module, LinkReport)
 linkModules LinkTask {..} m =
   linkStart
-    pic
     debug
-    gcSections
     ( toCachedModule
         ( (if hasMain then mainBuiltins else mempty)
             <> rtsAsteriusModule
@@ -96,21 +93,18 @@ linkModules LinkTask {..} m =
           rtsPrivateSymbols,
           SS.fromList
             [ mkEntitySymbol internalName
-              | FunctionExport {..} <- rtsFunctionExports pic debug
+              | FunctionExport {..} <- rtsFunctionExports debug
             ]
         ]
     )
     exportFunctions
 
-linkExeInMemory :: LinkTask -> IO (AsteriusModule, Module, LinkReport)
+linkExeInMemory :: LinkTask -> IO (Module, LinkReport)
 linkExeInMemory ld_task = do
   final_store <- loadTheWorld ld_task
   evaluate $ linkModules ld_task final_store
 
 linkExe :: LinkTask -> IO ()
 linkExe ld_task@LinkTask {..} = do
-  (pre_m, m, link_report) <- linkExeInMemory ld_task
+  (m, link_report) <- linkExeInMemory ld_task
   putFile linkOutput (m, link_report)
-  case outputIR of
-    Just p -> putFile p $ toCachedModule pre_m
-    _ -> pure ()

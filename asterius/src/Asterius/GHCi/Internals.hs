@@ -134,7 +134,6 @@ newGHCiSession = do
         { nodeExtraArgs =
             [ "--experimental-modules",
               "--experimental-wasi-unstable-preview1",
-              "--experimental-wasm-return-call",
               "--no-wasm-bounds-checks",
               "--no-wasm-stack-checks",
               "--unhandled-rejections=strict",
@@ -291,7 +290,7 @@ asteriusWriteIServ hsc_env i a
             this_id = remoteRefToInt q
             (sym, m) = ghciCompiledCoreExprs s IM.! this_id
             (js_s, p, _) = ghciSession s
-        (_, final_m, link_report) <-
+        (final_m, link_report) <-
           linkExeInMemory
             LinkTask
               { progName = "",
@@ -301,10 +300,7 @@ asteriusWriteIServ hsc_env i a
                 linkModule = m <> M.foldr' (<>) (ghciLibs s) (ghciObjs s),
                 hasMain = False,
                 debug = False,
-                gcSections = True,
                 verboseErr = True,
-                pic = False,
-                outputIR = Nothing,
                 rootSymbols =
                   [ run_q_exp_sym,
                     run_q_pat_sym,

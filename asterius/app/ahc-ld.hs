@@ -22,12 +22,7 @@ parseLinkTask args = do
         linkModule = mempty,
         hasMain = "--no-main" `notElem` args,
         debug = "--debug" `elem` args,
-        gcSections = "--no-gc-sections" `notElem` args,
         verboseErr = "--verbose-err" `elem` args,
-        pic = "--pic" `elem` args,
-        outputIR =
-          find ("--output-ir=" `isPrefixOf`) args
-            >>= stripPrefix "--output-ir=",
         rootSymbols = map fromString $ str_args "--extra-root-symbol=",
         exportFunctions =
           ("main" :) $ map fromString $

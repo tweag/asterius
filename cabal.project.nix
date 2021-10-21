@@ -1,18 +1,17 @@
 packages:
   asterius
   ghc-toolkit
-  wasm-toolkit
 
 source-repository-package
   type:     git
   location: https://github.com/tweag/inline-js.git
-  tag:      0fc7444c552820e44ea54ae82eb1f8542dd56f36
+  tag:      8512b09d2c0533a41d5d2aef182b11a58c420c10
   subdir:   inline-js-core
 
 source-repository-package
   type:     git
   location: https://github.com/tweag/ghc-asterius.git
-  tag:      6a375ebc374ed83ac568725de945bd751756a401
+  tag:      bf758f1f98aab4f3267261bbeb91a18fa2e8de07
   subdir:
     ahc-bin
     ahc-pkg

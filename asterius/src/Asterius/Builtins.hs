@@ -11,7 +11,6 @@ module Asterius.Builtins
     rtsGlobalImports,
     rtsGlobalExports,
     emitErrorMessage,
-    wasmPageSize,
     generateWrapperFunction,
     ShouldSext (..),
     genWrap,
@@ -43,9 +42,6 @@ import Data.Foldable
 import Data.String
 import Data.Word
 import Language.Haskell.GHC.Toolkit.Constants
-
-wasmPageSize :: Int
-wasmPageSize = 65536
 
 data BuiltinsOptions
   = BuiltinsOptions
@@ -549,8 +545,8 @@ rtsFunctionImports debug =
     <> primitiveImports
     <> barfImports
 
-rtsFunctionExports :: Bool -> Bool -> [FunctionExport]
-rtsFunctionExports pic debug =
+rtsFunctionExports :: Bool -> [FunctionExport]
+rtsFunctionExports debug =
   [ FunctionExport {internalName = f <> "_wrapper", externalName = f}
     | f <-
         [ "loadI64",
@@ -599,7 +595,6 @@ rtsFunctionExports pic debug =
                  else []
              )
                <> ["hs_init"]
-               <> ["__wasm_apply_relocs" | pic]
        ] <> [ FunctionExport
       { internalName = "stg_returnToSchedNotPaused",
         externalName = "stg_returnToSchedNotPaused"
