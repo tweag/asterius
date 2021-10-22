@@ -1561,6 +1561,8 @@ newtype NeedsUnreachableBlock = NeedsUnreachableBlock Bool
 marshalCmmBlockBranch ::
   GHC.CmmNode GHC.O GHC.C ->
   CodeGen ([Expression], Maybe Expression, [RelooperAddBranch], NeedsUnreachableBlock)
+  -- results: branch hwelpers, siwtch cond expr, branches, 
+
 marshalCmmBlockBranch instr = case instr of
   GHC.CmmBranch lbl -> do
     k <- marshalLabel lbl
