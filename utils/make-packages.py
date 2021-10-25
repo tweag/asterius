@@ -102,6 +102,7 @@ def patch_hadrian():
     with open(os.path.join(ghc_repo_path, "hadrian", "stack.yaml"),
               mode="w") as f:
         f.write("resolver: lts-16.29\n")
+        f.write("dump-logs: all\n")
     with open(os.path.join(ghc_repo_path, "hadrian", "src", "Oracles",
                            "Setting.hs"),
               mode="r") as h:
@@ -121,11 +122,11 @@ def patch_hadrian():
 
 def make_hadrian():
     patch_hadrian()
-    subprocess.run([hadrian_path, "--version"], cwd=ghc_repo_path, check=True)
+    subprocess.run([hadrian_path, "--version", "--verbose"], cwd=ghc_repo_path, check=True)
 
 
 def make_autogen():
-    subprocess.run([hadrian_path, "-j"] + ghc_autogen_files +
+    subprocess.run([hadrian_path, "--verbose", "-j"] + ghc_autogen_files +
                    ghc_pkg_autogen_files,
                    cwd=ghc_repo_path,
                    check=True)

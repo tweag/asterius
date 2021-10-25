@@ -1,0 +1,37 @@
+load(
+    "@rules_haskell//haskell:defs.bzl",
+    "haskell_toolchain_library",
+    "haskell_library",
+    "haskell_binary",
+    "haskell_repl",
+)
+
+load(
+    "@rules_haskell//haskell:cabal.bzl",
+    "haskell_cabal_library",
+    )
+
+haskell_toolchain_library(name = "binary")
+haskell_toolchain_library(name = "bytestring")
+haskell_toolchain_library(name = "directory")
+haskell_toolchain_library(name = "filepath")
+haskell_toolchain_library(name = "process")
+haskell_toolchain_library(name = "base")
+
+haskell_cabal_library(
+    name = "wasm-toolkit",
+    srcs = glob(["wasm-toolkit.cabal", "src/**", "LICENSE"]),
+    version = "0.0.1",
+    cabalopts = ["--ghc-option=-Wall"],
+    haddock = False,
+    verbose = True,
+    deps = [":base", ":binary", ":bytestring", ":directory", ":filepath", ":process"],
+    visibility = ["//asterius:__pkg__"],
+)
+
+
+# haskell_binary(
+#     name = "bin",
+#     deps = [":base", ":lib-0.1.0.0"],
+#     srcs = ["Main.hs"],
+# )

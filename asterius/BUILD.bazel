@@ -1,0 +1,153 @@
+load(
+    "@rules_haskell//haskell:cabal.bzl",
+    "haskell_cabal_library",
+    "haskell_cabal_binary",
+)
+
+filegroup(
+    name = "asterius_datadir",
+    srcs = [
+    "cabal/config",
+    "libc/fnv.c",
+    "libc/fpstring.c",
+    "libc/fpstring.h",
+    "libc/getRandomBytes.c",
+    "libc/itoa.c",
+    "libc/main.c",
+    "libc/md5.c",
+    "libc/md5.h",
+    "libc/text_cbits.c",
+    "libc/text_cbits.h",
+    "libc/unescape_string.c",
+    "rts/browser/default.mjs",
+    "rts/browser/rts.fs.mjs",
+    "rts/browser/rts.wasi.mjs",
+    "rts/node/default.mjs",
+    "rts/node/rts.fs.mjs",
+    "rts/node/rts.wasi.mjs",
+    "rts/rts.autoapply.mjs",
+    "rts/rts.closuretypes.mjs",
+    "rts/rts.constants.mjs",
+    "rts/rts.eventlog.mjs",
+    "rts/rts.exception.mjs",
+    "rts/rts.exports.mjs",
+    "rts/rts.float.mjs",
+    "rts/rts.funtypes.mjs",
+    "rts/rts.gc.mjs",
+    "rts/rts.heapalloc.mjs",
+    "rts/rts.integer.mjs",
+    "rts/rts.jsval.mjs",
+    "rts/rts.memory.mjs",
+    "rts/rts.memorytrap.mjs",
+    "rts/rts.messages.mjs",
+    "rts/rts.mjs",
+    "rts/rts.modulify.mjs",
+    "rts/rts.reentrancy.mjs",
+    "rts/rts.scheduler.mjs",
+    "rts/rts.setimmediate.mjs",
+    "rts/rts.stablename.mjs",
+    "rts/rts.stableptr.mjs",
+    "rts/rts.staticptr.mjs",
+    "rts/rts.symtable.mjs",
+    "rts/rts.time.mjs",
+    "rts/rts.tracing.mjs",
+    "rts/rts.unicode.mjs",
+    "boot-init.sh",
+    "boot.sh",
+    ],
+    visibility = ["//bazel/bazel_build:__pkg__"],
+)
+
+haskell_cabal_library(
+    name = "asterius",
+    srcs = glob(["asterius.cabal", "**"]),
+    version = "0.0.1",
+    cabalopts = ["--ghc-option=-j4"],
+    deps = [
+        "//ghc-toolkit",
+        "@make_packages//ghc-asterius",
+        "//wasm-toolkit",
+        "@stackage//:binaryen",
+        "@stackage//:inline-js-core",
+        ":asterius-types"
+
+    ],
+    visibility = [
+        "//bazel/bazel_build:__pkg__",
+    ]
+)
+
+haskell_cabal_library(
+    name = "asterius-types",
+    package_name = "asterius",
+    sublibrary_name = "asterius-types",
+    cabalopts = ["--ghc-option=-j4"],
+    srcs = glob(["asterius.cabal", "**"]),
+    version = "0.0.1",
+    deps = [
+        "//ghc-toolkit",
+        "@make_packages//ghc-asterius",
+        "@make_packages//template-haskell-asterius",
+        "@make_packages//ghci-asterius",
+        "@make_packages//ghc-boot-asterius",
+        "//wasm-toolkit",
+        "@stackage//:binaryen",
+        "@stackage//:inline-js-core"
+    ],
+    visibility = [
+        "//bazel/bazel_build:__pkg__",
+    ]
+)
+
+
+haskell_cabal_binary(
+    name = "ahc-boot",
+    srcs = glob(["**"]),
+    exe_name = "ahc-boot",
+    visibility = ["//visibility:public"],
+    cabalopts = ["--ghc-option=-j4"],
+    deps = [
+        "//ghc-toolkit",
+        "@make_packages//ghc-asterius",
+        "@make_packages//template-haskell-asterius",
+        "@make_packages//ghci-asterius",
+        "@make_packages//ghc-boot-asterius",
+        "//wasm-toolkit",
+        "@stackage//:binaryen",
+        "@stackage//:inline-js-core",
+        ":asterius",
+    ],
+)
+
+[
+    haskell_cabal_binary(
+        name = executable,
+        srcs = glob(["**"]),
+        exe_name = executable,
+        visibility = ["//visibility:public"],
+        deps = [
+        "//ghc-toolkit",
+        "@make_packages//ghc-asterius",
+        "@make_packages//template-haskell-asterius",
+        "@make_packages//ghci-asterius",
+        "@make_packages//ghc-boot-asterius",
+        "//wasm-toolkit",
+        "@stackage//:binaryen",
+        "@stackage//:inline-js-core",
+        ":asterius"
+        ],
+    )
+for executable in
+    [
+        "Setup-ghc-prim",
+        "ahc",
+        "ahc-cabal",
+        "ahc-dist",
+        "ahc-ld",
+        "ahc-link",
+        "ahc-pkg",
+        "genconstants",
+        "unlit"]
+]
+
+exports_files(["boot-init.sh", "boot.sh"])

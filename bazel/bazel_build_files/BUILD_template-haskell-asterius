@@ -1,0 +1,25 @@
+load(
+    "@rules_haskell//haskell:defs.bzl",
+    "haskell_toolchain_library",
+    "haskell_library",
+    "haskell_binary",
+    "haskell_repl",
+)
+
+load(
+    "@rules_haskell//haskell:cabal.bzl",
+    "haskell_cabal_library",
+    )
+
+#haskell_toolchain_library(name = "base")
+
+haskell_cabal_library(
+    name = "template-haskell-asterius",
+    srcs = glob(["template-haskell-asterius.cabal","Setup.hs", "Language/**", "LICENSE"]),
+    version = "2.15.0.0",
+    cabalopts = ["--ghc-option=-Wall"],
+    deps = ["//ghc-boot-th-asterius"],
+    visibility = [
+	"//visibility:public"
+    ]
+)

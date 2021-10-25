@@ -4,10 +4,52 @@ on:
   - push
   - pull_request
 
+env:
+  # Bump this number to invalidate the GH actions cache
+  cache-version: 0
+
 jobs:
+  bazel:
+    name: bazel
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu]
+    runs-on: ${{ matrix.os }}-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Mount Bazel cache
+        uses: actions/cache@v2
+        with:
+          path: ~/repo-cache
+          key: repo-cache-${{ runner.os }}-nixpkgs-${{ env.cache-version }}
+      - uses: cachix/install-nix-action@v12
+        with:
+          nix_path: nixpkgs=./bazel_utils/nixpkgs/default.nix
+      # - name: Configure
+      #   run: |
+      #     case ${{ matrix.os }} in
+      #       macos) BUILD_CONFIG=macos-nixpkgs;;
+      #       ubuntu) BUILD_CONFIG=linux-nixpkgs;;
+      #     esac
+      #     cat >.bazelrc.local <<EOF
+      #     build --config=$BUILD_CONFIG
+      #     EOF
+      - name: Build bundle
+        run: |
+          nix-shell bazel_utils/bazel_build_shell.nix --pure --run '
+            set -euo pipefail
+            bazel build //test:asterius_bundle
+            '
+      - name: Upload bundle
+        uses: actions/upload-artifact@v2
+        with:
+          name: asterius_bundle.tar.gz
+          path: bazel-bin/test/asterius_bundle.tar.gz
 
   boot:
     name: boot
+    if: false
     runs-on: ubuntu-20.04
     steps:
 
@@ -65,6 +107,7 @@ jobs:
 
   test:
     name: test-${{ matrix.with-pic }}
+    if: false
     needs: boot
     runs-on: ubuntu-20.04
     strategy:
@@ -165,6 +208,7 @@ jobs:
 
   ghc-testsuite:
     name: ghc-testsuite
+    if: false
     needs: boot
     runs-on: ubuntu-20.04
     steps:
@@ -212,6 +256,7 @@ jobs:
 
   test-cabal:
     name: test-cabal
+    if: false
     needs: boot
     runs-on: ubuntu-20.04
     steps:
@@ -271,6 +316,7 @@ jobs:
 
   image:
     name: image-${{ matrix.image }}
+    if: false
     runs-on: ubuntu-20.04
     strategy:
       fail-fast: false
@@ -306,6 +352,7 @@ jobs:
 
   docs:
     name: docs
+    if: false
     runs-on: ubuntu-20.04
     env:
       NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}

@@ -1,0 +1,22 @@
+load(
+    "@rules_haskell//haskell:cabal.bzl",
+    "haskell_cabal_library",
+)
+
+haskell_cabal_library(
+    name = "ghc-asterius",
+    # srcs = glob(["ghc-asterius.cabal", "GHCi/**","SizedSeq.hs", "LICENSE"]),
+    srcs = glob(["**"]),
+    version = "8.8.4",
+    cabalopts = ["--ghc-option=-Wall -j8"],
+    deps = [
+            "//ghci-asterius",
+            "//template-haskell-asterius",
+            "//ghc-heap-asterius",
+            "//ghc-boot-th-asterius",
+            "//ghc-boot-asterius",
+            ],
+    visibility = [
+	"//visibility:public"
+    ]
+)

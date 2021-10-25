@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+
+source "$(dirname "$0")/setup_env.sh"
+$bundle_root/ahc-cabal "$@"

@@ -1,0 +1,23 @@
+# Copyright (c) 2021 Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
+exports_files(["test.sh.tpl"])
+
+sh_binary(
+    name = "mktar",
+    srcs = ["mktar.sh"],
+    data = ["@tar//:bin/tar"],
+    visibility = ["//visibility:public"],
+    deps = ["@bazel_tools//tools/bash/runfiles"],
+)
+
+sh_binary(
+    name = "mktgz",
+    srcs = ["mktgz.sh"],
+    data = [
+        "@gzip//:bin/gzip",
+        "@tar//:bin/tar",
+    ],
+    visibility = ["//visibility:public"],
+    deps = ["@bazel_tools//tools/bash/runfiles"],
+)

@@ -1,0 +1,25 @@
+load(
+    "@rules_haskell//haskell:defs.bzl",
+    "haskell_toolchain_library",
+    "haskell_library",
+    "haskell_binary",
+    "haskell_repl",
+)
+
+load(
+    "@rules_haskell//haskell:cabal.bzl",
+    "haskell_cabal_library",
+    )
+
+haskell_toolchain_library(name = "base")
+
+haskell_cabal_library(
+    name = "ghc-boot-th-asterius",
+    srcs = glob(["ghc-boot-th-asterius.cabal", "GHC/**", "LICENSE"]),
+    version = "8.8.4",
+    cabalopts = ["--ghc-option=-Wall"],
+    deps = [":base"],
+    visibility = [
+	"//visibility:public"
+    ]
+    )

@@ -1,0 +1,27 @@
+load(
+    "@rules_haskell//haskell:defs.bzl",
+    "haskell_toolchain_library",
+    "haskell_library",
+    "haskell_binary",
+    "haskell_repl",
+)
+
+load(
+    "@rules_haskell//haskell:cabal.bzl",
+    "haskell_cabal_library",
+    )
+
+haskell_toolchain_library(name = "ghc-prim")
+haskell_toolchain_library(name = "base")
+haskell_toolchain_library(name = "rts")
+
+haskell_cabal_library(
+    name = "ghc-heap-asterius",
+    srcs = glob(["ghc-heap-asterius.cabal", "GHC/**", "Setup.hs", "cbits/**", "LICENSE"]),
+    version = "8.8.4",
+    cabalopts = ["--ghc-option=-Wall"],
+    deps = [":base", ":ghc-prim", ":rts"],
+    visibility = [
+	"//visibility:public"
+    ]
+)

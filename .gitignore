@@ -19,6 +19,8 @@ package-lock.json
 *.unlinked.bin
 *.wasm-toolkit.txt
 
-/test
 
 /lib
+
+/bazel-*
+.bazelrc.local

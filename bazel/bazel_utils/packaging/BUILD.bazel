@@ -1,0 +1,38 @@
+# Copyright (c) 2021 Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
+# load("@os_info//:os_info.bzl", "is_windows")
+is_windows = False
+
+sh_binary(
+    name = "package-app",
+    srcs = ["package-app.sh"],
+    data = [
+        "@gzip//:bin/gzip",
+        "@tar//:bin/tar",
+        "@glibc-bin//:bin/ldd",
+        "@utillinux//:bin/rev",
+        "//bazel/bazel_utils/sh:mktgz",
+    ] + (["@patchelf//:bin/patchelf"] if not is_windows else []),
+    visibility = ["//visibility:public"],
+    deps = ["@bazel_tools//tools/bash/runfiles"],
+)
+
+sh_binary(
+    name = "bundle-apps",
+    srcs = ["bundle-apps.sh"],
+    data = [
+        "@gzip//:bin/gzip",
+        "@tar//:bin/tar",
+        "//bazel/bazel_utils/sh:mktgz",
+    ],
+    visibility = ["//visibility:public"],
+    deps = ["@bazel_tools//tools/bash/runfiles"],
+)
+
+exports_files([
+    "package-app.sh",
+    "bundel-app.sh",
+    "asterius_bundle.BUILD.bazel",
+    "wasm_cc_toolchain.bzl",
+])

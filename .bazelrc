@@ -1,0 +1,6 @@
+# User Configuration
+# ------------------
+build --host_platform=@io_tweag_rules_nixpkgs//nixpkgs/platforms:host
+run --host_platform=@io_tweag_rules_nixpkgs//nixpkgs/platforms:host
+
+try-import %workspace%/.bazelrc.local
