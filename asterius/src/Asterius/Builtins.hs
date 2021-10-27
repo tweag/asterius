@@ -264,8 +264,8 @@ rtsFunctionImports debug =
              externalModuleName = "StableName",
              externalBaseName = "makeStableName",
              functionType = FunctionType
-               { paramTypes = [F64],
-                 returnTypes = [F64]
+               { paramTypes = [I32],
+                 returnTypes = [I32]
                }
            },
          FunctionImport
@@ -1004,12 +1004,12 @@ makeStableNameWrapperFunction :: BuiltinsOptions -> AsteriusModule
 makeStableNameWrapperFunction _ = runEDSL "makeStableName" $ do
   setReturnTypes [I64]
   sp64 <- param I64
-  obj_f64 <-
+  obj_i32 <-
     callImport'
       "__asterius_makeStableName"
-      [convertUInt64ToFloat64 sp64]
-      F64
-  emit $ truncUFloat64ToInt64 obj_f64
+      [wrapInt64 sp64]
+      I32
+  emit $ extendUInt32 obj_i32
 
 rtsMkHelper ::
   BuiltinsOptions ->
