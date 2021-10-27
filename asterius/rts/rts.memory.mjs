@@ -1,3 +1,5 @@
+import { isI32 } from "./rts.typecheck.mjs";
+
 /**
  * Class acting as the low-level interface to Wasm memory.
  * It mainly provides methods to load/store data in memory
@@ -137,7 +139,8 @@ export class Memory {
   }
 
   strlen(_str) {
-    return this.components.exports.strlen(_str);
+    isI32(_str);
+    return isI32(this.components.exports.strlen(_str));
   }
 
   strLoad(_str) {
@@ -156,7 +159,10 @@ export class Memory {
   }
 
   memchr(_ptr, val, num) {
-    return this.components.exports.memchr(_ptr, val, num);
+    isI32(_ptr);
+    isI32(val);
+    isI32(num);
+    return isI32(this.components.exports.memchr(_ptr, val, num));
   }
 
   memcpy(_dst, _src, n) {

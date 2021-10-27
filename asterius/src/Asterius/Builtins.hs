@@ -338,8 +338,8 @@ rtsFunctionImports debug =
              externalModuleName = "Memory",
              externalBaseName = "strlen",
              functionType = FunctionType
-               { paramTypes = [F64],
-                 returnTypes = [F64]
+               { paramTypes = [I32],
+                 returnTypes = [I32]
                }
            },
          FunctionImport
@@ -356,8 +356,8 @@ rtsFunctionImports debug =
              externalModuleName = "Memory",
              externalBaseName = "memchr",
              functionType = FunctionType
-               { paramTypes = [F64, F64, F64],
-                 returnTypes = [F64]
+               { paramTypes = [I32, I32, I32],
+                 returnTypes = [I32]
                }
            },
          FunctionImport
@@ -1147,8 +1147,8 @@ strlenFunction :: BuiltinsOptions -> AsteriusModule
 strlenFunction _ = runEDSL "strlen" $ do
   setReturnTypes [I64]
   [str] <- params [I64]
-  len <- callImport' "__asterius_strlen" [convertUInt64ToFloat64 str] F64
-  emit $ truncUFloat64ToInt64 len
+  len <- callImport' "__asterius_strlen" [wrapInt64 str] I32
+  emit $ extendUInt32 len
 
 debugBelch2Function :: BuiltinsOptions -> AsteriusModule
 debugBelch2Function _ = runEDSL "debugBelch2" $ do
@@ -1164,9 +1164,9 @@ memchrFunction _ = runEDSL "memchr" $ do
   p <-
     callImport'
       "__asterius_memchr"
-      (map convertUInt64ToFloat64 [ptr, val, num])
-      F64
-  emit $ truncUFloat64ToInt64 p
+      (map wrapInt64 [ptr, val, num])
+      I32
+  emit $ extendUInt32 p
 
 threadPausedFunction :: BuiltinsOptions -> AsteriusModule
 threadPausedFunction _ = runEDSL "threadPaused" $ do
