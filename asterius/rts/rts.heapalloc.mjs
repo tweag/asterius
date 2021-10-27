@@ -74,6 +74,7 @@ export class HeapAlloc {
    *  of the first MBlock of the MegaGroup.
    */
   hpAlloc(b, pinned=false, gen_no=0) {
+    isI32(b);
     const mblocks =
         b <= rtsConstants.sizeof_first_mblock
           ? 1
@@ -82,7 +83,7 @@ export class HeapAlloc {
               (b - rtsConstants.sizeof_first_mblock) / rtsConstants.mblock_size
             ),
       bd = this.allocMegaGroup(mblocks, pinned, gen_no);
-    return bd;
+    return isI32(bd);
   }
 
   /**

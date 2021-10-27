@@ -311,8 +311,8 @@ rtsFunctionImports debug =
              externalModuleName = "HeapAlloc",
              externalBaseName = "hpAlloc",
              functionType = FunctionType
-               { paramTypes = [F64],
-                 returnTypes = [F64]
+               { paramTypes = [I32],
+                 returnTypes = [I32]
                }
            },
          FunctionImport
@@ -741,7 +741,7 @@ hsInitFunction :: BuiltinsOptions -> AsteriusModule
 hsInitFunction _ = runEDSL "hs_init" $ do
   initCapability
   bd_nursery <-
-    truncUFloat64ToInt64 <$> callImport' "__asterius_hpAlloc" [constF64 8] F64
+    extendUInt32 <$> callImport' "__asterius_hpAlloc" [constI32 8] I32
   putLVal currentNursery bd_nursery
 
 rtsApplyFunction :: BuiltinsOptions -> AsteriusModule
