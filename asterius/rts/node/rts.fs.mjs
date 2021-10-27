@@ -1,5 +1,6 @@
 import fs from "fs";
 import { Memory } from "./rts.memory.mjs";
+import { isI32 } from "./rts.typecheck.mjs";
 
 class Device {
   constructor(f, console_history) {
@@ -37,21 +38,27 @@ export class FS {
   }
 
   read(fd, buf, count) {
+    isI32(fd);
+    isI32(buf);
+    isI32(count);
     const p = buf;
-    return fs.readSync(fd, this.components.memory.i8View, p, count, null);
+    return isI32(fs.readSync(fd, this.components.memory.i8View, p, count, null));
   }
 
   write(fd, buf, count) {
+    isI32(fd);
+    isI32(buf);
+    isI32(count);
     buf = this.components.memory.expose(buf, count, Uint8Array);
     switch (fd) {
       case 1: {
-        return this.stdout.write(buf);
+        return isI32(this.stdout.write(buf));
       }
       case 2: {
-        return this.stderr.write(buf);
+        return isI32(this.stderr.write(buf));
       }
       default: {
-        return fs.writeSync(fd, buf);
+        return isI32(fs.writeSync(fd, buf));
       }
     }
   }

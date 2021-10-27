@@ -413,8 +413,8 @@ rtsFunctionImports debug =
              externalModuleName = "fs",
              externalBaseName = "read",
              functionType = FunctionType
-               { paramTypes = [F64, F64, F64],
-                 returnTypes = [F64]
+               { paramTypes = [I32, I32, I32],
+                 returnTypes = [I32]
                }
            },
          FunctionImport
@@ -422,8 +422,8 @@ rtsFunctionImports debug =
              externalModuleName = "fs",
              externalBaseName = "write",
              functionType = FunctionType
-               { paramTypes = [F64, F64, F64],
-                 returnTypes = [F64]
+               { paramTypes = [I32, I32, I32],
+                 returnTypes = [I32]
                }
            }
        ]
@@ -1297,11 +1297,11 @@ readFunction _ =
     setReturnTypes [I64]
     [fd, buf, count] <- params [I64, I64, I64]
     r <-
-      truncSFloat64ToInt64
+      extendUInt32
         <$> callImport'
           "__asterius_read"
-          (map convertUInt64ToFloat64 [fd, buf, count])
-          F64
+          (map wrapInt64 [fd, buf, count])
+          I32
     emit r
 
 writeFunction :: BuiltinsOptions -> AsteriusModule
@@ -1310,11 +1310,11 @@ writeFunction _ =
     setReturnTypes [I64]
     [fd, buf, count] <- params [I64, I64, I64]
     r <-
-      truncSFloat64ToInt64
+      extendUInt32
         <$> callImport'
           "__asterius_write"
-          (map convertUInt64ToFloat64 [fd, buf, count])
-          F64
+          (map wrapInt64 [fd, buf, count])
+          I32
     emit r
 
 getF64GlobalRegFunction ::
