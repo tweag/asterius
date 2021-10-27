@@ -351,8 +351,8 @@ rtsFunctionImports debug =
              externalModuleName = "HeapAlloc",
              externalBaseName = "allocate",
              functionType = FunctionType
-               { paramTypes = [F64],
-                 returnTypes = [F64]
+               { paramTypes = [I32],
+                 returnTypes = [I32]
                }
            },
          FunctionImport
@@ -360,8 +360,8 @@ rtsFunctionImports debug =
              externalModuleName = "HeapAlloc",
              externalBaseName = "allocatePinned",
              functionType = FunctionType
-               { paramTypes = [F64],
-                 returnTypes = [F64]
+               { paramTypes = [I32],
+                 returnTypes = [I32]
                }
            },
          FunctionImport
@@ -930,8 +930,8 @@ genAllocateFunction ::
 genAllocateFunction (BuiltinsOptions {}) n = runEDSL n $ do
   setReturnTypes [I64]
   [_, m] <- params [I64, I64]
-  callImport' "__asterius_allocate" [convertUInt64ToFloat64 m] F64
-    >>= emit . truncUFloat64ToInt64
+  callImport' "__asterius_allocate" [wrapInt64 m] F64
+    >>= emit . extendUInt32
 
 {-
 allocateFunction BuiltinsOptions {} =
@@ -946,8 +946,8 @@ allocatePinnedFunction :: BuiltinsOptions -> AsteriusModule
 allocatePinnedFunction _ = runEDSL "allocatePinned" $ do
   setReturnTypes [I64]
   [_, n] <- params [I64, I64]
-  callImport' "__asterius_allocatePinned" [convertUInt64ToFloat64 n] F64
-    >>= emit . truncUFloat64ToInt64
+  callImport' "__asterius_allocatePinned" [wrapInt64 n] F64
+    >>= emit . extendUInt32
 
 newCAFFunction :: BuiltinsOptions -> AsteriusModule
 newCAFFunction _ = runEDSL "newCAF" $ do
