@@ -302,33 +302,6 @@ rtsFunctionImports debug =
              functionType = FunctionType {paramTypes = [], returnTypes = [I32]}
            },
          FunctionImport
-           { internalName = "__asterius_setTSOret",
-             externalModuleName = "Scheduler",
-             externalBaseName = "setTSOret",
-             functionType = FunctionType
-               { paramTypes = [I32, F64],
-                 returnTypes = []
-               }
-           },
-         FunctionImport
-           { internalName = "__asterius_setTSOrstat",
-             externalModuleName = "Scheduler",
-             externalBaseName = "setTSOrstat",
-             functionType = FunctionType
-               { paramTypes = [I32, I32],
-                 returnTypes = []
-               }
-           },
-         FunctionImport
-           { internalName = "__asterius_getTSOret",
-             externalModuleName = "Scheduler",
-             externalBaseName = "getTSOret",
-             functionType = FunctionType
-               { paramTypes = [I32],
-                 returnTypes = [F64]
-               }
-           },
-         FunctionImport
            { internalName = "__asterius_getTSOrstat",
              externalModuleName = "Scheduler",
              externalBaseName = "getTSOrstat",
