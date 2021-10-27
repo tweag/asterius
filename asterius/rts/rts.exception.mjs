@@ -1,6 +1,7 @@
 import * as ClosureTypes from "./rts.closuretypes.mjs";
 import * as rtsConstants from "./rts.constants.mjs";
 import { Memory } from "./rts.memory.mjs";
+import { isI32 } from "./rts.typecheck.mjs";
 
 /*
   The methods of this class are related to exception handling in Haskell.
@@ -30,6 +31,9 @@ export class ExceptionHelper {
     the frame type is returned to `stg_raisezh` for further processing.
   */
   raiseExceptionHelper(reg, tso, exception) {
+    isI32(reg);
+    isI32(tso);
+    isI32(exception);
     const raise_closure = this.heapAlloc.allocate(
       Math.ceil(rtsConstants.sizeof_StgThunk / 8) + 1
     );
@@ -77,7 +81,7 @@ export class ExceptionHelper {
         case ClosureTypes.CATCH_FRAME:
         case ClosureTypes.STOP_FRAME: {
           this.memory.i64Store(stackobj + rtsConstants.offset_StgStack_sp, p);
-          return type;
+          return isI32(type);
         }
         case ClosureTypes.RET_SMALL: {
           const size = Number(raw_layout & BigInt(0x3f));

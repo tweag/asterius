@@ -371,8 +371,8 @@ rtsFunctionImports debug =
              externalModuleName = "ExceptionHelper",
              externalBaseName = "raiseExceptionHelper",
              functionType = FunctionType
-               { paramTypes = [F64, F64, F64],
-                 returnTypes = [F64]
+               { paramTypes = [I32, I32, I32],
+                 returnTypes = [I32]
                }
            },
          FunctionImport
@@ -1207,11 +1207,11 @@ raiseExceptionHelperFunction _ = runEDSL "raiseExceptionHelper" $ do
   setReturnTypes [I64]
   args <- params [I64, I64, I64]
   frame_type <-
-    truncUFloat64ToInt64
+    extendUInt32
       <$> callImport'
         "__asterius_raiseExceptionHelper"
-        (map convertUInt64ToFloat64 args)
-        F64
+        (map wrapInt64 args)
+        I32
   emit frame_type
 
 -- Note that generateRTSWrapper will treat all our numbers as signed, not
