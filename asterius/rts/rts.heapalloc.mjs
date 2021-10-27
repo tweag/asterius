@@ -1,4 +1,5 @@
 import * as rtsConstants from "./rts.constants.mjs";
+import { isI32 } from "./rts.typecheck.mjs";
 
 /**
  * Class implementing the allocation of nurseries,
@@ -91,6 +92,7 @@ export class HeapAlloc {
    * @param pinned Whether to allocate in the pinned pool
    */
   allocate(n, pinned = false) {
+    isI32(n);
     const b = n << 3; // The size in bytes
     // Large objects are forced to be pinned as well
     // (by large, we mean >= 4KiB):
@@ -136,7 +138,7 @@ export class HeapAlloc {
         current_free + b
       );
     }
-    return current_free;
+    return isI32(current_free);
   }
 
   /**
