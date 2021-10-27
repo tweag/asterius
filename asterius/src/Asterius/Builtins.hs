@@ -142,10 +142,6 @@ rtsAsteriusModule opts =
     <> allocatePinnedFunction opts
     <> newCAFFunction opts
     <> stgReturnFunction opts
-    <> printI64Function opts
-    <> printF32Function opts
-    <> printF64Function opts
-    <> assertEqI64Function opts
     <> strlenFunction opts
     <> debugBelch2Function opts
     <> memchrFunction opts
@@ -269,28 +265,28 @@ rtsFunctionImports debug =
                }
            },
          FunctionImport
-           { internalName = "printI64",
+           { internalName = "print_i64",
              externalModuleName = "rts",
              externalBaseName = "printI64",
-             functionType = FunctionType {paramTypes = [F64], returnTypes = []}
+             functionType = FunctionType {paramTypes = [I64], returnTypes = []}
            },
          FunctionImport
-           { internalName = "assertEqI64",
+           { internalName = "assert_eq_i64",
              externalModuleName = "rts",
              externalBaseName = "assertEqI64",
              functionType = FunctionType
-               { paramTypes = [F64, F64],
+               { paramTypes = [I64, I64],
                  returnTypes = []
                }
            },
          FunctionImport
-           { internalName = "printF32",
+           { internalName = "print_f32",
              externalModuleName = "rts",
              externalBaseName = "print",
              functionType = FunctionType {paramTypes = [F32], returnTypes = []}
            },
          FunctionImport
-           { internalName = "printF64",
+           { internalName = "print_f64",
              externalModuleName = "rts",
              externalBaseName = "print",
              functionType = FunctionType {paramTypes = [F64], returnTypes = []}
@@ -1146,27 +1142,6 @@ loadI64Function _ = runEDSL "loadI64" $ do
   setReturnTypes [I64]
   p <- param I64
   emit $ loadI64 p 0
-
-printI64Function :: BuiltinsOptions -> AsteriusModule
-printI64Function _ = runEDSL "print_i64" $ do
-  x <- param I64
-  callImport "printI64" [convertSInt64ToFloat64 x]
-
-assertEqI64Function :: BuiltinsOptions -> AsteriusModule
-assertEqI64Function _ = runEDSL "assert_eq_i64" $ do
-  x <- param I64
-  y <- param I64
-  callImport "assertEqI64" [convertSInt64ToFloat64 x, convertSInt64ToFloat64 y]
-
-printF32Function :: BuiltinsOptions -> AsteriusModule
-printF32Function _ = runEDSL "print_f32" $ do
-  x <- param F32
-  callImport "printF32" [x]
-
-printF64Function :: BuiltinsOptions -> AsteriusModule
-printF64Function _ = runEDSL "print_f64" $ do
-  x <- param F64
-  callImport "printF64" [x]
 
 strlenFunction :: BuiltinsOptions -> AsteriusModule
 strlenFunction _ = runEDSL "strlen" $ do
