@@ -240,8 +240,8 @@ rtsFunctionImports debug =
              externalModuleName = "StablePtr",
              externalBaseName = "newStablePtr",
              functionType = FunctionType
-               { paramTypes = [F64],
-                 returnTypes = [F64]
+               { paramTypes = [I32],
+                 returnTypes = [I32]
                }
            },
          FunctionImport
@@ -249,15 +249,15 @@ rtsFunctionImports debug =
              externalModuleName = "StablePtr",
              externalBaseName = "deRefStablePtr",
              functionType = FunctionType
-               { paramTypes = [F64],
-                 returnTypes = [F64]
+               { paramTypes = [I32],
+                 returnTypes = [I32]
                }
            },
          FunctionImport
            { internalName = "__asterius_freeStablePtr",
              externalModuleName = "StablePtr",
              externalBaseName = "freeStablePtr",
-             functionType = FunctionType {paramTypes = [F64], returnTypes = []}
+             functionType = FunctionType {paramTypes = [I32], returnTypes = []}
            },
          FunctionImport
            { internalName = "__asterius_makeStableName",
@@ -977,28 +977,28 @@ getStablePtrWrapperFunction :: BuiltinsOptions -> AsteriusModule
 getStablePtrWrapperFunction _ = runEDSL "getStablePtr" $ do
   setReturnTypes [I64]
   obj64 <- param I64
-  sp_f64 <-
+  sp_i32 <-
     callImport'
       "__asterius_newStablePtr"
-      [convertUInt64ToFloat64 obj64]
-      F64
-  emit $ truncUFloat64ToInt64 sp_f64
+      [wrapInt64 obj64]
+      I32
+  emit $ extendUInt32 sp_i32
 
 deRefStablePtrWrapperFunction :: BuiltinsOptions -> AsteriusModule
 deRefStablePtrWrapperFunction _ = runEDSL "deRefStablePtr" $ do
   setReturnTypes [I64]
   sp64 <- param I64
-  obj_f64 <-
+  obj_i32 <-
     callImport'
       "__asterius_deRefStablePtr"
-      [convertUInt64ToFloat64 sp64]
-      F64
-  emit $ truncUFloat64ToInt64 obj_f64
+      [wrapInt64 sp64]
+      I32
+  emit $ extendUInt32 obj_i32
 
 freeStablePtrWrapperFunction :: BuiltinsOptions -> AsteriusModule
 freeStablePtrWrapperFunction _ = runEDSL "hs_free_stable_ptr" $ do
   sp64 <- param I64
-  callImport "__asterius_freeStablePtr" [convertUInt64ToFloat64 sp64]
+  callImport "__asterius_freeStablePtr" [wrapInt64 sp64]
 
 makeStableNameWrapperFunction :: BuiltinsOptions -> AsteriusModule
 makeStableNameWrapperFunction _ = runEDSL "makeStableName" $ do
