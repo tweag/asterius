@@ -410,7 +410,7 @@ rtsFunctionImports debug =
            { internalName = "__asterius_enqueueTSO",
              externalModuleName = "Scheduler",
              externalBaseName = "enqueueTSO",
-             functionType = FunctionType {paramTypes = [F64], returnTypes = []}
+             functionType = FunctionType {paramTypes = [I32], returnTypes = []}
            },
          FunctionImport
            { internalName = "__asterius_mul2",
@@ -1252,7 +1252,7 @@ recordClosureMutatedFunction _ = runEDSL "recordClosureMutated" $ do
 tryWakeupThreadFunction :: BuiltinsOptions -> AsteriusModule
 tryWakeupThreadFunction _ = runEDSL "tryWakeupThread" $ do
   [_cap, tso] <- params [I64, I64]
-  callImport "__asterius_enqueueTSO" [convertUInt64ToFloat64 tso]
+  callImport "__asterius_enqueueTSO" [wrapInt64 tso]
 
 raiseExceptionHelperFunction :: BuiltinsOptions -> AsteriusModule
 raiseExceptionHelperFunction _ = runEDSL "raiseExceptionHelper" $ do
@@ -1300,13 +1300,13 @@ scheduleThreadFunction :: BuiltinsOptions -> AsteriusModule
 scheduleThreadFunction _ = runEDSL "scheduleThread" $ do
   setReturnTypes []
   [_cap, tso] <- params [I64, I64]
-  callImport "__asterius_enqueueTSO" [convertUInt64ToFloat64 tso]
+  callImport "__asterius_enqueueTSO" [wrapInt64 tso]
 
 scheduleThreadOnFunction :: BuiltinsOptions -> AsteriusModule
 scheduleThreadOnFunction _ = runEDSL "scheduleThreadOn" $ do
   setReturnTypes []
   [_cap, _cpu, tso] <- params [I64, I64, I64]
-  callImport "__asterius_enqueueTSO" [convertUInt64ToFloat64 tso]
+  callImport "__asterius_enqueueTSO" [wrapInt64 tso]
 
 resumeThreadFunction :: BuiltinsOptions -> AsteriusModule
 resumeThreadFunction _ = runEDSL "resumeThread" $ do

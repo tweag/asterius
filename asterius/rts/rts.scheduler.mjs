@@ -1,4 +1,5 @@
 import * as rtsConstants from "./rts.constants.mjs";
+import { isI32 } from "./rts.typecheck.mjs";
 
 /**
  * Scheduler.
@@ -370,6 +371,7 @@ export class Scheduler {
    * Enqueue the TSO in the run-queue and wake-up the scheduler.
    */
   enqueueTSO(tso) {
+    isI32(tso);
     const tid = this.getTSOid(tso);
 
     // When the TSO has just been created, we need to store its address
