@@ -31,7 +31,7 @@ Discussions so far have suggested these features:
   
       * Use `mmap` and `munmap` (POSIX)
 
-      * Use `malloc` and `free` (WebAssembly using Emscripten)
+      * Use `malloc` and `free` (WebAssembly using WASI SDK or similar)
 
   - *Context switching.*  Something needs to signal to the scheduler
     that it's time to switch the Haskell Execution Context from one
@@ -43,12 +43,14 @@ Discussions so far have suggested these features:
 
       * Switch every N opportunities (all platforms)
 
+      * Look at a clock to decide whether to switch
+
   - *Response to user interrupts.*  When a user hits Ctl-C or
     equivalent, how does the run-time system find out?
 
       * Signal handler catches the event and sets a bit (POSIX)
 
-      * Other mechanism?
+      * Other mechanism?  Or perhaps WebAssembly cannot support this feature.
 
 ## Role of features in development and testing
 
@@ -57,8 +59,8 @@ so that the implementation of each feature can be selected by a flag
 at compiler-configuration time.  Collectively, these configuration
 flags constitute a *feature vector.* By choosing an appropriate
 feature vector, it will be easy to build a hybrid run-time system that
-uses a mix of POSIX features and WebAssembly features---and this
-run-time system can be used to test WebAssembly features one at a
+uses a mix of features that do and do not require POSIX mechanisms---and this
+run-time system can be used to test non-POSIX mechanisms one at a
 time, on a congenial platform like Linux.
 
 Using a feature vector will also have advantages for debugging.
