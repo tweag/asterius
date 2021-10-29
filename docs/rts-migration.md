@@ -65,7 +65,7 @@ time, on a congenial platform like Linux.
 
 Using a feature vector will also have advantages for debugging.
 If a validation test exposes a fault, we can use automation (like
-QuickCheck) to find a _minimal_ set of WebAssembly features that
+QuickCheck) to find a _minimal_ set of non-POSIX mechanisms features that
 trigger the fault.  Debugging a run-time system can be very
 time-consuming, and using automation to isolate buggy features should help.
 
@@ -78,3 +78,9 @@ list looks like this:
 
   - Signals
 
+  - `libffi`[^libffi]
+
+
+[^libffi]: This library is used to help with foreign calls.  Its
+implementation is deeply platform-dependent.  We may have to port a
+subset to WebAssembly.
