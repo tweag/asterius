@@ -27,3 +27,5 @@ cabal.project.local
 .vscode
 
 sysroot
+
+*~
