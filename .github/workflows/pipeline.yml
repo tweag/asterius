@@ -18,7 +18,8 @@ jobs:
         run: |
           pip install \
             recommonmark \
-            sphinx
+            sphinx \
+            "docutils>=0.14,<0.18"
 
       - name: checkout
         uses: actions/checkout@v2
