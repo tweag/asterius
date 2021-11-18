@@ -52,6 +52,10 @@ Discussions so far have suggested these features:
 
       * Other mechanism?  Or perhaps WebAssembly cannot support this feature.
 
+  - *Interpreter support.* Supporting GHCi requires `libffi`, which is
+    not available on WebAssembly.  It should be possible to build the
+    run-time system without support for GHCi.
+
 ## Role of features in development and testing
 
 Once features have been identified, GHC's build system can be extended
@@ -69,18 +73,25 @@ QuickCheck) to find a _minimal_ set of non-POSIX mechanisms features that
 trigger the fault.  Debugging a run-time system can be very
 time-consuming, and using automation to isolate buggy features should help.
 
-## Mechanisms identified that need replacing
+## Mechanisms identified that may need replacing
 
 We are currently (October/November 2021) working through GHC's native run-time
 system to find dependencies on POSIX mechanisms, which we then hope to
-group into features as defined above.  As of 28 October, our laundry
+group into features as defined above.  As of 18 November, our laundry
 list looks like this:
 
   - Signals
 
   - `libffi`[^libffi]
 
+  - I/O multiplexing with `select` (supported by WASI, but possibly
+    not compatible with POSIX)
+
+  - Dynamic linking (e.g., `dlopen`)
+
+  - BSD sockets
 
 [^libffi]: This library is used to help with foreign calls.  Its
-implementation is deeply platform-dependent.  We may have to port a
-subset to WebAssembly.
+implementation is deeply platform-dependent.  Some dependencies can be
+eliminated by eliminating interpreter support.  Otherwise we may have to port a
+subset of libffi to WebAssembly.
