@@ -45,7 +45,7 @@ extra-source-files:
 ghc-options: -Wall
 
 _exe-ghc-options: &exe-ghc-options
-  - -threaded -rtsopts "-with-rtsopts=-H512m -I0 -qg"
+  - -rtsopts
 
 dependencies:
   - base
@@ -55,6 +55,7 @@ dependencies:
   - containers
   - deepseq
   - directory
+  - exceptions
   - filepath
   - ghc-asterius
   - ghc-boot-asterius

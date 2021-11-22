@@ -92,6 +92,7 @@ data AsteriusCodeGenError
   | UnsupportedCmmSectionType BS.ByteString
   | UnsupportedImplicitCasting Expression ValueType ValueType
   | AssignToImmutableGlobalReg UnresolvedGlobalReg
+  | UnsupportedTodo
   deriving (Show, Data)
 
 instance Exception AsteriusCodeGenError

@@ -480,7 +480,6 @@ asteriusHscCompileCoreExpr hsc_env srcspan ds_expr = do
   raw_cmms <- GHC.cmmToRawCmm dflags cmms
   m <-
     runCodeGen (marshalRawCmm this_mod raw_cmms) dflags this_mod
-      >>= either throwIO pure
   this_id <- modifyMVar globalGHCiState $ \s -> do
     let this_id = succ $ ghciLastCompiledCoreExpr s
     pure

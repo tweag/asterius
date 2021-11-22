@@ -90,19 +90,16 @@ frontendPlugin = do
                   ffi_mod <- getFFIModule dflags this_mod
                   m_spt_entries <- atomicModifyIORef' spt_entries_map_ref $
                     \m -> swap $ M.updateLookupWithKey (\_ _ -> Nothing) this_mod m
-                  runCodeGen
+                  m' <- runCodeGen
                     ( case m_spt_entries of
                         Just spt_entries -> marshalHaskellIR this_mod spt_entries ir
                         _ -> marshalCmmIR this_mod ir
                     )
                     dflags
                     this_mod
-                    >>= \case
-                      Left err -> throwIO err
-                      Right m' -> do
-                        let m = ffi_mod <> m'
-                        putFile obj_path $ toCachedModule m
-                        when is_debug $ do
+                  let m = ffi_mod <> m'
+                  putFile obj_path $ toCachedModule m
+                  when is_debug $ do
                           let p = (obj_path -<.>)
                           writeFile (p "dump-wasm-ast") =<< prettyShow m
                           cmm_raw <- Stream.collect cmmRaw

@@ -24,7 +24,7 @@ infer expr = case expr of
   Switch {} -> []
   Call {..} -> callReturnTypes
   CallImport {..} -> callImportReturnTypes
-  CallIndirect {} -> [I64]
+  CallIndirect {} -> [I32]
   GetLocal {..} -> [valueType]
   SetLocal {} -> []
   TeeLocal {..} -> [valueType]
@@ -41,7 +41,7 @@ infer expr = case expr of
   Nop -> []
   Unreachable -> []
   CFG {} -> []
-  Symbol {} -> [I64]
+  Symbol {} -> [I32]
   UnresolvedGetLocal {..} -> [typeOfUnresolvedLocalReg unresolvedLocalReg]
   UnresolvedSetLocal {} -> []
   Drop {} -> []

@@ -41,7 +41,7 @@
 
   WASI_SDK_PREFIX = import "${sources.wasi-sdk}/nix/default.nix" { };
 
-  GHC_ASTERIUS = import "${sources.ghc-asterius}/nix/src.nix" { };
+  GHC_ASTERIUS = import "${sources.ghc-asterius}/nix/src-32.nix" { };
 
   GHC_ASTERIUS_BOOT = GHC_ASTERIUS.boot;
 
