@@ -16,8 +16,8 @@ blackholeCBits = messageBlackHole <> updateThunk
 
 messageBlackHole :: AsteriusModule
 messageBlackHole = runEDSL "messageBlackHole" $ do
-  setReturnTypes [I64]
-  [_, msg] <- params [I64, I64]
+  setReturnTypes [I32]
+  [_, msg] <- params [I32, I32]
   bh <- i64Local $ unTagClosure $ loadI64 msg offset_MessageBlackHole_bh
   p <- i64Local $ unTagClosure $ loadI64 bh offset_StgInd_indirectee
   info <- i64Local $ loadI64 p 0

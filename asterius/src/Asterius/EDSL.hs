@@ -296,7 +296,7 @@ nandInt64 :: Expression -> Expression -> Expression
 nandInt64 e1 e2 = notInt64 $ andInt64 e1 e2
 
 unTagClosure :: Expression -> Expression
-unTagClosure p = p `andInt64` constI64 0xFFFFFFFFFFFFFFF8
+unTagClosure p = p `andInt32` constI32 0xFFFFFFF8
 
 dynamicTableBase :: Expression
 dynamicTableBase =

@@ -85,7 +85,7 @@ posixImports =
       { internalName = "__asterius_posix_opendir",
         externalModuleName = "posix",
         externalBaseName = "opendir",
-        functionType = FunctionType {paramTypes = [F64], returnTypes = [F64]}
+        functionType = FunctionType {paramTypes = [I32], returnTypes = [I32]}
       },
     FunctionImport
       { internalName = "__asterius_posix_readdir",
@@ -101,7 +101,7 @@ posixImports =
       { internalName = "__asterius_posix_closedir",
         externalModuleName = "posix",
         externalBaseName = "closedir",
-        functionType = FunctionType {paramTypes = [F64], returnTypes = [F64]}
+        functionType = FunctionType {paramTypes = [I32], returnTypes = [I32]}
       },
     FunctionImport
       { internalName = "__asterius_posix_getenv",
@@ -109,8 +109,8 @@ posixImports =
         externalBaseName = "getenv",
         functionType =
           FunctionType
-            { paramTypes = [F64, F64],
-              returnTypes = [F64]
+            { paramTypes = [I32, I32],
+              returnTypes = [I32]
             }
       },
     FunctionImport
@@ -342,13 +342,12 @@ posixOpendir =
           <> "ZCSystemziPosixziDirectoryZCopendir"
     )
     $ do
-      setReturnTypes [I64]
-      p <- param I64
-      truncSFloat64ToInt64
-        <$> callImport'
+      setReturnTypes [I32]
+      p <- param I32
+      callImport'
           "__asterius_posix_opendir"
-          [convertSInt64ToFloat64 p]
-          F64
+          [p]
+          I32
         >>= emit
 
 posixGetErrno :: AsteriusModule
@@ -403,10 +402,9 @@ posixDName = runEDSL "__hscore_d_name" $ do
 
 posixClosedir :: AsteriusModule
 posixClosedir = runEDSL "closedir" $ do
-  setReturnTypes [I64]
-  p <- param I64
-  truncSFloat64ToInt64
-    <$> callImport' "__asterius_posix_closedir" [convertSInt64ToFloat64 p] F64
+  setReturnTypes [I32]
+  p <- param I32
+  callImport' "__asterius_posix_closedir" [p] I32
     >>= emit
 
 posixGetenvBuf :: AsteriusModule
@@ -423,13 +421,12 @@ posixGetenvBuf =
 
 posixGetenv :: AsteriusModule
 posixGetenv = runEDSL "getenv" $ do
-  setReturnTypes [I64]
-  p <- param I64
-  truncSFloat64ToInt64
-    <$> callImport'
+  setReturnTypes [I32]
+  p <- param I32
+  callImport'
       "__asterius_posix_getenv"
-      (map convertSInt64ToFloat64 [p, symbol "__asterius_posix_getenv_buf"])
-      F64
+      [p, symbol "__asterius_posix_getenv_buf"]
+      I32
     >>= emit
 
 posixAccess :: AsteriusModule

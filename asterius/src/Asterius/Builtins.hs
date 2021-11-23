@@ -720,22 +720,22 @@ initCapability = do
   storeI32 mainCapability offset_Capability_node $ constI32 0
   storeI32 mainCapability offset_Capability_idle $ constI32 0
   storeI8 mainCapability offset_Capability_disabled $ constI32 0
-  storeI64 mainCapability offset_Capability_total_allocated $ constI64 0
-  storeI64
+  storeI32 mainCapability offset_Capability_total_allocated $ constI32 0
+  storeI32
     mainCapability
     (offset_Capability_f + offset_StgFunTable_stgEagerBlackholeInfo)
     $ symbol "__stg_EAGER_BLACKHOLE_info"
-  storeI64 mainCapability (offset_Capability_f + offset_StgFunTable_stgGCEnter1) $
+  storeI32 mainCapability (offset_Capability_f + offset_StgFunTable_stgGCEnter1) $
     symbol "__stg_gc_enter_1"
-  storeI64 mainCapability (offset_Capability_f + offset_StgFunTable_stgGCFun) $
+  storeI32 mainCapability (offset_Capability_f + offset_StgFunTable_stgGCFun) $
     symbol "__stg_gc_fun"
-  storeI64 mainCapability offset_Capability_weak_ptr_list_hd $ constI64 0
-  storeI64 mainCapability offset_Capability_weak_ptr_list_tl $ constI64 0
+  storeI32 mainCapability offset_Capability_weak_ptr_list_hd $ constI32 0
+  storeI32 mainCapability offset_Capability_weak_ptr_list_tl $ constI32 0
   storeI32 mainCapability offset_Capability_context_switch $ constI32 0
-  storeI64 mainCapability (offset_Capability_r + offset_StgRegTable_rCCCS) $
-    constI64 0
-  storeI64 mainCapability (offset_Capability_r + offset_StgRegTable_rCurrentTSO) $
-    constI64 0
+  storeI32 mainCapability (offset_Capability_r + offset_StgRegTable_rCCCS) $
+    constI32 0
+  storeI32 mainCapability (offset_Capability_r + offset_StgRegTable_rCurrentTSO) $
+    constI32 0
 
 hsInitFunction :: BuiltinsOptions -> AsteriusModule
 hsInitFunction _ = runEDSL "hs_init" $ do
@@ -745,14 +745,14 @@ hsInitFunction _ = runEDSL "hs_init" $ do
 
 rtsApplyFunction :: BuiltinsOptions -> AsteriusModule
 rtsApplyFunction _ = runEDSL "rts_apply" $ do
-  setReturnTypes [I64]
-  [f, arg] <- params [I64, I64]
+  setReturnTypes [I32]
+  [f, arg] <- params [I32, I32]
   ap <-
     call'
       "allocate"
-      [mainCapability, constI64 $ roundup_bytes_to_words sizeof_StgThunk + 2]
-      I64
-  storeI64 ap 0 $ symbol "stg_ap_2_upd_info"
+      [mainCapability, constI32 $ roundup_bytes_to_words sizeof_StgThunk + 2]
+      I32
+  storeI32 ap 0 $ symbol "stg_ap_2_upd_info"
   storeI64 ap offset_StgThunk_payload f
   storeI64 ap (offset_StgThunk_payload + 8) arg
   emit ap
@@ -919,20 +919,20 @@ allocatePinnedFunction _ = runEDSL "allocatePinned" $ do
 
 newCAFFunction :: BuiltinsOptions -> AsteriusModule
 newCAFFunction _ = runEDSL "newCAF" $ do
-  setReturnTypes [I64]
-  [reg, caf] <- params [I64, I64]
-  orig_info <- i64Local $ loadI64 caf 0
-  storeI64 caf offset_StgIndStatic_saved_info orig_info
+  setReturnTypes [I32]
+  [reg, caf] <- params [I32, I32]
+  orig_info <- local I32 $ loadI32 caf 0
+  storeI32 caf offset_StgIndStatic_saved_info orig_info
   bh <-
     call'
       "allocate"
-      [mainCapability, constI64 $ roundup_bytes_to_words sizeof_StgInd]
+      [mainCapability, constI32 $ roundup_bytes_to_words sizeof_StgInd]
       I64
-  storeI64 bh 0 $ symbol "stg_CAF_BLACKHOLE_info"
-  storeI64 bh offset_StgInd_indirectee $
-    loadI64 reg offset_StgRegTable_rCurrentTSO
-  storeI64 caf offset_StgIndStatic_indirectee bh
-  storeI64 caf 0 $ symbol "stg_IND_STATIC_info"
+  storeI32 bh 0 $ symbol "stg_CAF_BLACKHOLE_info"
+  storeI32 bh offset_StgInd_indirectee $
+    loadI32 reg offset_StgRegTable_rCurrentTSO
+  storeI32 caf offset_StgIndStatic_indirectee bh
+  storeI32 caf 0 $ symbol "stg_IND_STATIC_info"
   emit bh
 
 asterius_pc_global :: LVal
@@ -1113,7 +1113,7 @@ rtsGetBoolFunction _ = runEDSL "rts_getBool" $ do
 rtsGetDoubleFunction :: BuiltinsOptions -> AsteriusModule
 rtsGetDoubleFunction _ = runEDSL "rts_getDouble" $ do
   setReturnTypes [F64]
-  p <- param I64
+  p <- param I32
   emit $ loadF64 (unTagClosure p) offset_StgClosure_payload
 
 -- rtsGetCharFunction = rtsGetIntFunction
@@ -1124,9 +1124,9 @@ generateRtsGetIntFunction ::
   EntitySymbol -> -- Name of the function
   AsteriusModule
 generateRtsGetIntFunction _ n = runEDSL n $ do
-  setReturnTypes [I64]
-  p <- param I64
-  emit $ loadI64 (unTagClosure p) offset_StgClosure_payload
+  setReturnTypes [I32]
+  p <- param I32
+  emit $ loadI32 (unTagClosure p) offset_StgClosure_payload
 
 {-
 rtsGetIntFunction _ =
@@ -1138,7 +1138,7 @@ rtsGetIntFunction _ =
 loadI64Function :: BuiltinsOptions -> AsteriusModule
 loadI64Function _ = runEDSL "loadI64" $ do
   setReturnTypes [I64]
-  p <- param I64
+  p <- param I32
   emit $ loadI64 p 0
 
 strlenFunction :: BuiltinsOptions -> AsteriusModule
