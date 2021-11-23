@@ -211,19 +211,19 @@ asyncImportWrapper dflags k FFIImportDecl {..} =
                       fromIntegral $
                         offset_Capability_r
                           + offset_StgRegTable_rRet,
-                    ptr = wrapInt64 mainCapability,
+                    ptr = mainCapability,
                     value = constI64 ret_ThreadBlocked,
                     valueType = I64
                   },
                 Store
                   { bytes = 2,
                     offset = fromIntegral offset_StgTSO_why_blocked,
-                    ptr = wrapInt64 $ unresolvedGetGlobal CurrentTSO,
+                    ptr = unresolvedGetGlobal CurrentTSO,
                     value = constI32 blocked_BlockedOnCCall,
                     valueType = I32
                   },
                 ReturnCall
-                  { returnCallTarget64 = "stg_returnToSchedNotPaused"
+                  { returnCallTarget = "stg_returnToSchedNotPaused"
                   }
               ],
             blockReturnTypes = []

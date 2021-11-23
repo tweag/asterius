@@ -237,12 +237,12 @@ pointer vt b bp o = LVal
         bytes = b,
         offset = fromIntegral o,
         valueType = vt,
-        ptr = wrapInt64 bp
+        ptr = bp
       },
     putLVal = \v -> emit $ Store
       { bytes = b,
         offset = fromIntegral o,
-        ptr = wrapInt64 bp,
+        ptr = bp,
         value = v,
         valueType = vt
       }
@@ -356,7 +356,7 @@ callImport' f xs vt = do
 
 callIndirect :: Expression -> EDSL ()
 callIndirect f = emit CallIndirect
-  { indirectTarget = wrapInt64 f,
+  { indirectTarget = f,
     operands = [],
     functionType = FunctionType {paramTypes = [], returnTypes = []}
   }

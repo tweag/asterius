@@ -27,6 +27,7 @@ import Asterius.Internals.Barf
 import Asterius.Internals.MagicNumber
 import Asterius.Internals.Marshal
 import Asterius.Passes.CCall
+import Asterius.Passes.Relooper
 import Asterius.Types
 import qualified Asterius.Types.SymbolMap as SM
 import Asterius.TypesConv
@@ -445,13 +446,13 @@ marshalExpression e' = do
     lift $ Binaryen.drop m x
   ReturnCall {..} -> do
       fn_off_map <- askFunctionsOffsetMap
-      case SM.lookup returnCallTarget64 fn_off_map of
+      case SM.lookup returnCallTarget fn_off_map of
         Just off -> do
           s <-
             marshalExpression
               SetGlobal
                 { globalSymbol = "__asterius_pc",
-                  value = ConstI64 $ mkStaticFunctionAddress off
+                  value = ConstI32 $ mkStaticFunctionAddress off
                 }
           m <- askModuleRef
           a <- askArena
@@ -459,13 +460,13 @@ marshalExpression e' = do
             r <- Binaryen.return m (coerce nullPtr)
             (arr, _) <- marshalV a [s, r]
             Binaryen.block m (coerce nullPtr) arr 2 Binaryen.none
-        Nothing -> marshalExpression $ barf (entityName returnCallTarget64) []
+        Nothing -> marshalExpression $ barf (entityName returnCallTarget) []
   ReturnCallIndirect {..} -> do
       s <-
         marshalExpression
           SetGlobal
             { globalSymbol = "__asterius_pc",
-              value = returnCallIndirectTarget64
+              value = returnCallIndirectTarget
             }
       m <- askModuleRef
       a <- askArena
@@ -479,7 +480,7 @@ marshalExpression e' = do
   Unreachable -> do
     m <- askModuleRef
     lift $ Binaryen.Expression.unreachable m
-  CFG {..} -> relooperRun graph
+  CFG {..} -> marshalExpression $ relooper graph
   Symbol {..} -> do
     verbose_err <- isVerboseErrOn
     ss_off_map <- askStaticsOffsetMap
@@ -488,14 +489,14 @@ marshalExpression e' = do
     m <- askModuleRef
     if  | Just off <- SM.lookup unresolvedSymbol ss_off_map ->
           marshalExpression $
-            ConstI64 $ mkStaticDataAddress memory_base $ off + fromIntegral symbolOffset
+            ConstI32 $ mkStaticDataAddress memory_base $ off + fromIntegral symbolOffset
         | Just off <- SM.lookup unresolvedSymbol fn_off_map ->
           marshalExpression $
-            ConstI64 $ mkStaticFunctionAddress $ off + fromIntegral symbolOffset
+            ConstI32 $ mkStaticFunctionAddress $ off + fromIntegral symbolOffset
         | verbose_err ->
           marshalExpression $ barf (entityName unresolvedSymbol) [I64]
         | otherwise ->
-          lift $ Binaryen.constInt64 m invalidAddress
+          lift $ Binaryen.constInt32 m invalidAddress
   Barf {..} -> do
     verbose_err <- isVerboseErrOn
     if verbose_err

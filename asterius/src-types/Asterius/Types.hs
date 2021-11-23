@@ -461,10 +461,10 @@ data Expression
       { dropValue :: Expression
       }
   | ReturnCall
-      { returnCallTarget64 :: EntitySymbol
+      { returnCallTarget :: EntitySymbol
       }
   | ReturnCallIndirect
-      { returnCallIndirectTarget64 :: Expression
+      { returnCallIndirectTarget :: Expression
       }
   | Nop
   | Unreachable

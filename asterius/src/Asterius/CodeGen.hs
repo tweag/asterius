@@ -1597,8 +1597,8 @@ marshalCmmBlockBranch instr = case instr of
     t <- marshalAndCheckCmmExpr cml_target I32
     pure
       ( [ case t of
-            Symbol {..} -> ReturnCall {returnCallTarget64 = unresolvedSymbol}
-            _ -> ReturnCallIndirect {returnCallIndirectTarget64 = t}
+            Symbol {..} -> ReturnCall {returnCallTarget = unresolvedSymbol}
+            _ -> ReturnCallIndirect {returnCallIndirectTarget = t}
         ],
         Nothing,
         [],

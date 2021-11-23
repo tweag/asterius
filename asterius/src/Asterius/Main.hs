@@ -274,7 +274,7 @@ ahcDistMain logger task (final_m, report) = do
       out_js = outputDirectory task </> outputBaseName task <.> "js"
       out_html = outputDirectory task </> outputBaseName task <.> "html"
   logger "[INFO] Converting linked IR to binaryen IR"
-  Binaryen.setDebugInfo $ if verboseErr task then 1 else 0
+  Binaryen.setDebugInfo 1 -- $ if verboseErr task then 1 else 0
   Binaryen.setOptimizeLevel $ fromIntegral $ optimizeLevel task
   Binaryen.setShrinkLevel $ fromIntegral $ shrinkLevel task
   Binaryen.setLowMemoryUnused 1
