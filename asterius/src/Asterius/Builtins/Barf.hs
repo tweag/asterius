@@ -3,20 +3,18 @@
 
 module Asterius.Builtins.Barf
   ( barfImports,
-    barfCBits,
   )
 where
 
-import Asterius.EDSL
 import Asterius.Types
 
 barfImports :: [FunctionImport]
 barfImports =
   [ FunctionImport
-      { internalName = "__asterius_barf",
+      { internalName = "barf",
         externalModuleName = "ExceptionHelper",
         externalBaseName = "barf",
-        functionType = FunctionType {paramTypes = [F64], returnTypes = []}
+        functionType = FunctionType {paramTypes = [I32], returnTypes = []}
       },
     FunctionImport
       { internalName = "barf_push",
@@ -31,11 +29,3 @@ barfImports =
         functionType = FunctionType {paramTypes = [I32], returnTypes = []}
       }
   ]
-
-barfCBits :: AsteriusModule
-barfCBits = barfFunction
-
-barfFunction :: AsteriusModule
-barfFunction = runEDSL "barf" $ do
-  s <- param I64
-  callImport "__asterius_barf" [convertUInt64ToFloat64 s]

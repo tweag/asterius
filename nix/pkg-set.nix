@@ -3,7 +3,7 @@
 , pkgs ? import sources.nixpkgs
     (haskellNix.nixpkgsArgs // {
       overlays = haskellNix.nixpkgsArgs.overlays
-        ++ [ (import ./binaryen.nix) (import ./libghcconstants.nix) ];
+        ++ [ (import ./binaryen.nix) ];
     })
 , ghc ? "ghc8107"
 }:

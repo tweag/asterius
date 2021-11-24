@@ -47,10 +47,12 @@ getFFIValueTypeRep tc = case GHC.tyConPrimRep tc of
   [GHC.IntRep] -> FFIIntRep
   [GHC.Int8Rep] -> FFIInt8Rep
   [GHC.Int16Rep] -> FFIInt16Rep
+  [GHC.Int32Rep] -> FFIInt32Rep
   [GHC.Int64Rep] -> FFIInt64Rep
   [GHC.WordRep] -> FFIWordRep
   [GHC.Word8Rep] -> FFIWord8Rep
   [GHC.Word16Rep] -> FFIWord16Rep
+  [GHC.Word32Rep] -> FFIWord32Rep
   [GHC.Word64Rep] -> FFIWord64Rep
   [GHC.AddrRep] -> FFIAddrRep
   [GHC.FloatRep] -> FFIFloatRep
@@ -133,7 +135,7 @@ ffiBoxedValueTypeMap0 =
       ),
       ( GHC.int64TyConName,
         FFIValueType
-          { ffiValueTypeRep = getFFIValueTypeRep GHC.intPrimTyCon,
+          { ffiValueTypeRep = getFFIValueTypeRep GHC.int64PrimTyCon,
             hsTyCon = "Int64"
           }
       ),
@@ -163,7 +165,7 @@ ffiBoxedValueTypeMap0 =
       ),
       ( GHC.word64TyConName,
         FFIValueType
-          { ffiValueTypeRep = getFFIValueTypeRep GHC.wordPrimTyCon,
+          { ffiValueTypeRep = getFFIValueTypeRep GHC.word64PrimTyCon,
             hsTyCon = "Word64"
           }
       ),

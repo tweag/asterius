@@ -14,35 +14,33 @@ smCBits = growStack
 
 growStack :: AsteriusModule
 growStack = runEDSL "growStack" $ do
-  setReturnTypes [I64]
-  prev_stack_obj <- param I64
-  prev_sp <- i64Local $ loadI64 prev_stack_obj offset_StgStack_sp
+  setReturnTypes [I32]
+  prev_stack_obj <- param I32
+  prev_sp <- local I32 $ loadI32 prev_stack_obj offset_StgStack_sp
   prev_stack_obj_size <-
-    i64Local
-      $ addInt64 (constI64 offset_StgStack_stack)
-      $ mulInt64 (constI64 8)
-      $ extendUInt32
+    local I32
+      $ addInt32 (constI32 offset_StgStack_stack)
+      $ mulInt32 (constI32 4)
       $ loadI32 prev_stack_obj offset_StgStack_stack_size
   prev_stack_used <-
-    i64Local $
+    local I32 $
       prev_stack_obj_size
-        `subInt64` (prev_sp `subInt64` prev_stack_obj)
-  next_stack_obj_size <- i64Local $ prev_stack_obj_size `mulInt64` constI64 2
+        `subInt32` (prev_sp `subInt32` prev_stack_obj)
+  next_stack_obj_size <- local I32 $ prev_stack_obj_size `mulInt32` constI32 2
   next_stack_obj <-
     call'
       "allocatePinned"
       [mainCapability, next_stack_obj_size]
-      I64
+      I32
   next_sp <-
-    i64Local $
+    local I32 $
       next_stack_obj
-        `addInt64` next_stack_obj_size
-        `subInt64` prev_stack_used
-  emit $ memcpy next_stack_obj prev_stack_obj (constI64 offset_StgStack_stack)
+        `addInt32` next_stack_obj_size
+        `subInt32` prev_stack_used
+  emit $ memcpy next_stack_obj prev_stack_obj (constI32 offset_StgStack_stack)
   storeI32 next_stack_obj offset_StgStack_stack_size
-    $ wrapInt64
-    $ (next_stack_obj_size `subInt64` constI64 offset_StgStack_stack)
-      `divUInt64` constI64 8
-  storeI64 next_stack_obj offset_StgStack_sp next_sp
+    $ (next_stack_obj_size `subInt32` constI32 offset_StgStack_stack)
+      `divUInt32` constI32 4
+  storeI32 next_stack_obj offset_StgStack_sp next_sp
   emit $ memcpy next_sp prev_sp prev_stack_used
   emit next_stack_obj

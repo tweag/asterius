@@ -19,7 +19,7 @@ envImports =
         externalBaseName = "getProgArgv",
         functionType =
           FunctionType
-            { paramTypes = [F64, F64],
+            { paramTypes = [I32, I32],
               returnTypes = []
             }
       }
@@ -47,8 +47,7 @@ envArgvBuf =
 
 envGetProgArgv :: AsteriusModule
 envGetProgArgv = runEDSL "getProgArgv" $ do
-  [argc, argv] <- params [I64, I64]
-  callImport "__asterius_getProgArgv" $
-    map convertUInt64ToFloat64 [argc, symbol "__asterius_argv_buf"]
-  storeI64 (symbol "__asterius_argv_buf") 0 (symbol "prog_name")
-  storeI64 argv 0 $ symbol "__asterius_argv_buf"
+  [argc, argv] <- params [I32, I32]
+  callImport "__asterius_getProgArgv" [argc, symbol "__asterius_argv_buf"]
+  storeI32 (symbol "__asterius_argv_buf") 0 (symbol "prog_name")
+  storeI32 argv 0 $ symbol "__asterius_argv_buf"

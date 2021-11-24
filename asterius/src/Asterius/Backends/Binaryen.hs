@@ -342,7 +342,7 @@ marshalExpression e' = do
               ( if target == "barf"
                   then
                     [ case operands of
-                        [] -> ConstI64 0
+                        [] -> ConstI32 0
                         x : _ -> x
                     ]
                   else operands

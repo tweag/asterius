@@ -4,7 +4,6 @@
     (haskellNix.nixpkgsArgs // {
       overlays = haskellNix.nixpkgsArgs.overlays ++ [
         (import ./nix/binaryen.nix)
-        (import ./nix/libghcconstants.nix)
       ];
     })
 , ghc ? "ghc8107"
@@ -37,13 +36,13 @@
     let p = import "${sources.ghc-asterius}/nix/wasi-rts.nix" { };
     in "${p}/bin/rts.wasm";
 
-  LD_LIBRARY_PATH = pkgs.lib.makeLibraryPath [ pkgs.ghcconstants ];
-
   WASI_SDK_PREFIX = import "${sources.wasi-sdk}/nix/default.nix" { };
 
   GHC_ASTERIUS = import "${sources.ghc-asterius}/nix/src-32.nix" { };
 
   GHC_ASTERIUS_BOOT = GHC_ASTERIUS.boot;
+
+  ASTERIUS_GHC_CONSTANTS = let p = import ./nix/ghcconstants.nix {}; in "${p}/bin/ghcconstants.wasm";
 
   shellHook = ''
     taskset -pc 0-1000 $$

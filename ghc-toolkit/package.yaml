@@ -24,7 +24,6 @@ dependencies:
   - process
 
 library:
-  extra-libraries: ghcconstants
   source-dirs: src
   other-extensions:
     - DuplicateRecordFields

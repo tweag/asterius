@@ -206,14 +206,14 @@ asyncImportWrapper dflags k FFIImportDecl {..} =
                     callImportReturnTypes = []
                   },
                 Store
-                  { bytes = 8,
+                  { bytes = 4,
                     offset =
                       fromIntegral $
                         offset_Capability_r
                           + offset_StgRegTable_rRet,
                     ptr = mainCapability,
-                    value = constI64 ret_ThreadBlocked,
-                    valueType = I64
+                    value = constI32 ret_ThreadBlocked,
+                    valueType = I32
                   },
                 Store
                   { bytes = 2,

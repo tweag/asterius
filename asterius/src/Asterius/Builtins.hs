@@ -172,20 +172,16 @@ rtsAsteriusModule opts =
     <> generateWrapperModule (generateRtsExternalInterfaceModule opts)
     <> blackholeCBits
     <> generateWrapperModule blackholeCBits
-    <> exportsCBits
     <> smCBits
     <> generateWrapperModule smCBits
     <> sparksCBits
-    <> schedulerCBits
     <> cmathCBits
     <> envCBits
     <> posixCBits
     <> sptCBits
     <> stgPrimFloatCBits
-    <> timeCBits
     <> primitiveCBits
     <> endiannessCBits
-    <> barfCBits
 
 -- Generate the module consisting of functions which need to be wrapped
 -- for communication with the external runtime.
@@ -803,18 +799,18 @@ scheduleTSOFunction BuiltinsOptions {} = runEDSL "scheduleTSO" $ do
   storeI32 mainCapability offset_Capability_interrupt $ constI32 0
   storeI32 mainCapability offset_Capability_idle $ constI32 0
   dirtyTSO mainCapability tso
-  dirtySTACK mainCapability (loadI64 tso offset_StgTSO_stackobj)
+  dirtySTACK mainCapability (loadI32 tso offset_StgTSO_stackobj)
   -- execute the TSO (using stgRun trampolining machinery)
   stgRun $ symbol "stg_returnToStackTop"
   -- indicate in the Capability that we are not running anything
-  storeI64
+  storeI32
     mainCapability
     (offset_Capability_r + offset_StgRegTable_rCurrentTSO)
-    (constI64 0)
+    (constI32 0)
   storeI32 mainCapability offset_Capability_interrupt $ constI32 1
   storeI32 mainCapability offset_Capability_idle $ constI32 1
   -- unset the current TSO
-  putLVal currentTSO (constI64 0)
+  putLVal currentTSO (constI32 0)
 
 -- Return the thread ID of the given tso
 getThreadIdFunction :: BuiltinsOptions -> AsteriusModule
@@ -829,15 +825,15 @@ createThreadFunction BuiltinsOptions {..} = runEDSL "createThread" $ do
   tso_p <-
     call'
       "allocatePinned"
-      [mainCapability, constI64 $ roundup_bytes_to_words sizeof_StgTSO]
+      [mainCapability, constI32 $ roundup_bytes_to_words sizeof_StgTSO]
       I64
-  stack_p <- call' "allocatePinned" [mainCapability, constI64 4096] I64
-  storeI64 stack_p 0 $ symbol "stg_STACK_info"
+  stack_p <- call' "allocatePinned" [mainCapability, constI32 4096] I32
+  storeI32 stack_p 0 $ symbol "stg_STACK_info"
   stack_size_w <- local I32 $ constI32 $ (4096 - offset_StgStack_stack) `div` 8
   storeI32 stack_p offset_StgStack_stack_size stack_size_w
-  storeI64 stack_p offset_StgStack_sp $
-    (stack_p `addInt64` constI64 offset_StgStack_stack)
-      `addInt64` (stack_size_w `mulInt64` constI64 8)
+  storeI32 stack_p offset_StgStack_sp $
+    (stack_p `addInt32` constI32 offset_StgStack_stack)
+      `addInt32` (stack_size_w `mulInt32` constI32 8)
   storeI32 stack_p offset_StgStack_dirty $ constI32 1
   storeI64 tso_p 0 $ symbol "stg_TSO_info"
   storeI16 tso_p offset_StgTSO_what_next $ constI32 next_ThreadRunGHC
@@ -851,9 +847,9 @@ createThreadFunction BuiltinsOptions {..} = runEDSL "createThread" $ do
   storeI64 tso_p offset_StgTSO_stackobj stack_p
   storeI32 tso_p offset_StgTSO_tot_stack_size stack_size_w
   storeI64 tso_p offset_StgTSO_alloc_limit (constI64 0)
-  storeI64 stack_p offset_StgStack_sp $
-    loadI64 stack_p offset_StgStack_sp
-      `subInt64` constI64 (8 * roundup_bytes_to_words sizeof_StgStopFrame)
+  storeI32 stack_p offset_StgStack_sp $
+    loadI32 stack_p offset_StgStack_sp
+      `subInt32` constI32 (4 * roundup_bytes_to_words sizeof_StgStopFrame)
   storeI64 (loadI64 stack_p offset_StgStack_sp) 0 $
     symbol "stg_stop_thread_info"
   callImport' "__asterius_newTSO" [] I32 >>= storeI32 tso_p offset_StgTSO_id
@@ -861,11 +857,11 @@ createThreadFunction BuiltinsOptions {..} = runEDSL "createThread" $ do
 
 pushClosure :: Expression -> Expression -> EDSL ()
 pushClosure tso c = do
-  stack_p <- i64Local $ loadI64 tso offset_StgTSO_stackobj
-  storeI64 stack_p offset_StgStack_sp $
-    loadI64 stack_p offset_StgStack_sp
-      `subInt64` constI64 8
-  storeI64 (loadI64 stack_p offset_StgStack_sp) 0 c
+  stack_p <- local I32 $ loadI32 tso offset_StgTSO_stackobj
+  storeI32 stack_p offset_StgStack_sp $
+    loadI32 stack_p offset_StgStack_sp
+      `subInt32` constI32 4
+  storeI32 (loadI32 stack_p offset_StgStack_sp) 0 c
 
 createThreadHelper :: (Expression -> [Expression]) -> EDSL ()
 createThreadHelper mk_closures = do
@@ -965,7 +961,7 @@ stgRun init_f = do
 -- Return from a STG function
 stgReturnFunction :: BuiltinsOptions -> AsteriusModule
 stgReturnFunction _ =
-  runEDSL "StgReturn" $ putLVal asterius_pc_global $ constI64 0 -- store NULL in the __asterius_pc register. This will break stgRun
+  runEDSL "StgReturn" $ putLVal asterius_pc_global $ constI32 0 -- store NULL in the __asterius_pc register. This will break stgRun
       -- trampolining loop.
 
 getStablePtrWrapperFunction :: BuiltinsOptions -> AsteriusModule
@@ -1014,77 +1010,49 @@ rtsMkHelper ::
   EntitySymbol ->
   AsteriusModule
 rtsMkHelper _ n con_sym = runEDSL n $ do
-  setReturnTypes [I64]
-  [i] <- params [I64]
-  p <- call' "allocate" [mainCapability, constI64 2] I64
-  storeI64 p 0 $ symbol con_sym
-  storeI64 p 8 i
+  setReturnTypes [I32]
+  [i] <- params [I32]
+  p <- call' "allocate" [mainCapability, constI32 2] I32
+  storeI32 p 0 $ symbol con_sym
+  storeI32 p 4 i
   emit p
 
 rtsMkBoolFunction :: BuiltinsOptions -> AsteriusModule
 rtsMkBoolFunction _ = runEDSL "rts_mkBool" $ do
-  setReturnTypes [I64]
-  [i] <- params [I64]
+  setReturnTypes [I32]
+  [i] <- params [I32]
   if'
-    [I64]
-    (eqZInt64 i)
+    [I32]
+    (eqZInt32 i)
     (emit $ symbol "ghczmprim_GHCziTypes_False_closure")
     (emit $ symbol "ghczmprim_GHCziTypes_True_closure")
 
 rtsMkDoubleFunction :: BuiltinsOptions -> AsteriusModule
 rtsMkDoubleFunction _ = runEDSL "rts_mkDouble" $ do
-  setReturnTypes [I64]
+  setReturnTypes [I32]
   [i] <- params [F64]
-  p <- call' "allocate" [mainCapability, constI64 2] I64
-  storeI64 p 0 $ symbol "ghczmprim_GHCziTypes_Dzh_con_info"
-  storeF64 p 8 i
+  p <- call' "allocate" [mainCapability, constI32 3] I32
+  storeI32 p 0 $ symbol "ghczmprim_GHCziTypes_Dzh_con_info"
+  storeF64 p 4 i
   emit p
 
 rtsMkCharFunction :: BuiltinsOptions -> AsteriusModule
 rtsMkCharFunction _ = runEDSL "rts_mkChar" $ do
-  setReturnTypes [I64]
-  [i] <- params [I64]
-  if'
-    [I64]
-    (i `ltUInt64` constI64 256)
-    -- If the character in question is in the range [0..255] we use the
-    -- trick that GHC uses, and instead of generating a heap-allocated Char
-    -- closure, we simply return the address of the statically allocated
-    -- Char. See stg_CHARLIKE_closure in
-    -- ghc-toolkit/boot-libs/rts/StgMiscClosures.cmm
-    ( let offset = i `mulInt64` constI64 16
-       in emit $ symbol "stg_CHARLIKE_closure" `addInt64` offset
-    )
-    -- Otherwise, we fall back to the more inefficient
-    -- approach and generate a dynamic closure.
-    $ do
-      p <- call' "allocate" [mainCapability, constI64 2] I64
-      storeI64 p 0 $ symbol "ghczmprim_GHCziTypes_Czh_con_info"
-      storeI64 p 8 i
-      emit p
+  setReturnTypes [I32]
+  [i] <- params [I32]
+  p <- call' "allocate" [mainCapability, constI32 2] I32
+  storeI32 p 0 $ symbol "ghczmprim_GHCziTypes_Czh_con_info"
+  storeI32 p 4 i
+  emit p
 
 rtsMkIntFunction :: BuiltinsOptions -> AsteriusModule
 rtsMkIntFunction _ = runEDSL "rts_mkInt" $ do
-  setReturnTypes [I64]
-  [i] <- params [I64]
-  if'
-    [I64]
-    ((i `leSInt64` constI64 16) `andInt32` (i `geSInt64` constI64 (-16)))
-    -- If the integer in question is in the range [-16..16] we use the
-    -- trick that GHC uses, and instead of generating a heap-allocated Int
-    -- closure, we simply return the address of the statically allocated
-    -- Int. See stg_INTLIKE_closure in
-    -- ghc-toolkit/boot-libs/rts/StgMiscClosures.cmm
-    ( let offset = (i `addInt64` constI64 16) `mulInt64` constI64 16
-       in emit $ symbol "stg_INTLIKE_closure" `addInt64` offset
-    )
-    -- Otherwise, we fall back to the more inefficient
-    -- approach and generate a dynamic closure.
-    $ do
-      p <- call' "allocate" [mainCapability, constI64 2] I64
-      storeI64 p 0 $ symbol "ghczmprim_GHCziTypes_Izh_con_info"
-      storeI64 p 8 i
-      emit p
+  setReturnTypes [I32]
+  [i] <- params [I32]
+  p <- call' "allocate" [mainCapability, constI32 2] I32
+  storeI32 p 0 $ symbol "ghczmprim_GHCziTypes_Izh_con_info"
+  storeI32 p 4 i
+  emit p
 
 rtsMkWordFunction :: BuiltinsOptions -> AsteriusModule
 rtsMkWordFunction opts =
@@ -1168,26 +1136,26 @@ memchrFunction _ = runEDSL "memchr" $ do
 
 threadPausedFunction :: BuiltinsOptions -> AsteriusModule
 threadPausedFunction _ = runEDSL "threadPaused" $ do
-  _ <- params [I64, I64]
+  _ <- params [I32, I32]
   pure ()
 
 dirtyMutVarFunction :: BuiltinsOptions -> AsteriusModule
 dirtyMutVarFunction _ = runEDSL "dirty_MUT_VAR" $ do
-  [_, p, _] <- params [I64, I64, I64]
+  [_, p, _] <- params [I32, I32, I32]
   if'
     []
-    (loadI64 p 0 `eqInt64` symbol "stg_MUT_VAR_CLEAN_info")
-    (storeI64 p 0 $ symbol "stg_MUT_VAR_DIRTY_info")
+    (loadI32 p 0 `eqInt32` symbol "stg_MUT_VAR_CLEAN_info")
+    (storeI32 p 0 $ symbol "stg_MUT_VAR_DIRTY_info")
     mempty
 
 dirtyMVarFunction :: BuiltinsOptions -> AsteriusModule
 dirtyMVarFunction _ = runEDSL "dirty_MVAR" $ do
-  [_basereg, _mvar, _] <- params [I64, I64, I64]
+  [_basereg, _mvar, _] <- params [I32, I32, I32]
   mempty
 
 dirtyStackFunction :: BuiltinsOptions -> AsteriusModule
 dirtyStackFunction _ = runEDSL "dirty_STACK" $ do
-  [cap, stack] <- params [I64, I64]
+  [cap, stack] <- params [I32, I32]
   dirtySTACK cap stack
 
 recordClosureMutatedFunction :: BuiltinsOptions -> AsteriusModule
@@ -1273,20 +1241,20 @@ localeEncodingFunction _ = runEDSL "localeEncoding" $ do
 
 isattyFunction :: BuiltinsOptions -> AsteriusModule
 isattyFunction _ = runEDSL "isatty" $ do
-  setReturnTypes [I64]
-  _ <- param I64
-  emit $ constI64 0
+  setReturnTypes [I32]
+  _ <- param I32
+  emit $ constI32 0
 
 fdReadyFunction :: BuiltinsOptions -> AsteriusModule
 fdReadyFunction _ = runEDSL "fdReady" $ do
-  setReturnTypes [I64]
-  _ <- params [I64, I64, I64, I64]
-  emit $ constI64 1
+  setReturnTypes [I32]
+  _ <- params [I32, I32, I32, I32]
+  emit $ constI32 1
 
 rtsSupportsBoundThreadsFunction :: BuiltinsOptions -> AsteriusModule
 rtsSupportsBoundThreadsFunction _ = runEDSL "rtsSupportsBoundThreads" $ do
-  setReturnTypes [I64]
-  emit $ constI64 0
+  setReturnTypes [I32]
+  emit $ constI32 0
 
 readFunction :: BuiltinsOptions -> AsteriusModule
 readFunction _ =
