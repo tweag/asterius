@@ -7,7 +7,6 @@ module Asterius.Passes.GlobalRegs
   )
 where
 
-import Asterius.EDSL.UnaryOp
 import Asterius.Types
 import Language.Haskell.GHC.Toolkit.Constants
 

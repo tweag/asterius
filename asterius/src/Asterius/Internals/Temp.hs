@@ -13,7 +13,6 @@ where
 import Distribution.Simple.Utils
 import Distribution.Verbosity
 import System.Directory
-import System.FilePath
 import System.IO
 
 -- | Create a temporary file using a file name template.

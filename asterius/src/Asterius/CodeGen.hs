@@ -44,7 +44,6 @@ import Data.String
 import Data.Traversable
 import Foreign
 import GHC.Fingerprint
-import System.IO
 import qualified GhcPlugins as GHC
 import qualified Hoopl.Block as GHC
 import qualified Hoopl.Graph as GHC

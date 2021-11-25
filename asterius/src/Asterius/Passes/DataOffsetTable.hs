@@ -24,12 +24,12 @@ import Asterius.JSGen.Wizer
 -- | Segments are 8-bytes aligned.
 {-# INLINE segAlignment #-}
 segAlignment :: Int
-segAlignment = 8
+segAlignment = 4
 
 {-# INLINEABLE sizeofStatic #-}
 sizeofStatic :: AsteriusStatic -> Word32
 sizeofStatic = \case
-  SymbolStatic {} -> 8
+  SymbolStatic {} -> 4
   Uninitialized x -> fromIntegral x
   Serialized buf -> fromIntegral $ BS.length buf
 
