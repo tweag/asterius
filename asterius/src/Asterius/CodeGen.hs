@@ -18,7 +18,6 @@ module Asterius.CodeGen
   )
 where
 
-import Asterius.Builtins
 import Asterius.EDSL
 import Asterius.Internals
 import Asterius.Internals.Name
@@ -56,6 +55,7 @@ import MonadUtils (mapAccumLM)
 import Stream (Stream)
 import qualified Stream
 import qualified Unique as GHC
+import System.IO
 
 type CodeGenContext = (GHC.DynFlags, String)
 
@@ -344,46 +344,6 @@ marshalCmmBinMachOp o32 tx32 ty32 tr32 o64 tx64 ty64 tr64 w x y =
           pure (Binary {binaryOp = o64, operand0 = xe, operand1 = ye}, tr64)
       )
 
--- Should this logic be pushed into `marshalAndCheckCmmExpr?
-marshalCmmHomoConvMachOp ::
-  UnaryOp ->
-  UnaryOp ->
-  ValueType ->
-  ValueType ->
-  GHC.Width ->
-  GHC.Width ->
-  ShouldSext ->
-  GHC.CmmExpr ->
-  CodeGen (Expression, ValueType)
-marshalCmmHomoConvMachOp o36 o63 t32 t64 w0 w1 sext x
-  | (w0 == GHC.W8 || w0 == GHC.W16) && (w1 == GHC.W32 || w1 == GHC.W64) =
-    -- we are extending from {W8, W16} to {W32, W64}. Sign extension
-    -- semantics matters here.
-    do
-      (xe, _) <- marshalCmmExpr x
-      pure
-        ( genExtend
-            (if w0 == GHC.W8 then 1 else 2)
-            (if w1 == GHC.W32 then I32 else I64)
-            sext
-            xe,
-          if w1 == GHC.W64 then I64 else I32
-        )
-  | (w0 == GHC.W32 || w0 == GHC.W64) && (w1 == GHC.W8 || w1 == GHC.W16) =
-    -- we are wrapping from {32, 64} to {8, 16}
-    do
-      (xe, _) <- marshalCmmExpr x
-      pure
-        ( genWrap (if w0 == GHC.W32 then I32 else I64) (GHC.widthInBytes w1) xe,
-          I32
-        )
-  | otherwise =
-    -- we are converting from {32, 64} to {32, 64} of floating point / int
-    do
-      (o, t, tr) <- dispatchCmmWidth w1 (o63, t64, t32) (o36, t32, t64)
-      xe <- marshalAndCheckCmmExpr x t
-      pure (Unary {unaryOp = o, operand0 = xe}, tr)
-
 marshalCmmHeteroConvMachOp ::
   UnaryOp ->
   UnaryOp ->
@@ -568,10 +528,58 @@ marshalCmmMachOp (GHC.MO_FS_Conv w0 w1) [x] =
     w0
     w1
     x
---marshalCmmMachOp (GHC.MO_SS_Conv w0 w1) [x] =
---  marshalCmmHomoConvMachOp ExtendSInt32 WrapInt64 I32 I64 w0 w1 Sext x
---marshalCmmMachOp (GHC.MO_UU_Conv w0 w1) [x] =
---  marshalCmmHomoConvMachOp ExtendUInt32 WrapInt64 I32 I64 w0 w1 NoSext x
+marshalCmmMachOp (GHC.MO_SS_Conv GHC.W8 GHC.W16) [x] = marshalCmmExpr x
+marshalCmmMachOp (GHC.MO_SS_Conv GHC.W8 GHC.W32) [x] = do
+  xe <- marshalAndCheckCmmExpr x I32
+  pure (Unary { unaryOp = ExtendS8Int32, operand0 = xe }, I32)
+marshalCmmMachOp (GHC.MO_SS_Conv GHC.W8 GHC.W64) [x] = do
+  xe <- marshalAndCheckCmmExpr x I32
+  pure (Unary { unaryOp = ExtendS8Int64, operand0 = xe }, I64)
+marshalCmmMachOp (GHC.MO_SS_Conv GHC.W16 GHC.W8) [x] = do
+  xe <- marshalAndCheckCmmExpr x I32
+  pure ((xe `shlInt32` constI32 24) `shrSInt32` constI32 24, I32)
+marshalCmmMachOp (GHC.MO_SS_Conv GHC.W16 GHC.W32) [x] = do
+  xe <- marshalAndCheckCmmExpr x I32
+  pure (Unary { unaryOp = ExtendS16Int32, operand0 = xe }, I32)
+marshalCmmMachOp (GHC.MO_SS_Conv GHC.W16 GHC.W64) [x] = do
+  xe <- marshalAndCheckCmmExpr x I32
+  pure (Unary { unaryOp = ExtendS16Int64, operand0 = xe }, I64)
+marshalCmmMachOp (GHC.MO_SS_Conv GHC.W32 GHC.W8) [x] = do
+  xe <- marshalAndCheckCmmExpr x I32
+  pure ((xe `shlInt32` constI32 24) `shrSInt32` constI32 24, I32)
+marshalCmmMachOp (GHC.MO_SS_Conv GHC.W32 GHC.W16) [x] = do
+  xe <- marshalAndCheckCmmExpr x I32
+  pure ((xe `shlInt32` constI32 16) `shrSInt32` constI32 16, I32)
+marshalCmmMachOp (GHC.MO_SS_Conv GHC.W32 GHC.W64) [x] = do
+  xe <- marshalAndCheckCmmExpr x I32
+  pure (Unary { unaryOp = ExtendS32Int64, operand0 = xe }, I64)
+marshalCmmMachOp (GHC.MO_SS_Conv w0 w1) [x] | w0 == w1 = marshalCmmExpr x
+marshalCmmMachOp (GHC.MO_UU_Conv GHC.W8 GHC.W32) [x] = do
+  xe <- marshalAndCheckCmmExpr x I32
+  pure (xe `andInt32` constI32 0xFF, I32)
+marshalCmmMachOp (GHC.MO_UU_Conv GHC.W16 GHC.W32) [x] = do
+  xe <- marshalAndCheckCmmExpr x I32
+  pure (xe `andInt32` constI32 0xFFFF, I32)
+marshalCmmMachOp (GHC.MO_UU_Conv _ GHC.W64) [x] = do
+  xe <- marshalAndCheckCmmExpr x I32
+  pure (Unary { unaryOp = ExtendUInt32, operand0 = xe }, I64)
+marshalCmmMachOp (GHC.MO_UU_Conv GHC.W64 GHC.W32) [x] = do
+  xe <- marshalAndCheckCmmExpr x I64
+  pure (Unary { unaryOp = WrapInt64, operand0 = xe }, I32)
+marshalCmmMachOp (GHC.MO_UU_Conv GHC.W32 GHC.W8) [x] = do
+  xe <- marshalAndCheckCmmExpr x I32
+  pure (xe `andInt32` constI32 0xFF, I32)
+marshalCmmMachOp (GHC.MO_UU_Conv GHC.W32 GHC.W16) [x] = do
+  xe <- marshalAndCheckCmmExpr x I32
+  pure (xe `andInt32` constI32 0xFFFF, I32)
+marshalCmmMachOp (GHC.MO_UU_Conv w0 w1) [x] | w0 == w1 = marshalCmmExpr x
+marshalCmmMachOp (GHC.MO_XX_Conv w0 w1) [x] = marshalCmmMachOp (GHC.MO_UU_Conv w0 w1) [x]
+marshalCmmMachOp (GHC.MO_FF_Conv GHC.W32 GHC.W64) [x] = do
+  xe <- marshalAndCheckCmmExpr x F32
+  pure (promoteFloat32 xe, F64)
+marshalCmmMachOp (GHC.MO_FF_Conv GHC.W64 GHC.W32) [x] = do
+  xe <- marshalAndCheckCmmExpr x F64
+  pure (demoteFloat64 xe, F32)
 --marshalCmmMachOp (GHC.MO_FF_Conv w0 w1) [x] =
 --  marshalCmmHomoConvMachOp PromoteFloat32 DemoteFloat64 F32 F64 w0 w1 Sext x
 -- Unhandled cases
@@ -605,7 +613,7 @@ marshalCmmMachOp (GHC.MO_FS_Conv w0 w1) [x] =
 --   -- Alignment check (for -falignment-sanitisation)
 --   MO_AlignmentCheck Int Width
 marshalCmmMachOp op xs =
-  throwM $ UnsupportedTodo
+  throwM $ UnsupportedTodo $ show op
 
 marshalCmmExpr :: GHC.CmmExpr -> CodeGen (Expression, ValueType)
 marshalCmmExpr cmm_expr = case cmm_expr of
@@ -1352,7 +1360,7 @@ marshalCmmPrimCall (GHC.MO_Cmpxchg GHC.W32) [dst] [addr, oldv, newv] = do
   pure [expr1, expr2]
 -- Uncovered cases
 marshalCmmPrimCall op rs xs =
-  throwM $ UnsupportedTodo
+  throwM $ UnsupportedTodo $ show op
 
 -- | Marshal an atomic MachOp.
 marshalCmmAtomicMachOpPrimCall ::
@@ -1679,7 +1687,9 @@ marshalCmmDecl decl = case decl of
       r <- marshalCmmProc g
       pure $ mempty {functionMap = SM.singleton sym r})
       (\(err :: AsteriusCodeGenError) -> case err of
-        UnsupportedTodo -> pure mempty
+        UnsupportedTodo err -> do
+          liftIO $ hPutStrLn stderr $ "[DEBUG]" <> show sym <> " " <> err
+          pure mempty
         _ -> do
           cmm_str <- liftIO $ prettyShow g
           error $ cmm_str <> "\n" <> show err)

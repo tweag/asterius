@@ -65,6 +65,7 @@ import Foreign hiding
 import Foreign.C
 import GHC.Exts
 import Asterius.JSGen.Wizer
+import qualified Binaryen.Features as Binaryen
 
 newtype MarshalError
   = UnsupportedExpression Expression
@@ -158,6 +159,11 @@ marshalUnaryOp op = case op of
   DemoteFloat64 -> Binaryen.demoteFloat64
   ReinterpretInt32 -> Binaryen.reinterpretInt32
   ReinterpretInt64 -> Binaryen.reinterpretInt64
+  ExtendS8Int32 -> Binaryen.extendS8Int32
+  ExtendS16Int32 -> Binaryen.extendS16Int32
+  ExtendS8Int64 -> Binaryen.extendS8Int64
+  ExtendS16Int64 -> Binaryen.extendS16Int64
+  ExtendS32Int64 -> Binaryen.extendS32Int64
 
 marshalBinaryOp :: BinaryOp -> Binaryen.Op
 marshalBinaryOp op = case op of
@@ -494,7 +500,7 @@ marshalExpression e' = do
           marshalExpression $
             ConstI32 $ mkStaticFunctionAddress $ off + fromIntegral symbolOffset
         | verbose_err ->
-          marshalExpression $ barf (entityName unresolvedSymbol) [I64]
+          marshalExpression $ barf (entityName unresolvedSymbol) [I32]
         | otherwise ->
           lift $ Binaryen.constInt32 m invalidAddress
   Barf {..} -> do
@@ -657,7 +663,7 @@ marshalModule verbose_err ss_off_map fn_off_map last_data_offset hs_mod@Module {
     pure (m, memory_base)
   checkOverlapDataSegment m
   Binaryen.setFeatures m
-    $ foldl1' (.|.) [Binaryen.mvp]
+    $ foldl1' (.|.) [Binaryen.mvp, Binaryen.signExt]
   A.with $ \a -> do
     libc_func_names <- binaryenModuleExportNames m
     for_ libc_func_names $

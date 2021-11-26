@@ -92,7 +92,7 @@ data AsteriusCodeGenError
   | UnsupportedCmmSectionType BS.ByteString
   | UnsupportedImplicitCasting Expression ValueType ValueType
   | AssignToImmutableGlobalReg UnresolvedGlobalReg
-  | UnsupportedTodo
+  | UnsupportedTodo String
   deriving (Show, Data)
 
 instance Exception AsteriusCodeGenError
@@ -272,6 +272,11 @@ data UnaryOp
   | DemoteFloat64
   | ReinterpretInt32
   | ReinterpretInt64
+  | ExtendS8Int32
+  | ExtendS16Int32
+  | ExtendS8Int64
+  | ExtendS16Int64
+  | ExtendS32Int64
   deriving (Show, Data)
 
 data BinaryOp

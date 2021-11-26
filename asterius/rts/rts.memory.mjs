@@ -42,16 +42,16 @@ export class Memory {
 
   static unDynTag(p) {
     const np = Number(p);
-    return np - (np & 7);
+    return np - (np & 3);
   }
 
   static getDynTag(p) {
-    return Number(p) & 7;
+    return Number(p) & 3;
   }
 
   static setDynTag(p, t) {
     const np = Number(p);
-    return np - (np & 7) + t;
+    return np - (np & 3) + t;
   }
 
   i8Load(p) {

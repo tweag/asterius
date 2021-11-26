@@ -122,6 +122,12 @@ inferUnaryOp = \case
   ReinterpretInt64 -> (I64, F64)
   PromoteFloat32 -> (F32, F64)
 
+  ExtendS8Int32 -> (I32, I32)
+  ExtendS16Int32 -> (I32, I32)
+  ExtendS8Int64 -> (I32, I64)
+  ExtendS16Int64 -> (I32, I64)
+  ExtendS32Int64 -> (I32, I64)
+
 -- | Infer the type of a binary operator as
 -- @((input_type_1, input_type_2), output_type)@.
 inferBinaryOp :: BinaryOp -> ((ValueType, ValueType), ValueType)
