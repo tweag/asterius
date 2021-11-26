@@ -8,7 +8,7 @@ import System.Process
 
 wasmtimeInvoke :: String -> [Int] -> IO Int
 wasmtimeInvoke _func _args = do
-  Just _wasm <- getEnv "ASTERIUS_GHC_CONSTANTS"
+  Just _wasm <- getEnv "AHC_CONSTANTS"
   (_exit_code, _stdout, _stderr) <-
     readProcessWithExitCode
       "wasmtime"

@@ -31,20 +31,20 @@ import Language.Haskell.GHC.Toolkit.Constants
 
 recoverWasmWrapperValueType :: FFIValueType -> ValueType
 recoverWasmWrapperValueType FFIValueType {..} = case ffiValueTypeRep of
-  FFILiftedRep -> I64
-  FFIUnliftedRep -> I64
-  FFIJSValRep -> I64
-  FFIIntRep -> I64
+  FFILiftedRep -> I32
+  FFIUnliftedRep -> I32
+  FFIJSValRep -> I32
+  FFIIntRep -> I32
   FFIInt8Rep -> I32
   FFIInt16Rep -> I32
   FFIInt32Rep -> I32
   FFIInt64Rep -> I64
-  FFIWordRep -> I64
+  FFIWordRep -> I32
   FFIWord8Rep -> I32
   FFIWord16Rep -> I32
   FFIWord32Rep -> I32
   FFIWord64Rep -> I64
-  FFIAddrRep -> I64
+  FFIAddrRep -> I32
   FFIFloatRep -> F32
   FFIDoubleRep -> F64
 
@@ -58,8 +58,8 @@ recoverWasmImportFunctionType ffi_safety FFIFunctionType {..}
   | otherwise = FunctionType {paramTypes = param_types, returnTypes = []}
   where
     is_unsafe = ffi_safety == FFIUnsafe
-    param_types = map (const F64) ffiParamTypes
-    ret_types = map (const F64) ffiResultTypes
+    param_types = map recoverWasmWrapperValueType ffiParamTypes
+    ret_types = map recoverWasmWrapperValueType ffiResultTypes
 
 recoverWasmWrapperFunctionType :: FFISafety -> FFIFunctionType -> FunctionType
 recoverWasmWrapperFunctionType ffi_safety FFIFunctionType {..}
@@ -87,27 +87,10 @@ getFFIModule dflags ms_mod = do
 
 generateImplicitCastExpression ::
   Bool -> [ValueType] -> [ValueType] -> Expression -> Expression
-generateImplicitCastExpression signed src_ts dest_ts src_expr =
-  case (src_ts, dest_ts) of
-    ([I64], [F64]) ->
-      Unary
-        { unaryOp =
-            if signed
-              then ConvertSInt64ToFloat64
-              else ConvertUInt64ToFloat64,
-          operand0 = src_expr
-        }
-    ([F64], [I64]) ->
-      Unary
-        { unaryOp = if signed then TruncSFloat64ToInt64 else TruncUFloat64ToInt64,
-          operand0 = src_expr
-        }
-    ([F32], [F64]) -> Unary {unaryOp = PromoteFloat32, operand0 = src_expr}
-    ([F64], [F32]) -> Unary {unaryOp = DemoteFloat64, operand0 = src_expr}
-    _
-      | src_ts == dest_ts ->
+generateImplicitCastExpression signed src_ts dest_ts src_expr
+      | src_ts == dest_ts =
         src_expr
-      | otherwise ->
+      | otherwise =
         error $
           "Unsupported implicit cast from "
             <> show src_ts

@@ -2,7 +2,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE StrictData #-}
-{-# LANGUAGE ViewPatterns #-}
 
 module Asterius.Resolve
   ( unresolvedGlobalRegType,
@@ -28,7 +27,6 @@ import Control.DeepSeq
 import qualified Data.Map.Lazy as LM
 import Data.String
 import Foreign
-import Language.Haskell.GHC.Toolkit.Constants
 
 unresolvedGlobalRegType :: UnresolvedGlobalReg -> ValueType
 unresolvedGlobalRegType gr = case gr of

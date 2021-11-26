@@ -160,18 +160,18 @@ posixFstatGetters =
                 { functionType =
                     FunctionType
                       { paramTypes = [I32],
-                        returnTypes = [I32]
+                        returnTypes = [t]
                       },
                   varTypes = [],
-                  body = loadI32 GetLocal {index = 0, valueType = I32} v
+                  body = f $ loadI32 GetLocal {index = 0, valueType = I32} v
                 }
             )
-            | (k, v) <-
-                [ ("__hscore_st_mtime", offset_stat_mtime),
-                  ("__hscore_st_size", offset_stat_size),
-                  ("__hscore_st_mode", offset_stat_mode),
-                  ("__hscore_st_dev", offset_stat_dev),
-                  ("__hscore_st_ino", offset_stat_ino)
+            | (k, v, t, f) <-
+                [ ("__hscore_st_mtime", offset_stat_mtime, I32, id),
+                  ("__hscore_st_size", offset_stat_size, I64, extendUInt32),
+                  ("__hscore_st_mode", offset_stat_mode, I32, id),
+                  ("__hscore_st_dev", offset_stat_dev, I64, extendUInt32),
+                  ("__hscore_st_ino", offset_stat_ino, I64, extendUInt32)
                 ]
           ]
     }

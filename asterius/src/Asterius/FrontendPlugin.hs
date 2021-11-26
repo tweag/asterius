@@ -1,4 +1,3 @@
-{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE RecordWildCards #-}
 
 module Asterius.FrontendPlugin
@@ -15,7 +14,6 @@ import Asterius.Internals.PrettyShow
 import Asterius.JSFFI
 import Asterius.Types
 import Asterius.TypesConv
-import Control.Exception
 import Control.Monad
 import Control.Monad.IO.Class
 import Data.IORef

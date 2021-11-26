@@ -1183,7 +1183,7 @@ isattyFunction _ = runEDSL "isatty" $ do
 fdReadyFunction :: BuiltinsOptions -> AsteriusModule
 fdReadyFunction _ = runEDSL "fdReady" $ do
   setReturnTypes [I32]
-  _ <- params [I32, I32, I32, I32]
+  _ <- params [I32, I32, I64, I32]
   emit $ constI32 1
 
 rtsSupportsBoundThreadsFunction :: BuiltinsOptions -> AsteriusModule

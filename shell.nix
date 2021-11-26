@@ -42,7 +42,7 @@
 
   GHC_ASTERIUS_BOOT = GHC_ASTERIUS.boot;
 
-  ASTERIUS_GHC_CONSTANTS = let p = import ./nix/ghcconstants.nix {}; in "${p}/bin/ghcconstants.wasm";
+  AHC_CONSTANTS = let p = import ./nix/ghcconstants.nix {}; in "${p}/bin/ghcconstants.wasm";
 
   shellHook = ''
     taskset -pc 0-1000 $$

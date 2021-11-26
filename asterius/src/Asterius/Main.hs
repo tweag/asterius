@@ -11,7 +11,6 @@ module Asterius.Main
   )
 where
 
-import qualified Asterius.Backends.Binaryen
 import qualified Asterius.Backends.Binaryen as Binaryen
 import qualified Asterius.Backends.Binaryen.RunPass as Binaryen
 import Asterius.Binary.File
@@ -38,10 +37,8 @@ import qualified Asterius.Types.SymbolSet as SS
 import qualified Binaryen
 import qualified Binaryen.Module as Binaryen
 import Control.Monad
-import Data.Binary.Get
 import qualified Data.ByteString as BS
 import Data.ByteString.Builder
-import qualified Data.ByteString.Lazy as LBS
 import Data.Foldable
 import Data.List
 import Data.String
