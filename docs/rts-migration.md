@@ -73,6 +73,44 @@ QuickCheck) to find a _minimal_ set of non-POSIX mechanisms features that
 trigger the fault.  Debugging a run-time system can be very
 time-consuming, and using automation to isolate buggy features should help.
 
+Configuration mechanisms for features will be influenced by the
+following considerations:
+
+  - Conditional compilation will be controlled by `cpp` macros, _not_
+    by conditional build rules within Hadrian.  As an example of such
+    a symbol that is already used, see `RTS_LINKER_USE_MMAP`.
+
+  - GHC Central endorses conditional compilation on a file
+    granularity.  Thus, each distinct implementation of a feature gets
+    its own file or set of files, and then the relevant file is
+    compiled by means of a conditional `#include`.  This method is
+    more clunky than (say) putting the conditional building into the
+    rules for compilation and linking, but it does keep the build
+    rules simple.
+
+    For a helpful example of this method, look at the implementation
+    in `rts/posix/Ticker.c`.
+
+  - `cpp` macros are likely to be set or unset using Cabal flags.
+    Some example flags can be found in `rts/rts.cabal.in`.  In those
+    examples, the `default` values are currently set by Autoconf,
+    which does macro substitution on the `rts.cabal.in` file.
+    But once the Make build is retired, those macros and the
+    substitutions will go away.  Instead, Hadrian will slurp up the
+    definitions and will set the flags.  (Hadrian will have a list of
+    the flags it needs to know about.)
+
+    For an example of setting flags, see
+    `Hadrian/src/Settings/Packages.hs`.  To understand the whole
+    picture, look for how `libnuma` is handled.
+
+    We should feel free to add new Cabal flags that collectively
+    determine the feature vector.
+
+Yet to be determined: how to select and build multiple feature vectors
+for differential testing.
+
+
 ## Mechanisms identified that may need replacing
 
 We are currently (October/November 2021) working through GHC's native run-time
