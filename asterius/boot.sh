@@ -33,7 +33,7 @@ ar qDS "$AHC_LIBDIR"/rts/libHSrts.a "$AHC_TMPDIR"/rts/*.o
 
 pushd "$AHC_TMPDIR"
 
-ASTERIUS_CONFIGURE_OPTIONS="--disable-shared --disable-profiling --disable-debug-info --disable-library-for-ghci --disable-split-objs --disable-split-sections --disable-library-stripping --disable-relocatable -O2 --prefix=$AHC_LIBDIR --global --ipid=\$pkg --with-compiler=ahc --with-hc-pkg=ahc-pkg --with-ar=ar --hsc2hs-option=--cross-compile --hsc2hs-option=-v --ghc-option=-v1 --ghc-option=-dsuppress-ticks"
+ASTERIUS_CONFIGURE_OPTIONS="--disable-shared --disable-profiling --disable-debug-info --disable-library-for-ghci --disable-split-objs --disable-split-sections --disable-library-stripping --disable-relocatable -O2 --prefix=$AHC_LIBDIR --global --ipid=\$pkg --with-compiler=ahc --with-hc-pkg=ahc-pkg --with-ar=ar --hsc2hs-option=--cross-compile --ghc-option=-v1 --ghc-option=-dsuppress-ticks"
 
 pushd ghc-prim
 Setup-ghc-prim configure $ASTERIUS_CONFIGURE_OPTIONS
@@ -52,8 +52,6 @@ CFLAGS=-I$AHC_TMPDIR/base ahc-cabal act-as-setup --build-type=Configure -- confi
 ahc-cabal act-as-setup --build-type=Configure -- build -j
 ahc-cabal act-as-setup --build-type=Configure -- install
 popd
-
-exit
 
 pushd array
 ahc-cabal act-as-setup --build-type=Simple -- configure $ASTERIUS_CONFIGURE_OPTIONS
@@ -85,6 +83,18 @@ ahc-cabal act-as-setup --build-type=Configure -- build -j
 ahc-cabal act-as-setup --build-type=Configure -- install
 popd
 
+pushd filepath
+ahc-cabal act-as-setup --build-type=Simple -- configure --ghc-option=-this-unit-id=filepath $ASTERIUS_CONFIGURE_OPTIONS
+ahc-cabal act-as-setup --build-type=Simple -- build -j
+ahc-cabal act-as-setup --build-type=Simple -- install
+popd
+
+pushd directory
+ahc-cabal act-as-setup --build-type=Configure -- configure --ghc-option=-this-unit-id=directory $ASTERIUS_CONFIGURE_OPTIONS
+ahc-cabal act-as-setup --build-type=Configure -- build -j
+ahc-cabal act-as-setup --build-type=Configure -- install
+popd
+
 pushd ghc-heap
 ahc-cabal act-as-setup --build-type=Simple -- configure $ASTERIUS_CONFIGURE_OPTIONS
 ahc-cabal act-as-setup --build-type=Simple -- build -j
@@ -101,7 +111,6 @@ ahc-cabal update || true
 
 ahc-cabal v1-install $ASTERIUS_CONFIGURE_OPTIONS \
   binary-0.8.8.0 \
-  directory-1.3.6.0 \
   mtl-2.2.2 \
   pretty-1.1.3.6
 

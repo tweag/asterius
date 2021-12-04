@@ -53,22 +53,7 @@ let
 
   # The set of packages used when specs are fetched using non-builtins.
   mkPkgs = sources: system:
-    let
-      sourcesNixpkgs =
-        import (builtins_fetchTarball { inherit (sources.nixpkgs) url sha256; }) { inherit system; };
-      hasNixpkgsPath = builtins.any (x: x.prefix == "nixpkgs") builtins.nixPath;
-      hasThisAsNixpkgsPath = <nixpkgs> == ./.;
-    in
-      if builtins.hasAttr "nixpkgs" sources
-      then sourcesNixpkgs
-      else if hasNixpkgsPath && ! hasThisAsNixpkgsPath then
-        import <nixpkgs> {}
-      else
-        abort
-          ''
-            Please specify either <nixpkgs> (through -I or NIX_PATH=nixpkgs=...) or
-            add a package called "nixpkgs" to your sources.json.
-          '';
+    import (import (builtins_fetchTarball { inherit (sources.haskell-nix) url sha256; }) { }).sources.nixpkgs-unstable { inherit system; };
 
   # The actual fetching function.
   fetch = pkgs: name: spec:

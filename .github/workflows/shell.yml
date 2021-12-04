@@ -37,7 +37,7 @@ jobs:
 
       - name: cachix-watch-store
         run: |
-          cachix watch-store -c9 asterius &
+          cachix watch-store -c9 -j2 asterius &
 
       - name: shell
         run: |

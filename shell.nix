@@ -1,13 +1,13 @@
 { sources ? import ./nix/sources.nix { }
 , haskellNix ? import sources.haskell-nix { }
-, pkgs ? import sources.nixpkgs
+, pkgs ? import haskellNix.sources.nixpkgs-unstable
     (haskellNix.nixpkgsArgs // {
       overlays = haskellNix.nixpkgsArgs.overlays ++ [
         (import ./nix/binaryen.nix)
       ];
     })
 , ghc ? "ghc8107"
-, hsPkgs ? pkgs.callPackage ./nix/pkg-set.nix { inherit pkgs ghc; }
+, hsPkgs ? import ./nix/project.nix { inherit pkgs ghc; }
 }:
 (hsPkgs.shellFor rec {
   packages = ps: with ps; [ asterius ghc-toolkit ];
