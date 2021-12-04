@@ -28,6 +28,7 @@ import Data.List
 import qualified Data.Map.Strict as M
 import qualified GhcPlugins as GHC
 import Language.Haskell.GHC.Toolkit.Constants
+import qualified CmmCallConv as GHC
 
 recoverWasmWrapperValueType :: FFIValueType -> ValueType
 recoverWasmWrapperValueType FFIValueType {..} = case ffiValueTypeRep of
@@ -141,7 +142,9 @@ marshalParamLocation :: GHC.ParamLocation -> UnresolvedGlobalReg
 marshalParamLocation (GHC.RegisterParam (GHC.VanillaReg i _)) = VanillaReg i
 marshalParamLocation (GHC.RegisterParam (GHC.FloatReg i)) = FloatReg i
 marshalParamLocation (GHC.RegisterParam (GHC.DoubleReg i)) = DoubleReg i
-marshalParamLocation _ = error "Asterius.JSFFI.marshalParamLocation"
+marshalParamLocation (GHC.RegisterParam (GHC.LongReg i)) = LongReg i
+marshalParamLocation (GHC.RegisterParam x) = error $ "Asterius.JSFFI.marshalParamLocation: RegisterParam " <> show x
+marshalParamLocation (GHC.StackParam x) = error $ "Asterius.JSFFI.marshalParamLocation: StackParam " <> show x
 
 recoverCmmType :: GHC.DynFlags -> FFIValueType -> GHC.CmmType
 recoverCmmType dflags FFIValueType {..} = case ffiValueTypeRep of
