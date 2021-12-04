@@ -237,12 +237,12 @@ pointer vt b bp o = LVal
         bytes = b,
         offset = fromIntegral o,
         valueType = vt,
-        ptr = wrapInt64 bp
+        ptr = bp
       },
     putLVal = \v -> emit $ Store
       { bytes = b,
         offset = fromIntegral o,
-        ptr = wrapInt64 bp,
+        ptr = bp,
         value = v,
         valueType = vt
       }
@@ -296,7 +296,7 @@ nandInt64 :: Expression -> Expression -> Expression
 nandInt64 e1 e2 = notInt64 $ andInt64 e1 e2
 
 unTagClosure :: Expression -> Expression
-unTagClosure p = p `andInt64` constI64 0xFFFFFFFFFFFFFFF8
+unTagClosure p = p `andInt32` constI32 0xFFFFFFFC
 
 dynamicTableBase :: Expression
 dynamicTableBase =
@@ -356,7 +356,7 @@ callImport' f xs vt = do
 
 callIndirect :: Expression -> EDSL ()
 callIndirect f = emit CallIndirect
-  { indirectTarget = wrapInt64 f,
+  { indirectTarget = f,
     operands = [],
     functionType = FunctionType {paramTypes = [], returnTypes = []}
   }

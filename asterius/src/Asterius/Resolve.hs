@@ -2,7 +2,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE StrictData #-}
-{-# LANGUAGE ViewPatterns #-}
 
 module Asterius.Resolve
   ( unresolvedGlobalRegType,
@@ -28,13 +27,13 @@ import Control.DeepSeq
 import qualified Data.Map.Lazy as LM
 import Data.String
 import Foreign
-import Language.Haskell.GHC.Toolkit.Constants
 
 unresolvedGlobalRegType :: UnresolvedGlobalReg -> ValueType
 unresolvedGlobalRegType gr = case gr of
+  LongReg _ -> I64
   FloatReg _ -> F32
   DoubleReg _ -> F64
-  _ -> I64
+  _ -> I32
 
 makeInfoTableOffsetSet :: AsteriusModule -> SM.SymbolMap Word32 -> [Word32]
 makeInfoTableOffsetSet AsteriusModule {..} ss_off_map =

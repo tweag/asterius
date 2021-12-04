@@ -19,6 +19,6 @@ sparksCBits = newSpark
 -- https://github.com/tweag/asterius/issues/653).
 newSpark :: AsteriusModule
 newSpark = runEDSL "newSpark" $ do
-  setReturnTypes [I64]
-  _ <- params [I64, I64]
-  emit $ constI64 1
+  setReturnTypes [I32]
+  _ <- params [I32, I32]
+  emit $ constI32 1

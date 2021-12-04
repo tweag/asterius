@@ -27,6 +27,7 @@ import Asterius.Internals.Barf
 import Asterius.Internals.MagicNumber
 import Asterius.Internals.Marshal
 import Asterius.Passes.CCall
+import Asterius.Passes.Relooper
 import Asterius.Types
 import qualified Asterius.Types.SymbolMap as SM
 import Asterius.TypesConv
@@ -64,6 +65,7 @@ import Foreign hiding
 import Foreign.C
 import GHC.Exts
 import Asterius.JSGen.Wizer
+import qualified Binaryen.Features as Binaryen
 
 newtype MarshalError
   = UnsupportedExpression Expression
@@ -157,6 +159,11 @@ marshalUnaryOp op = case op of
   DemoteFloat64 -> Binaryen.demoteFloat64
   ReinterpretInt32 -> Binaryen.reinterpretInt32
   ReinterpretInt64 -> Binaryen.reinterpretInt64
+  ExtendS8Int32 -> Binaryen.extendS8Int32
+  ExtendS16Int32 -> Binaryen.extendS16Int32
+  ExtendS8Int64 -> Binaryen.extendS8Int64
+  ExtendS16Int64 -> Binaryen.extendS16Int64
+  ExtendS32Int64 -> Binaryen.extendS32Int64
 
 marshalBinaryOp :: BinaryOp -> Binaryen.Op
 marshalBinaryOp op = case op of
@@ -341,7 +348,7 @@ marshalExpression e' = do
               ( if target == "barf"
                   then
                     [ case operands of
-                        [] -> ConstI64 0
+                        [] -> ConstI32 0
                         x : _ -> x
                     ]
                   else operands
@@ -445,13 +452,13 @@ marshalExpression e' = do
     lift $ Binaryen.drop m x
   ReturnCall {..} -> do
       fn_off_map <- askFunctionsOffsetMap
-      case SM.lookup returnCallTarget64 fn_off_map of
+      case SM.lookup returnCallTarget fn_off_map of
         Just off -> do
           s <-
             marshalExpression
               SetGlobal
                 { globalSymbol = "__asterius_pc",
-                  value = ConstI64 $ mkStaticFunctionAddress off
+                  value = ConstI32 $ mkStaticFunctionAddress off
                 }
           m <- askModuleRef
           a <- askArena
@@ -459,13 +466,13 @@ marshalExpression e' = do
             r <- Binaryen.return m (coerce nullPtr)
             (arr, _) <- marshalV a [s, r]
             Binaryen.block m (coerce nullPtr) arr 2 Binaryen.none
-        Nothing -> marshalExpression $ barf (entityName returnCallTarget64) []
+        Nothing -> marshalExpression $ barf (entityName returnCallTarget) []
   ReturnCallIndirect {..} -> do
       s <-
         marshalExpression
           SetGlobal
             { globalSymbol = "__asterius_pc",
-              value = returnCallIndirectTarget64
+              value = returnCallIndirectTarget
             }
       m <- askModuleRef
       a <- askArena
@@ -479,7 +486,7 @@ marshalExpression e' = do
   Unreachable -> do
     m <- askModuleRef
     lift $ Binaryen.Expression.unreachable m
-  CFG {..} -> relooperRun graph
+  CFG {..} -> marshalExpression $ relooper graph
   Symbol {..} -> do
     verbose_err <- isVerboseErrOn
     ss_off_map <- askStaticsOffsetMap
@@ -488,14 +495,14 @@ marshalExpression e' = do
     m <- askModuleRef
     if  | Just off <- SM.lookup unresolvedSymbol ss_off_map ->
           marshalExpression $
-            ConstI64 $ mkStaticDataAddress memory_base $ off + fromIntegral symbolOffset
+            ConstI32 $ mkStaticDataAddress memory_base $ off + fromIntegral symbolOffset
         | Just off <- SM.lookup unresolvedSymbol fn_off_map ->
           marshalExpression $
-            ConstI64 $ mkStaticFunctionAddress $ off + fromIntegral symbolOffset
+            ConstI32 $ mkStaticFunctionAddress $ off + fromIntegral symbolOffset
         | verbose_err ->
-          marshalExpression $ barf (entityName unresolvedSymbol) [I64]
+          marshalExpression $ barf (entityName unresolvedSymbol) [I32]
         | otherwise ->
-          lift $ Binaryen.constInt64 m invalidAddress
+          lift $ Binaryen.constInt32 m invalidAddress
   Barf {..} -> do
     verbose_err <- isVerboseErrOn
     if verbose_err
@@ -656,7 +663,7 @@ marshalModule verbose_err ss_off_map fn_off_map last_data_offset hs_mod@Module {
     pure (m, memory_base)
   checkOverlapDataSegment m
   Binaryen.setFeatures m
-    $ foldl1' (.|.) [Binaryen.mvp]
+    $ foldl1' (.|.) [Binaryen.mvp, Binaryen.signExt]
   A.with $ \a -> do
     libc_func_names <- binaryenModuleExportNames m
     for_ libc_func_names $

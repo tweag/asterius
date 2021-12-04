@@ -1,7 +1,4 @@
-{-# LANGUAGE MagicHash #-}
-{-# LANGUAGE OverloadedLists #-}
 {-# LANGUAGE RankNTypes #-}
-{-# LANGUAGE UnboxedTuples #-}
 
 module Asterius.Internals
   ( encodeStorable,

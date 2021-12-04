@@ -16,31 +16,31 @@ blackholeCBits = messageBlackHole <> updateThunk
 
 messageBlackHole :: AsteriusModule
 messageBlackHole = runEDSL "messageBlackHole" $ do
-  setReturnTypes [I64]
-  [_, msg] <- params [I64, I64]
-  bh <- i64Local $ unTagClosure $ loadI64 msg offset_MessageBlackHole_bh
-  p <- i64Local $ unTagClosure $ loadI64 bh offset_StgInd_indirectee
-  info <- i64Local $ loadI64 p 0
+  setReturnTypes [I32]
+  [_, msg] <- params [I32, I32]
+  bh <- local I32 $ unTagClosure $ loadI32 msg offset_MessageBlackHole_bh
+  p <- local I32 $ unTagClosure $ loadI32 bh offset_StgInd_indirectee
+  info <- local I32 $ loadI32 p 0
   if'
     []
     (checkSymbol info ["stg_TSO_info"])
     ( do
-        storeI64 msg offset_MessageBlackHole_link $
+        storeI32 msg offset_MessageBlackHole_link $
           symbol "stg_END_TSO_QUEUE_closure"
         bq <-
           call'
             "allocate"
             [ mainCapability,
-              constI64 $ roundup_bytes_to_words sizeof_StgBlockingQueue
+              constI32 $ roundup_bytes_to_words sizeof_StgBlockingQueue
             ]
-            I64
-        storeI64 bq 0 $ symbol "stg_BLOCKING_QUEUE_DIRTY_info"
-        storeI64 bq offset_StgBlockingQueue_link $
+            I32
+        storeI32 bq 0 $ symbol "stg_BLOCKING_QUEUE_DIRTY_info"
+        storeI32 bq offset_StgBlockingQueue_link $
           symbol "stg_END_TSO_QUEUE_closure"
-        storeI64 bq offset_StgBlockingQueue_bh bh
-        storeI64 bq offset_StgBlockingQueue_owner p
-        storeI64 bq offset_StgBlockingQueue_queue msg
-        storeI64 bh offset_StgInd_indirectee bq
+        storeI32 bq offset_StgBlockingQueue_bh bh
+        storeI32 bq offset_StgBlockingQueue_owner p
+        storeI32 bq offset_StgBlockingQueue_queue msg
+        storeI32 bh offset_StgInd_indirectee bq
     )
     ( if'
         []
@@ -50,18 +50,18 @@ messageBlackHole = runEDSL "messageBlackHole" $ do
         )
         ( do
             let bq = p
-            storeI64 msg offset_MessageBlackHole_link $
-              loadI64 bq offset_StgBlockingQueue_queue
-            storeI64 bq offset_StgBlockingQueue_queue msg
+            storeI32 msg offset_MessageBlackHole_link $
+              loadI32 bq offset_StgBlockingQueue_queue
+            storeI32 bq offset_StgBlockingQueue_queue msg
         )
         (emitErrorMsg "messageBlackHole: weird blackhole")
     )
-  emit $ constI64 1
+  emit $ constI32 1
 
 updateThunk :: AsteriusModule
 updateThunk = runEDSL "updateThunk" $ do
-  [cap, tso, thunk, val] <- params [I64, I64, I64, I64]
-  thunk_info <- i64Local $ loadI64 thunk 0
+  [cap, tso, thunk, val] <- params [I32, I32, I32, I32]
+  thunk_info <- local I32 $ loadI32 thunk 0
   if'
     []
     ( checkSymbol
@@ -70,14 +70,14 @@ updateThunk = runEDSL "updateThunk" $ do
     )
     (pure ())
     (emitErrorMsg "updateThunk: weird thunk")
-  tso_or_bq <- i64Local $ unTagClosure $ loadI64 thunk offset_StgInd_indirectee
-  tso_or_bq_info <- i64Local $ loadI64 tso_or_bq 0
+  tso_or_bq <- local I32 $ unTagClosure $ loadI32 thunk offset_StgInd_indirectee
+  tso_or_bq_info <- local I32 $ loadI32 tso_or_bq 0
   if'
     []
     (checkSymbol tso_or_bq_info ["stg_TSO_info"])
     ( do
-        storeI64 thunk 0 $ symbol "stg_BLACKHOLE_info"
-        storeI64 thunk offset_StgInd_indirectee val
+        storeI32 thunk 0 $ symbol "stg_BLACKHOLE_info"
+        storeI32 thunk offset_StgInd_indirectee val
     )
     ( do
         let bq = tso_or_bq
@@ -91,27 +91,27 @@ updateThunk = runEDSL "updateThunk" $ do
           (emitErrorMsg "updateThunk: weird thunk payload")
         if'
           []
-          (tso `eqInt64` loadI64 bq offset_StgBlockingQueue_owner)
+          (tso `eqInt32` loadI32 bq offset_StgBlockingQueue_owner)
           (pure ())
           (emitErrorMsg "updateThunk: not my thunk")
-        storeI64 thunk 0 $ symbol "stg_BLACKHOLE_info"
-        storeI64 thunk offset_StgInd_indirectee val
-        msg_p <- i64MutLocal
+        storeI32 thunk 0 $ symbol "stg_BLACKHOLE_info"
+        storeI32 thunk offset_StgInd_indirectee val
+        msg_p <- mutLocal I32
         let msg = getLVal msg_p
-        putLVal msg_p $ loadI64 bq offset_StgBlockingQueue_queue
-        whileLoop (msg `neInt64` symbol "stg_END_TSO_QUEUE_closure") $ do
-          blocked_tso <- i64Local $ loadI64 msg offset_MessageBlackHole_tso
+        putLVal msg_p $ loadI32 bq offset_StgBlockingQueue_queue
+        whileLoop (msg `neInt32` symbol "stg_END_TSO_QUEUE_closure") $ do
+          blocked_tso <- local I32 $ loadI32 msg offset_MessageBlackHole_tso
           if'
             []
-            (checkSymbol (loadI64 blocked_tso 0) ["stg_TSO_info"])
+            (checkSymbol (loadI32 blocked_tso 0) ["stg_TSO_info"])
             (pure ())
             (emitErrorMsg "updateThunk: weird queued TSO")
           call "tryWakeupThread" [cap, blocked_tso]
-          putLVal msg_p $ loadI64 msg offset_MessageBlackHole_link
+          putLVal msg_p $ loadI32 msg offset_MessageBlackHole_link
     )
 
 checkSymbol :: Expression -> [EntitySymbol] -> Expression
-checkSymbol e syms = foldl1' orInt32 $ map ((e `eqInt64`) . symbol) syms
+checkSymbol e syms = foldl1' orInt32 $ map ((e `eqInt32`) . symbol) syms
 
 emitErrorMsg :: BS.ByteString -> EDSL ()
 emitErrorMsg msg = emit Barf {barfMessage = msg, barfReturnTypes = []}

@@ -24,68 +24,68 @@ import System.Posix.Internals
 posixImports :: [FunctionImport]
 posixImports =
   [ FunctionImport
-      { internalName = "__asterius_posix_get_errno",
+      { internalName = "__hscore_get_errno",
         externalModuleName = "posix",
         externalBaseName = "get_errno",
-        functionType = FunctionType {paramTypes = [], returnTypes = [F64]}
+        functionType = FunctionType {paramTypes = [], returnTypes = [I32]}
       },
     FunctionImport
-      { internalName = "__asterius_posix_set_errno",
+      { internalName = "__hscore_set_errno",
         externalModuleName = "posix",
         externalBaseName = "set_errno",
-        functionType = FunctionType {paramTypes = [F64], returnTypes = []}
+        functionType = FunctionType {paramTypes = [I32], returnTypes = []}
       },
     FunctionImport
-      { internalName = "__asterius_posix_open",
+      { internalName = "__hscore_open",
         externalModuleName = "posix",
         externalBaseName = "open",
         functionType =
           FunctionType
-            { paramTypes = [F64, F64, F64],
-              returnTypes = [F64]
+            { paramTypes = [I32, I32, I32],
+              returnTypes = [I32]
             }
       },
     FunctionImport
-      { internalName = "__asterius_posix_close",
+      { internalName = "close",
         externalModuleName = "posix",
         externalBaseName = "close",
-        functionType = FunctionType {paramTypes = [F64], returnTypes = [F64]}
+        functionType = FunctionType {paramTypes = [I32], returnTypes = [I32]}
       },
     FunctionImport
-      { internalName = "__asterius_posix_ftruncate",
+      { internalName = "__hscore_ftruncate",
         externalModuleName = "posix",
         externalBaseName = "ftruncate",
         functionType =
           FunctionType
-            { paramTypes = [F64, F64],
-              returnTypes = [F64]
+            { paramTypes = [I32, I32],
+              returnTypes = [I32]
             }
       },
     FunctionImport
-      { internalName = "__asterius_posix_stat",
+      { internalName = "__hscore_stat",
         externalModuleName = "posix",
         externalBaseName = "stat",
         functionType =
           FunctionType
-            { paramTypes = [F64, F64],
-              returnTypes = [F64]
+            { paramTypes = [I32, I32],
+              returnTypes = [I32]
             }
       },
     FunctionImport
-      { internalName = "__asterius_posix_fstat",
+      { internalName = "__hscore_fstat",
         externalModuleName = "posix",
         externalBaseName = "fstat",
         functionType =
           FunctionType
-            { paramTypes = [F64, F64],
-              returnTypes = [F64]
+            { paramTypes = [I32, I32],
+              returnTypes = [I32]
             }
       },
     FunctionImport
       { internalName = "__asterius_posix_opendir",
         externalModuleName = "posix",
         externalBaseName = "opendir",
-        functionType = FunctionType {paramTypes = [F64], returnTypes = [F64]}
+        functionType = FunctionType {paramTypes = [I32], returnTypes = [I32]}
       },
     FunctionImport
       { internalName = "__asterius_posix_readdir",
@@ -93,15 +93,15 @@ posixImports =
         externalBaseName = "readdir",
         functionType =
           FunctionType
-            { paramTypes = [F64, F64],
-              returnTypes = [F64]
+            { paramTypes = [I32, I32],
+              returnTypes = [I32]
             }
       },
     FunctionImport
-      { internalName = "__asterius_posix_closedir",
+      { internalName = "closedir",
         externalModuleName = "posix",
         externalBaseName = "closedir",
-        functionType = FunctionType {paramTypes = [F64], returnTypes = [F64]}
+        functionType = FunctionType {paramTypes = [I32], returnTypes = [I32]}
       },
     FunctionImport
       { internalName = "__asterius_posix_getenv",
@@ -109,108 +109,46 @@ posixImports =
         externalBaseName = "getenv",
         functionType =
           FunctionType
-            { paramTypes = [F64, F64],
-              returnTypes = [F64]
+            { paramTypes = [I32, I32],
+              returnTypes = [I32]
             }
       },
     FunctionImport
-      { internalName = "__asterius_posix_access",
+      { internalName = "access",
         externalModuleName = "posix",
         externalBaseName = "access",
         functionType =
           FunctionType
-            { paramTypes = [F64, F64],
-              returnTypes = [F64]
+            { paramTypes = [I32, I32],
+              returnTypes = [I32]
             }
       },
     FunctionImport
-      { internalName = "__asterius_posix_getcwd",
+      { internalName = "getcwd",
         externalModuleName = "posix",
         externalBaseName = "getcwd",
         functionType =
           FunctionType
-            { paramTypes = [F64, F64],
-              returnTypes = [F64]
+            { paramTypes = [I32, I32],
+              returnTypes = [I32]
             }
       }
   ]
 
 posixCBits :: AsteriusModule
 posixCBits =
-  posixOpen
-    <> posixClose
-    <> posixFtruncate
-    <> posixStat
-    <> posixFstat
-    <> posixFstatGetters
+  posixFstatGetters
     <> posixModeGetters
     <> posixConstants
     <> posixLockFile
     <> posixUnlockFile
     <> posixOpendir
-    <> posixGetErrno
-    <> posixSetErrno
     <> posixDirentBuf
     <> posixReaddir
     <> posixFreeDirent
     <> posixDName
-    <> posixClosedir
     <> posixGetenvBuf
     <> posixGetenv
-    <> posixAccess
-    <> posixGetcwd
-
-posixOpen :: AsteriusModule
-posixOpen = runEDSL "__hscore_open" $ do
-  setReturnTypes [I64]
-  args <- params [I64, I64, I64]
-  truncSFloat64ToInt64
-    <$> callImport'
-      "__asterius_posix_open"
-      (map convertSInt64ToFloat64 args)
-      F64
-    >>= emit
-
-posixClose :: AsteriusModule
-posixClose = runEDSL "close" $ do
-  setReturnTypes [I64]
-  fd <- param I64
-  truncSFloat64ToInt64
-    <$> callImport' "__asterius_posix_close" [convertSInt64ToFloat64 fd] F64
-    >>= emit
-
-posixFtruncate :: AsteriusModule
-posixFtruncate = runEDSL "__hscore_ftruncate" $ do
-  setReturnTypes [I64]
-  args <- params [I64, I64]
-  truncSFloat64ToInt64
-    <$> callImport'
-      "__asterius_posix_ftruncate"
-      (map convertSInt64ToFloat64 args)
-      F64
-    >>= emit
-
-posixStat :: AsteriusModule
-posixStat = runEDSL "__hscore_stat" $ do
-  setReturnTypes [I64]
-  args <- params [I64, I64]
-  truncSFloat64ToInt64
-    <$> callImport'
-      "__asterius_posix_stat"
-      (map convertSInt64ToFloat64 args)
-      F64
-    >>= emit
-
-posixFstat :: AsteriusModule
-posixFstat = runEDSL "__hscore_fstat" $ do
-  setReturnTypes [I64]
-  args <- params [I64, I64]
-  truncSFloat64ToInt64
-    <$> callImport'
-      "__asterius_posix_fstat"
-      (map convertSInt64ToFloat64 args)
-      F64
-    >>= emit
 
 posixFstatGetters :: AsteriusModule
 posixFstatGetters =
@@ -221,19 +159,19 @@ posixFstatGetters =
               Function
                 { functionType =
                     FunctionType
-                      { paramTypes = [I64],
-                        returnTypes = [I64]
+                      { paramTypes = [I32],
+                        returnTypes = [t]
                       },
                   varTypes = [],
-                  body = loadI64 GetLocal {index = 0, valueType = I64} v
+                  body = f $ loadI32 GetLocal {index = 0, valueType = I32} v
                 }
             )
-            | (k, v) <-
-                [ ("__hscore_st_mtime", offset_stat_mtime),
-                  ("__hscore_st_size", offset_stat_size),
-                  ("__hscore_st_mode", offset_stat_mode),
-                  ("__hscore_st_dev", offset_stat_dev),
-                  ("__hscore_st_ino", offset_stat_ino)
+            | (k, v, t, f) <-
+                [ ("__hscore_st_mtime", offset_stat_mtime, I32, id),
+                  ("__hscore_st_size", offset_stat_size, I64, extendUInt32),
+                  ("__hscore_st_mode", offset_stat_mode, I32, id),
+                  ("__hscore_st_dev", offset_stat_dev, I64, extendUInt32),
+                  ("__hscore_st_ino", offset_stat_ino, I64, extendUInt32)
                 ]
           ]
     }
@@ -247,16 +185,15 @@ posixModeGetters =
               Function
                 { functionType =
                     FunctionType
-                      { paramTypes = [I64],
-                        returnTypes = [I64]
+                      { paramTypes = [I32],
+                        returnTypes = [I32]
                       },
                   varTypes = [],
                   body =
-                    extendUInt32 $
-                      ( GetLocal {index = 0, valueType = I64}
-                          `andInt64` constI64 0o0170000
+                      ( GetLocal {index = 0, valueType = I32}
+                          `andInt32` constI32 0o0170000
                       )
-                        `eqInt64` constI64 v
+                        `eqInt32` constI32 v
                 }
             )
             | (k, v) <-
@@ -279,10 +216,10 @@ posixConstants =
                 { functionType =
                     FunctionType
                       { paramTypes = [],
-                        returnTypes = [I64]
+                        returnTypes = [I32]
                       },
                   varTypes = [],
-                  body = constI64 v
+                  body = constI32 v
                 }
             )
             | (k, v) <-
@@ -321,13 +258,13 @@ offset_stat_mtime,
 
 posixLockFile, posixUnlockFile :: AsteriusModule
 posixLockFile = runEDSL "lockFile" $ do
-  setReturnTypes [I64]
-  _ <- params [I64, I64, I64, I64]
-  emit $ constI64 0
+  setReturnTypes [I32]
+  _ <- params [I32, I32, I32, I32]
+  emit $ constI32 0
 posixUnlockFile = runEDSL "unlockFile" $ do
-  setReturnTypes [I64]
-  _ <- params [I64]
-  emit $ constI64 0
+  setReturnTypes [I32]
+  _ <- params [I32]
+  emit $ constI32 0
 
 {-# NOINLINE unixUnitId #-}
 unixUnitId :: BS.ByteString
@@ -342,26 +279,13 @@ posixOpendir =
           <> "ZCSystemziPosixziDirectoryZCopendir"
     )
     $ do
-      setReturnTypes [I64]
-      p <- param I64
-      truncSFloat64ToInt64
-        <$> callImport'
+      setReturnTypes [I32]
+      p <- param I32
+      callImport'
           "__asterius_posix_opendir"
-          [convertSInt64ToFloat64 p]
-          F64
+          [p]
+          I32
         >>= emit
-
-posixGetErrno :: AsteriusModule
-posixGetErrno = runEDSL "__hscore_get_errno" $ do
-  setReturnTypes [I64]
-  truncSFloat64ToInt64
-    <$> callImport' "__asterius_posix_get_errno" [] F64
-    >>= emit
-
-posixSetErrno :: AsteriusModule
-posixSetErrno = runEDSL "__hscore_set_errno" $ do
-  e <- param I64
-  callImport "__asterius_posix_set_errno" [convertSInt64ToFloat64 e]
 
 posixDirentBuf :: AsteriusModule
 posixDirentBuf =
@@ -377,37 +301,25 @@ posixDirentBuf =
 
 posixReaddir :: AsteriusModule
 posixReaddir = runEDSL "__hscore_readdir" $ do
-  setReturnTypes [I64]
-  [dirPtr, pDirEnt] <- params [I64, I64]
-  truncSFloat64ToInt64
-    <$> callImport'
+  setReturnTypes [I32]
+  [dirPtr, pDirEnt] <- params [I32, I32]
+  callImport'
       "__asterius_posix_readdir"
-      ( map
-          convertSInt64ToFloat64
-          [dirPtr, symbol "__asterius_posix_dirent_buf"]
-      )
-      F64
-    >>= storeI64 pDirEnt 0
-  emit $ constI64 0
+      [dirPtr, symbol "__asterius_posix_dirent_buf"]
+      I32
+    >>= storeI32 pDirEnt 0
+  emit $ constI32 0
 
 posixFreeDirent :: AsteriusModule
 posixFreeDirent = runEDSL "__hscore_free_dirent" $ do
-  _ <- param I64
+  _ <- param I32
   pure ()
 
 posixDName :: AsteriusModule
 posixDName = runEDSL "__hscore_d_name" $ do
-  setReturnTypes [I64]
-  _ <- param I64
+  setReturnTypes [I32]
+  _ <- param I32
   emit $ symbol "__asterius_posix_dirent_buf"
-
-posixClosedir :: AsteriusModule
-posixClosedir = runEDSL "closedir" $ do
-  setReturnTypes [I64]
-  p <- param I64
-  truncSFloat64ToInt64
-    <$> callImport' "__asterius_posix_closedir" [convertSInt64ToFloat64 p] F64
-    >>= emit
 
 posixGetenvBuf :: AsteriusModule
 posixGetenvBuf =
@@ -423,33 +335,10 @@ posixGetenvBuf =
 
 posixGetenv :: AsteriusModule
 posixGetenv = runEDSL "getenv" $ do
-  setReturnTypes [I64]
-  p <- param I64
-  truncSFloat64ToInt64
-    <$> callImport'
+  setReturnTypes [I32]
+  p <- param I32
+  callImport'
       "__asterius_posix_getenv"
-      (map convertSInt64ToFloat64 [p, symbol "__asterius_posix_getenv_buf"])
-      F64
-    >>= emit
-
-posixAccess :: AsteriusModule
-posixAccess = runEDSL "access" $ do
-  setReturnTypes [I64]
-  args <- params [I64, I64]
-  truncSFloat64ToInt64
-    <$> callImport'
-      "__asterius_posix_access"
-      (map convertSInt64ToFloat64 args)
-      F64
-    >>= emit
-
-posixGetcwd :: AsteriusModule
-posixGetcwd = runEDSL "getcwd" $ do
-  setReturnTypes [I64]
-  args <- params [I64, I64]
-  truncSFloat64ToInt64
-    <$> callImport'
-      "__asterius_posix_getcwd"
-      (map convertSInt64ToFloat64 args)
-      F64
+      [p, symbol "__asterius_posix_getenv_buf"]
+      I32
     >>= emit

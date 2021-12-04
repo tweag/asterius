@@ -28,23 +28,24 @@ import Data.List
 import qualified Data.Map.Strict as M
 import qualified GhcPlugins as GHC
 import Language.Haskell.GHC.Toolkit.Constants
+import qualified CmmCallConv as GHC
 
 recoverWasmWrapperValueType :: FFIValueType -> ValueType
 recoverWasmWrapperValueType FFIValueType {..} = case ffiValueTypeRep of
-  FFILiftedRep -> I64
-  FFIUnliftedRep -> I64
-  FFIJSValRep -> I64
-  FFIIntRep -> I64
+  FFILiftedRep -> I32
+  FFIUnliftedRep -> I32
+  FFIJSValRep -> I32
+  FFIIntRep -> I32
   FFIInt8Rep -> I32
   FFIInt16Rep -> I32
   FFIInt32Rep -> I32
   FFIInt64Rep -> I64
-  FFIWordRep -> I64
+  FFIWordRep -> I32
   FFIWord8Rep -> I32
   FFIWord16Rep -> I32
   FFIWord32Rep -> I32
   FFIWord64Rep -> I64
-  FFIAddrRep -> I64
+  FFIAddrRep -> I32
   FFIFloatRep -> F32
   FFIDoubleRep -> F64
 
@@ -58,8 +59,8 @@ recoverWasmImportFunctionType ffi_safety FFIFunctionType {..}
   | otherwise = FunctionType {paramTypes = param_types, returnTypes = []}
   where
     is_unsafe = ffi_safety == FFIUnsafe
-    param_types = map (const F64) ffiParamTypes
-    ret_types = map (const F64) ffiResultTypes
+    param_types = map recoverWasmWrapperValueType ffiParamTypes
+    ret_types = map recoverWasmWrapperValueType ffiResultTypes
 
 recoverWasmWrapperFunctionType :: FFISafety -> FFIFunctionType -> FunctionType
 recoverWasmWrapperFunctionType ffi_safety FFIFunctionType {..}
@@ -87,27 +88,10 @@ getFFIModule dflags ms_mod = do
 
 generateImplicitCastExpression ::
   Bool -> [ValueType] -> [ValueType] -> Expression -> Expression
-generateImplicitCastExpression signed src_ts dest_ts src_expr =
-  case (src_ts, dest_ts) of
-    ([I64], [F64]) ->
-      Unary
-        { unaryOp =
-            if signed
-              then ConvertSInt64ToFloat64
-              else ConvertUInt64ToFloat64,
-          operand0 = src_expr
-        }
-    ([F64], [I64]) ->
-      Unary
-        { unaryOp = if signed then TruncSFloat64ToInt64 else TruncUFloat64ToInt64,
-          operand0 = src_expr
-        }
-    ([F32], [F64]) -> Unary {unaryOp = PromoteFloat32, operand0 = src_expr}
-    ([F64], [F32]) -> Unary {unaryOp = DemoteFloat64, operand0 = src_expr}
-    _
-      | src_ts == dest_ts ->
+generateImplicitCastExpression signed src_ts dest_ts src_expr
+      | src_ts == dest_ts =
         src_expr
-      | otherwise ->
+      | otherwise =
         error $
           "Unsupported implicit cast from "
             <> show src_ts
@@ -158,7 +142,9 @@ marshalParamLocation :: GHC.ParamLocation -> UnresolvedGlobalReg
 marshalParamLocation (GHC.RegisterParam (GHC.VanillaReg i _)) = VanillaReg i
 marshalParamLocation (GHC.RegisterParam (GHC.FloatReg i)) = FloatReg i
 marshalParamLocation (GHC.RegisterParam (GHC.DoubleReg i)) = DoubleReg i
-marshalParamLocation _ = error "Asterius.JSFFI.marshalParamLocation"
+marshalParamLocation (GHC.RegisterParam (GHC.LongReg i)) = LongReg i
+marshalParamLocation (GHC.RegisterParam x) = error $ "Asterius.JSFFI.marshalParamLocation: RegisterParam " <> show x
+marshalParamLocation (GHC.StackParam x) = error $ "Asterius.JSFFI.marshalParamLocation: StackParam " <> show x
 
 recoverCmmType :: GHC.DynFlags -> FFIValueType -> GHC.CmmType
 recoverCmmType dflags FFIValueType {..} = case ffiValueTypeRep of
@@ -206,24 +192,24 @@ asyncImportWrapper dflags k FFIImportDecl {..} =
                     callImportReturnTypes = []
                   },
                 Store
-                  { bytes = 8,
+                  { bytes = 4,
                     offset =
                       fromIntegral $
                         offset_Capability_r
                           + offset_StgRegTable_rRet,
-                    ptr = wrapInt64 mainCapability,
-                    value = constI64 ret_ThreadBlocked,
-                    valueType = I64
+                    ptr = mainCapability,
+                    value = constI32 ret_ThreadBlocked,
+                    valueType = I32
                   },
                 Store
                   { bytes = 2,
                     offset = fromIntegral offset_StgTSO_why_blocked,
-                    ptr = wrapInt64 $ unresolvedGetGlobal CurrentTSO,
+                    ptr = unresolvedGetGlobal CurrentTSO,
                     value = constI32 blocked_BlockedOnCCall,
                     valueType = I32
                   },
                 ReturnCall
-                  { returnCallTarget64 = "stg_returnToSchedNotPaused"
+                  { returnCallTarget = "stg_returnToSchedNotPaused"
                   }
               ],
             blockReturnTypes = []

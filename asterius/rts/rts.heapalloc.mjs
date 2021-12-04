@@ -1,4 +1,5 @@
 import * as rtsConstants from "./rts.constants.mjs";
+import { isI32 } from "./rts.typecheck.mjs";
 
 /**
  * Class implementing the allocation of nurseries,
@@ -73,6 +74,7 @@ export class HeapAlloc {
    *  of the first MBlock of the MegaGroup.
    */
   hpAlloc(b, pinned=false, gen_no=0) {
+    isI32(b);
     const mblocks =
         b <= rtsConstants.sizeof_first_mblock
           ? 1
@@ -81,7 +83,7 @@ export class HeapAlloc {
               (b - rtsConstants.sizeof_first_mblock) / rtsConstants.mblock_size
             ),
       bd = this.allocMegaGroup(mblocks, pinned, gen_no);
-    return bd;
+    return isI32(bd);
   }
 
   /**
@@ -91,16 +93,17 @@ export class HeapAlloc {
    * @param pinned Whether to allocate in the pinned pool
    */
   allocate(n, pinned = false) {
-    const b = n << 3; // The size in bytes
+    isI32(n);
+    const b = n << 2; // The size in bytes
     // Large objects are forced to be pinned as well
     // (by large, we mean >= 4KiB):
     pinned = pinned || b >= rtsConstants.block_size;
     let pool = this.currentPools[Number(pinned)],
-      current_start = Number(
-        this.components.memory.i64Load(pool + rtsConstants.offset_bdescr_start)
+      current_start = (
+        this.components.memory.i32Load(pool + rtsConstants.offset_bdescr_start)
       ),
-      current_free = Number(
-        this.components.memory.i64Load(pool + rtsConstants.offset_bdescr_free)
+      current_free = (
+        this.components.memory.i32Load(pool + rtsConstants.offset_bdescr_free)
       );
     const current_blocks = this.components.memory.i32Load(
         pool + rtsConstants.offset_bdescr_blocks
@@ -110,7 +113,7 @@ export class HeapAlloc {
 
     if (new_free <= current_limit) {
       // if the pool has enough space
-      this.components.memory.i64Store(
+      this.components.memory.i32Store(
         pool + rtsConstants.offset_bdescr_free,
         new_free
       );
@@ -126,17 +129,17 @@ export class HeapAlloc {
         this.currentPools[0] = pool;
         this.generations[gen_no] = pool;
       }
-      current_free = Number(
-        this.components.memory.i64Load(
+      current_free = (
+        this.components.memory.i32Load(
           pool + rtsConstants.offset_bdescr_free
         )
       );
-      this.components.memory.i64Store(
+      this.components.memory.i32Store(
         pool + rtsConstants.offset_bdescr_free,
         current_free + b
       );
     }
-    return current_free;
+    return isI32(current_free);
   }
 
   /**
@@ -162,9 +165,9 @@ export class HeapAlloc {
       mblock = this.components.exports.aligned_alloc(rtsConstants.mblock_size, rtsConstants.mblock_size * n),
       bd = mblock + rtsConstants.offset_first_bdescr,
       block_addr = mblock + rtsConstants.offset_first_block;
-    this.components.memory.i64Store(bd + rtsConstants.offset_bdescr_start, block_addr);
-    this.components.memory.i64Store(bd + rtsConstants.offset_bdescr_free, block_addr);
-    this.components.memory.i64Store(bd + rtsConstants.offset_bdescr_link, 0);
+    this.components.memory.i32Store(bd + rtsConstants.offset_bdescr_start, block_addr);
+    this.components.memory.i32Store(bd + rtsConstants.offset_bdescr_free, block_addr);
+    this.components.memory.i32Store(bd + rtsConstants.offset_bdescr_link, 0);
     this.components.memory.i16Store(bd + rtsConstants.offset_bdescr_node, n);
     this.components.memory.i32Store(bd + rtsConstants.offset_bdescr_blocks, req_blocks);
     this.components.memory.i16Store(

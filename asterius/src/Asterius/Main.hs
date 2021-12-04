@@ -11,7 +11,6 @@ module Asterius.Main
   )
 where
 
-import qualified Asterius.Backends.Binaryen
 import qualified Asterius.Backends.Binaryen as Binaryen
 import qualified Asterius.Backends.Binaryen.RunPass as Binaryen
 import Asterius.Binary.File
@@ -38,10 +37,8 @@ import qualified Asterius.Types.SymbolSet as SS
 import qualified Binaryen
 import qualified Binaryen.Module as Binaryen
 import Control.Monad
-import Data.Binary.Get
 import qualified Data.ByteString as BS
 import Data.ByteString.Builder
-import qualified Data.ByteString.Lazy as LBS
 import Data.Foldable
 import Data.List
 import Data.String
@@ -274,7 +271,7 @@ ahcDistMain logger task (final_m, report) = do
       out_js = outputDirectory task </> outputBaseName task <.> "js"
       out_html = outputDirectory task </> outputBaseName task <.> "html"
   logger "[INFO] Converting linked IR to binaryen IR"
-  Binaryen.setDebugInfo $ if verboseErr task then 1 else 0
+  Binaryen.setDebugInfo 1 -- $ if verboseErr task then 1 else 0
   Binaryen.setOptimizeLevel $ fromIntegral $ optimizeLevel task
   Binaryen.setShrinkLevel $ fromIntegral $ shrinkLevel task
   Binaryen.setLowMemoryUnused 1

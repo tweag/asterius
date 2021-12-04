@@ -1,3 +1,5 @@
+import { isI32 } from "./rts.typecheck.mjs";
+
 export class StablePtrManager {
   constructor() {
     this.spt = new Map();
@@ -6,16 +8,19 @@ export class StablePtrManager {
   }
 
   newStablePtr(addr) {
+    isI32(addr);
     const sp = ++this.last;
     this.spt.set(sp, addr);
-    return sp;
+    return isI32(sp);
   }
 
   deRefStablePtr(sp) {
-    return this.spt.get(sp);
+    isI32(sp);
+    return isI32(this.spt.get(sp));
   }
 
   freeStablePtr(sp) {
+    isI32(sp);
     this.spt.delete(sp);
   }
 

@@ -1,6 +1,6 @@
 import * as ClosureTypes from "./rts.closuretypes.mjs";
 import * as rtsConstants from "./rts.constants.mjs";
-import { Memory } from "./rts.memory.mjs";
+import { isI32 } from "./rts.typecheck.mjs";
 
 /*
   The methods of this class are related to exception handling in Haskell.
@@ -30,29 +30,32 @@ export class ExceptionHelper {
     the frame type is returned to `stg_raisezh` for further processing.
   */
   raiseExceptionHelper(reg, tso, exception) {
+    isI32(reg);
+    isI32(tso);
+    isI32(exception);
     const raise_closure = this.heapAlloc.allocate(
-      Math.ceil(rtsConstants.sizeof_StgThunk / 8) + 1
+      Math.ceil(rtsConstants.sizeof_StgThunk / 4) + 1
     );
-    this.memory.i64Store(
+    this.memory.i32Store(
       raise_closure,
       this.symbolTable.addressOf("stg_raise_info")
     );
-    this.memory.i64Store(
+    this.memory.i32Store(
       raise_closure + rtsConstants.offset_StgThunk_payload,
       exception
     );
-    const stackobj = Number(
-      this.memory.i64Load(tso + rtsConstants.offset_StgTSO_stackobj)
+    const stackobj = (
+      this.memory.i32Load(tso + rtsConstants.offset_StgTSO_stackobj)
     );
-    let p = Number(
-      this.memory.i64Load(stackobj + rtsConstants.offset_StgStack_sp)
+    let p = (
+      this.memory.i32Load(stackobj + rtsConstants.offset_StgStack_sp)
     );
     while (true) {
-      const info = Number(this.memory.i64Load(p)),
+      const info = (this.memory.i32Load(p)),
         type = this.memory.i32Load(
           info + rtsConstants.offset_StgInfoTable_type
         ),
-        raw_layout = this.memory.i64Load(
+        raw_layout = this.memory.i32Load(
           info + rtsConstants.offset_StgInfoTable_layout
         );
       if (this.infoTables && !this.infoTables.has(info))
@@ -61,8 +64,8 @@ export class ExceptionHelper {
         );
       switch (type) {
         case ClosureTypes.UPDATE_FRAME: {
-          const p1 = Number(
-            this.memory.i64Load(p + rtsConstants.offset_StgUpdateFrame_updatee)
+          const p1 = (
+            this.memory.i32Load(p + rtsConstants.offset_StgUpdateFrame_updatee)
           );
           this.exports.updateThunk(
             this.symbolTable.addressOf("MainCapability"),
@@ -70,34 +73,34 @@ export class ExceptionHelper {
             p1,
             raise_closure
           );
-          const size = Number(raw_layout & BigInt(0x3f));
-          p += (1 + size) << 3;
+          const size = (raw_layout & (0x1f));
+          p += (1 + size) << 2;
           break;
         }
         case ClosureTypes.CATCH_FRAME:
         case ClosureTypes.STOP_FRAME: {
-          this.memory.i64Store(stackobj + rtsConstants.offset_StgStack_sp, p);
-          return type;
+          this.memory.i32Store(stackobj + rtsConstants.offset_StgStack_sp, p);
+          return isI32(type);
         }
         case ClosureTypes.RET_SMALL: {
-          const size = Number(raw_layout & BigInt(0x3f));
-          p += (1 + size) << 3;
+          const size = (raw_layout & (0x1f));
+          p += (1 + size) << 2;
           break;
         }
         case ClosureTypes.RET_BIG: {
-          const size = Number(
-            this.memory.i64Load(
-              Number(raw_layout) + rtsConstants.offset_StgLargeBitmap_size
+          const size = (
+            this.memory.i32Load(
+              (raw_layout) + rtsConstants.offset_StgLargeBitmap_size
             )
           );
-          p += (1 + size) << 3;
+          p += (1 + size) << 2;
           break;
         }
         case ClosureTypes.RET_FUN: {
-          const size = Number(
-            this.memory.i64Load(p + rtsConstants.offset_StgRetFun_size)
+          const size = (
+            this.memory.i32Load(p + rtsConstants.offset_StgRetFun_size)
           );
-          p += rtsConstants.sizeof_StgRetFun + (size << 3);
+          p += rtsConstants.sizeof_StgRetFun + (size << 2);
           break;
         }
         default:

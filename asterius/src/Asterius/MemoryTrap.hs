@@ -27,27 +27,27 @@ addMemoryTrapDeep sym = w
     w :: Data a => a -> a
     w t = case eqTypeRep (typeOf t) (typeRep :: TypeRep Expression) of
       Just HRefl -> case t of
-        Load {ptr = Unary {unaryOp = WrapInt64, operand0 = i64_ptr}, ..} ->
-          let new_i64_ptr = w i64_ptr
+        Load {ptr = i32_ptr, ..} ->
+          let new_i32_ptr = w i32_ptr
            in CallImport
                 { target' =
                     "__asterius_load_"
                       <> load_fn_suffix valueType bytes signed,
                   operands =
                     [ Symbol {unresolvedSymbol = sym, symbolOffset = 0},
-                      new_i64_ptr,
+                      new_i32_ptr,
                       ConstI32 $ fromIntegral offset
                     ],
                   callImportReturnTypes = [valueType]
                 }
-        Store {ptr = Unary {unaryOp = WrapInt64, operand0 = i64_ptr}, ..} ->
-          let new_i64_ptr = w i64_ptr
+        Store {ptr = i32_ptr, ..} ->
+          let new_i32_ptr = w i32_ptr
               new_value = w value
            in CallImport
                 { target' = "__asterius_store_" <> store_fn_suffix valueType bytes,
                   operands =
                     [ Symbol {unresolvedSymbol = sym, symbolOffset = 0},
-                      new_i64_ptr,
+                      new_i32_ptr,
                       ConstI32 $ fromIntegral offset,
                       new_value
                     ],

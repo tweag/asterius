@@ -1,3 +1,5 @@
+import { isI32 } from "./rts.typecheck.mjs";
+
 /**
  * Class acting as the low-level interface to Wasm memory.
  * It mainly provides methods to load/store data in memory
@@ -39,17 +41,17 @@ export class Memory {
   }
 
   static unDynTag(p) {
-    const np = Number(p);
-    return np - (np & 7);
+    const np = (p);
+    return np - (np & 2);
   }
 
   static getDynTag(p) {
-    return Number(p) & 7;
+    return (p) & 2;
   }
 
   static setDynTag(p, t) {
-    const np = Number(p);
-    return np - (np & 7) + t;
+    const np = (p);
+    return np - (np & 2) + t;
   }
 
   i8Load(p) {
@@ -57,7 +59,7 @@ export class Memory {
   }
 
   i8Store(p, v) {
-    this.i8View[p] = Number(v);
+    this.i8View[p] = (v);
   }
 
   i16Load(p) {
@@ -65,7 +67,7 @@ export class Memory {
   }
 
   i16Store(p, v) {
-    this.dataView.setUint16(p, Number(v), true);
+    this.dataView.setUint16(p, (v), true);
   }
 
   i32Load(p) {
@@ -73,7 +75,7 @@ export class Memory {
   }
 
   i32Store(p, v) {
-    this.dataView.setUint32(p, Number(v), true);
+    this.dataView.setUint32(p, (v), true);
   }
 
   i64Load(p) {
@@ -89,7 +91,7 @@ export class Memory {
   }
 
   f32Store(p, v) {
-    this.dataView.setFloat32(p, Number(v), true);
+    this.dataView.setFloat32(p, (v), true);
   }
 
   f64Load(p) {
@@ -97,7 +99,7 @@ export class Memory {
   }
 
   f64Store(p, v) {
-    this.dataView.setFloat64(p, Number(v), true);
+    this.dataView.setFloat64(p, (v), true);
   }
 
   i32LoadS8(p) {
@@ -137,7 +139,8 @@ export class Memory {
   }
 
   strlen(_str) {
-    return this.components.exports.strlen(_str);
+    isI32(_str);
+    return isI32(this.components.exports.strlen(_str));
   }
 
   strLoad(_str) {
@@ -156,7 +159,10 @@ export class Memory {
   }
 
   memchr(_ptr, val, num) {
-    return this.components.exports.memchr(_ptr, val, num);
+    isI32(_ptr);
+    isI32(val);
+    isI32(num);
+    return isI32(this.components.exports.memchr(_ptr, val, num));
   }
 
   memcpy(_dst, _src, n) {

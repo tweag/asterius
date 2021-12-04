@@ -1,4 +1,5 @@
 import * as rtsConstants from "./rts.constants.mjs";
+import { isI32 } from "./rts.typecheck.mjs";
 
 /**
  * Scheduler.
@@ -99,8 +100,8 @@ export class Scheduler {
   returnedFromTSO(tid) {
     const tso_info = this.tsos.get(tid);
     const tso = tso_info.addr;
-    const reason = Number(
-      this.memory.i64Load(
+    const reason = (
+      this.memory.i32Load(
         this.symbolTable.addressOf("MainCapability") +
           rtsConstants.offset_Capability_r +
           rtsConstants.offset_StgRegTable_rRet
@@ -120,11 +121,11 @@ export class Scheduler {
       }
       case 2: {
         // StackOverflow
-        const prev_stack = Number(
-            this.memory.i64Load(tso + rtsConstants.offset_StgTSO_stackobj)
+        const prev_stack = (
+            this.memory.i32Load(tso + rtsConstants.offset_StgTSO_stackobj)
           ),
           next_stack = this.exports.growStack(prev_stack);
-        this.memory.i64Store(
+        this.memory.i32Store(
           tso + rtsConstants.offset_StgTSO_stackobj,
           next_stack
         );
@@ -140,7 +141,7 @@ export class Scheduler {
       case 4: {
         // ThreadBlocked
 
-        const why_blocked = Number(
+        const why_blocked = (
           this.memory.i16Load(tso + rtsConstants.offset_StgTSO_why_blocked)
         );
 
@@ -169,8 +170,8 @@ export class Scheduler {
           }
 
           case Blocked.OnDelay: {
-            const us_delay = Number(
-              this.memory.i64Load(tso + rtsConstants.offset_StgTSO_block_info)
+            const us_delay = (
+              this.memory.i32Load(tso + rtsConstants.offset_StgTSO_block_info)
             );
             const blocking_promise = new Promise((resolve, reject) => {
               setTimeout(() => resolve(), us_delay / 1000);
@@ -208,7 +209,7 @@ export class Scheduler {
       case 5: {
         // ThreadFinished
         //console.log(`Thread ${tid}: Finished`);
-        const what_next = Number(
+        const what_next = (
           this.memory.i16Load(tso + rtsConstants.offset_StgTSO_what_next)
         );
         switch (what_next) {
@@ -226,13 +227,13 @@ export class Scheduler {
           }
           case 4: {
             // ThreadComplete
-            const stackobj = Number(
-              this.memory.i64Load(tso + rtsConstants.offset_StgTSO_stackobj)
+            const stackobj = (
+              this.memory.i32Load(tso + rtsConstants.offset_StgTSO_stackobj)
             );
-            const sp = Number(
-              this.memory.i64Load(stackobj + rtsConstants.offset_StgStack_sp)
+            const sp = (
+              this.memory.i32Load(stackobj + rtsConstants.offset_StgStack_sp)
             );
-            tso_info.ret = Number(this.memory.i64Load(sp + 8));
+            tso_info.ret = (this.memory.i32Load(sp + 4));
             tso_info.rstat = 1; // Success (SchedulerStatus)
             tso_info.promise_resolve(tid); // rts_eval* functions assume a TID is returned
             break;
@@ -260,13 +261,13 @@ export class Scheduler {
       if (tso_info.ffiRetErr) {
         //console.log(`Thread ${tid}: FFI error`);
 
-        const stackobj = Number(
-            this.memory.i64Load(tso + rtsConstants.offset_StgTSO_stackobj)
+        const stackobj = (
+            this.memory.i32Load(tso + rtsConstants.offset_StgTSO_stackobj)
           ),
           sp =
-            Number(
-              this.memory.i64Load(stackobj + rtsConstants.offset_StgStack_sp)
-            ) - 16,
+            (
+              this.memory.i32Load(stackobj + rtsConstants.offset_StgStack_sp)
+            ) - 4,
           exception_closure = this.exports.rts_apply(
             this.symbolTable.addressOf(
               "base_AsteriusziTypesziJSException_mkJSException_closure"
@@ -275,9 +276,9 @@ export class Scheduler {
               this.components.jsvalManager.newJSValzh(tso_info.ffiRetErr)
             )
           );
-        this.memory.i64Store(stackobj + rtsConstants.offset_StgStack_sp, sp);
-        this.memory.i64Store(sp, this.symbolTable.addressOf("stg_raise_ret_info"));
-        this.memory.i64Store(sp + 8, exception_closure);
+        this.memory.i32Store(stackobj + rtsConstants.offset_StgStack_sp, sp);
+        this.memory.i32Store(sp, this.symbolTable.addressOf("stg_raise_ret_info"));
+        this.memory.i32Store(sp + 4, exception_closure);
       } else if (typeof tso_info.ffiRetType === "number") {
         switch (
           tso_info.ffiRetType // tag is encoded with `ffiValueTypesTag`
@@ -290,7 +291,7 @@ export class Scheduler {
             // JSVal
             const ptr = this.components.jsvalManager.newJSValzh(tso_info.ffiRet);
             //console.log(`Restore after FFI with value: ${tso_info.ffiRet} with type ${typeof tso_info.ffiRet} constructor ${tso_info.ffiRet.constructor} as ${ptr}`);
-            this.memory.i64Store(
+            this.memory.i32Store(
               this.symbolTable.addressOf("MainCapability") +
                 rtsConstants.offset_Capability_r +
                 rtsConstants.offset_StgRegTable_rR1,
@@ -299,8 +300,8 @@ export class Scheduler {
             break;
           }
           case 2: {
-            // I64
-            this.memory.i64Store(
+            // I32
+            this.memory.i32Store(
               this.symbolTable.addressOf("MainCapability") +
                 rtsConstants.offset_Capability_r +
                 rtsConstants.offset_StgRegTable_rR1,
@@ -370,12 +371,13 @@ export class Scheduler {
    * Enqueue the TSO in the run-queue and wake-up the scheduler.
    */
   enqueueTSO(tso) {
+    isI32(tso);
     const tid = this.getTSOid(tso);
 
     // When the TSO has just been created, we need to store its address
     const tso_info = this.tsos.get(tid);
     if (tso_info.addr == -1) {
-      tso_info.addr = Number(tso);
+      tso_info.addr = (tso);
     }
 
     // Ensure that we wake up the scheduler at least once to execute this thread

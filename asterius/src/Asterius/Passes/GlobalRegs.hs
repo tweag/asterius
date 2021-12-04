@@ -7,22 +7,21 @@ module Asterius.Passes.GlobalRegs
   )
 where
 
-import Asterius.EDSL.UnaryOp
 import Asterius.Types
 import Language.Haskell.GHC.Toolkit.Constants
 
 globalRegInfo :: UnresolvedGlobalReg -> (BinaryenIndex, Int, ValueType)
 globalRegInfo gr = case gr of
-  VanillaReg 1 -> (8, offset_StgRegTable_rR1, I64)
-  VanillaReg 2 -> (8, offset_StgRegTable_rR2, I64)
-  VanillaReg 3 -> (8, offset_StgRegTable_rR3, I64)
-  VanillaReg 4 -> (8, offset_StgRegTable_rR4, I64)
-  VanillaReg 5 -> (8, offset_StgRegTable_rR5, I64)
-  VanillaReg 6 -> (8, offset_StgRegTable_rR6, I64)
-  VanillaReg 7 -> (8, offset_StgRegTable_rR7, I64)
-  VanillaReg 8 -> (8, offset_StgRegTable_rR8, I64)
-  VanillaReg 9 -> (8, offset_StgRegTable_rR9, I64)
-  VanillaReg 10 -> (8, offset_StgRegTable_rR10, I64)
+  VanillaReg 1 -> (4, offset_StgRegTable_rR1, I32)
+  VanillaReg 2 -> (4, offset_StgRegTable_rR2, I32)
+  VanillaReg 3 -> (4, offset_StgRegTable_rR3, I32)
+  VanillaReg 4 -> (4, offset_StgRegTable_rR4, I32)
+  VanillaReg 5 -> (4, offset_StgRegTable_rR5, I32)
+  VanillaReg 6 -> (4, offset_StgRegTable_rR6, I32)
+  VanillaReg 7 -> (4, offset_StgRegTable_rR7, I32)
+  VanillaReg 8 -> (4, offset_StgRegTable_rR8, I32)
+  VanillaReg 9 -> (4, offset_StgRegTable_rR9, I32)
+  VanillaReg 10 -> (4, offset_StgRegTable_rR10, I32)
   FloatReg 1 -> (4, offset_StgRegTable_rF1, F32)
   FloatReg 2 -> (4, offset_StgRegTable_rF2, F32)
   FloatReg 3 -> (4, offset_StgRegTable_rF3, F32)
@@ -36,17 +35,17 @@ globalRegInfo gr = case gr of
   DoubleReg 5 -> (8, offset_StgRegTable_rD5, F64)
   DoubleReg 6 -> (8, offset_StgRegTable_rD6, F64)
   LongReg 1 -> (8, offset_StgRegTable_rL1, I64)
-  Sp -> (8, offset_StgRegTable_rSp, I64)
-  SpLim -> (8, offset_StgRegTable_rSpLim, I64)
-  Hp -> (8, offset_StgRegTable_rHp, I64)
-  HpLim -> (8, offset_StgRegTable_rHpLim, I64)
-  CCCS -> (8, offset_StgRegTable_rCCCS, I64)
-  CurrentTSO -> (8, offset_StgRegTable_rCurrentTSO, I64)
-  CurrentNursery -> (8, offset_StgRegTable_rCurrentNursery, I64)
-  HpAlloc -> (8, offset_StgRegTable_rHpAlloc, I64)
-  EagerBlackholeInfo -> (8, rf + offset_StgFunTable_stgEagerBlackholeInfo, I64)
-  GCEnter1 -> (8, rf + offset_StgFunTable_stgGCEnter1, I64)
-  GCFun -> (8, rf + offset_StgFunTable_stgGCFun, I64)
+  Sp -> (4, offset_StgRegTable_rSp, I32)
+  SpLim -> (4, offset_StgRegTable_rSpLim, I32)
+  Hp -> (4, offset_StgRegTable_rHp, I32)
+  HpLim -> (4, offset_StgRegTable_rHpLim, I32)
+  CCCS -> (4, offset_StgRegTable_rCCCS, I32)
+  CurrentTSO -> (4, offset_StgRegTable_rCurrentTSO, I32)
+  CurrentNursery -> (4, offset_StgRegTable_rCurrentNursery, I32)
+  HpAlloc -> (4, offset_StgRegTable_rHpAlloc, I32)
+  EagerBlackholeInfo -> (4, rf + offset_StgFunTable_stgEagerBlackholeInfo, I32)
+  GCEnter1 -> (4, rf + offset_StgFunTable_stgGCEnter1, I32)
+  GCFun -> (4, rf + offset_StgFunTable_stgGCFun, I32)
   _ ->
     error $
       "Asterius.Passes.GlobalRegs.resolveGlobalRegs: Unsupported global reg "
@@ -56,9 +55,6 @@ globalRegInfo gr = case gr of
 
 mainCap :: Expression
 mainCap = Symbol {unresolvedSymbol = "MainCapability", symbolOffset = 0}
-
-mainCap32 :: Expression
-mainCap32 = wrapInt64 mainCap
 
 baseReg :: Expression
 baseReg = mainCap {symbolOffset = offset_Capability_r}
@@ -71,7 +67,7 @@ unresolvedGetGlobal gr = case gr of
       bytes = b,
       offset = fromIntegral $ offset_Capability_r + o,
       valueType = vt,
-      ptr = mainCap32
+      ptr = mainCap
     }
     where
       (b, o, vt) = globalRegInfo gr
@@ -82,7 +78,7 @@ unresolvedSetGlobal gr v = case gr of
   _ -> Store
     { bytes = b,
       offset = fromIntegral $ offset_Capability_r + o,
-      ptr = mainCap32,
+      ptr = mainCap,
       value = v,
       valueType = vt
     }
