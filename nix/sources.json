@@ -2,8 +2,8 @@
     "ghc-asterius": {
         "branch": "asterius-8.10-dejavu",
         "repo": "https://github.com/tweag/ghc-asterius.git",
-        "rev": "cff0d004bc7258568cdd43bb889b384ac1de22f1",
-        "sha256": "1qy2dpqjynzjpy6n879qb5dmwg7mxldglw6many99xn2zc8lkpj8",
+        "rev": "3b82ee6f1a96e869c216de9ed2737280506450e8",
+        "sha256": "02ywx61bp3zziy71cwc9f9v5yx7k6f6rja4mbdlxv7gg0ia7a2d7",
         "type": "git"
     },
     "haskell-nix": {
@@ -12,10 +12,10 @@
         "homepage": "https://input-output-hk.github.io/haskell.nix",
         "owner": "input-output-hk",
         "repo": "haskell.nix",
-        "rev": "d231ee71dc511806ff75a6d83c7481fa25bbf8fe",
-        "sha256": "07jnklzcki5m2lz5bv4yllgmwkwyplcsvbhfr92dgv9g8dlnwbg1",
+        "rev": "b2479523c0bafc9a6ce63cafefd38a110dd01331",
+        "sha256": "0i77m8348klzqh2hry7gmykmkk3ngdnabnfjja2mwpynazpgvvzh",
         "type": "tarball",
-        "url": "https://github.com/input-output-hk/haskell.nix/archive/d231ee71dc511806ff75a6d83c7481fa25bbf8fe.tar.gz",
+        "url": "https://github.com/input-output-hk/haskell.nix/archive/b2479523c0bafc9a6ce63cafefd38a110dd01331.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "hs-nix-tools": {
@@ -33,8 +33,8 @@
     "wasi-sdk": {
         "branch": "dejavu",
         "repo": "https://github.com/tweag/wasi-sdk.git",
-        "rev": "f88568a3e729ec5b803b4413ae71fdb8c6b4bf4c",
-        "sha256": "1hxyrfwml0gs2gmqm7n29am759r87cvv5w08xqi9x2g49rv8b0rd",
+        "rev": "91119cf54859867ea4e24faf1821035f956acf0b",
+        "sha256": "07jkxvxwxgwh03gqr7v0505dymw8dlz71ij2fcspkmivgprqgpw7",
         "type": "git"
     }
 }
