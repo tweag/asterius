@@ -663,14 +663,9 @@ marshalModule verbose_err ss_off_map fn_off_map last_data_offset hs_mod@Module {
     pure (m, memory_base)
   checkOverlapDataSegment m
   Binaryen.setFeatures m
-    $ foldl1' (.|.) [Binaryen.mvp, Binaryen.signExt]
+    $ foldl1' (.|.) [Binaryen.mvp, Binaryen.bulkMemory, Binaryen.mutableGlobals, Binaryen.signExt]
   A.with $ \a -> do
     libc_func_names <- binaryenModuleExportNames m
-    for_ libc_func_names $
-      \(_, ext_name) ->
-        when (ext_name `elem` ["_initialize"]) $ do
-          p <- marshalBS a ext_name
-          Binaryen.removeExport m p
     libc_func_info <- fmap M.fromList $ for libc_func_names $ \(in_name, ext_name) -> (ext_name,) . (in_name,) <$> binaryenFunctionType m in_name
     let env =
           MarshalEnv

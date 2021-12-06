@@ -10,7 +10,6 @@ import Asterius.Builtins.Posix
 import Asterius.Foreign.SupportedTypes
 import Asterius.Internals.ByteString
 import Asterius.Types
-import Data.Bits
 import Data.ByteString.Builder
 import Data.List
 import Language.Haskell.GHC.Toolkit.Constants
@@ -20,41 +19,24 @@ rtsConstants =
   mconcat $
     [ "export const mblock_size = ",
       intHex mblock_size,
-      ";\nexport const mblock_size_log2 = ",
-      intHex (countTrailingZeros mblock_size),
       ";\nexport const block_size = ",
       intHex block_size,
-      ";\nexport const blocks_per_mblock = ",
-      intHex blocks_per_mblock,
       ";\nexport const offset_timespec_tv_sec = ",
       intHex offset_timespec_tv_sec,
       ";\nexport const offset_timespec_tv_nsec = ",
       intHex offset_timespec_tv_nsec,
-      ";\nexport const sizeof_bdescr = ",
-      intHex sizeof_bdescr,
-      ";\nexport const offset_first_bdescr = ",
-      intHex offset_first_bdescr,
-      ";\nexport const offset_first_block = ",
-      intHex offset_first_block,
-      ";\nexport const sizeof_first_mblock = ",
-      intHex $ mblock_size - offset_first_block,
       ";\nexport const offset_bdescr_start = ",
       intHex offset_bdescr_start,
       ";\nexport const offset_bdescr_free = ",
       intHex offset_bdescr_free,
-      ";\nexport const offset_bdescr_link = ",
-      intHex offset_bdescr_link,
       ";\nexport const offset_bdescr_gen_no = ",
       intHex offset_bdescr_gen_no,
-      ";\nexport const offset_bdescr_node = ",
-      intHex offset_bdescr_node,
       ";\nexport const offset_bdescr_flags = ",
       intHex offset_bdescr_flags,
       ";\nexport const offset_bdescr_blocks = ",
       intHex offset_bdescr_blocks,
       ";\nexport const BF_PINNED = ",
-      intHex bf_PINNED,
-      ";\nexport const pageSize = 65536;\n"
+      intHex bf_PINNED
     ]
       <> [ "export const " <> k <> " = " <> intHex v <> ";\n"
            | (k, v) <-

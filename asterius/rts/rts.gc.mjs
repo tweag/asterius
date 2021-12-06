@@ -6,16 +6,6 @@ import { stg_arg_bitmaps } from "./rts.autoapply.mjs";
 import { JSValManager } from "./rts.jsval.mjs";
 
 /**
- * Returns the address of the block descriptor
- * of the given closure.
- * @param c The closure address
- */
-function bdescr(c) {
-  const nc = (c);
-  return nc - (nc & (rtsConstants.mblock_size - 1)) + rtsConstants.offset_first_bdescr;
-}
-
-/**
  * Class implementing copying garbage collection.
  */
 export class GC {
@@ -49,7 +39,7 @@ export class GC {
     this.yolo = yolo;
     /**
      * Garbage collection will not be performed when the
-     * current number of "live" MBlocks is less than
+     * current size of "live" blocks is less than
      * {@link GC#gcThreshold} (see {@link GC#performGC}).
      * @name GC#gcThreshold
      * @default 64
@@ -59,7 +49,7 @@ export class GC {
      * Set of closures encountered during garbage
      * collection but not moved: they are either
      * closures in the statis part of memory, or
-     * closures in pinned MBlocks.
+     * closures in pinned blocks.
      * @name GC#nonMovedObjects
      */
     this.nonMovedObjects = new Set();
@@ -70,31 +60,31 @@ export class GC {
      */
     this.nonMovedObjectsToScavenge = [];
     /**
-     * Set containing the MBlocks in the to-space,
-     * i.e. the MBlocks where reachable objects are copied
+     * Set containing the blocks in the to-space,
+     * i.e. the blocks where reachable objects are copied
      * during garbage collection.
      * Notes:
-     * 1) Pinned MBlocks are not copied during GC: they are
-     *    simply set as live, and added to the liveMBlocks set.
+     * 1) Pinned blocks are not copied during GC: they are
+     *    simply set as live, and added to the liveBlocks set.
      * 2) Static objects are not copied either, but their
-     *    blocks are not even added to the liveMBlocks set.
-     * @name GC#liveMBlocks
+     *    blocks are not even added to the liveBlocks set.
+     * @name GC#liveBlocks
      */
-    this.liveMBlocks = new Set();
+    this.liveBlocks = new Set();
     /**
-     * List containing the MBlocks in the to-space
+     * List containing the blocks in the to-space
      * that have yet to be scavenged.
      * @name GC#blocksToScavenge
      */
     this.blocksToScavenge = [];
     /**
-     * Set containing the MBlocks in the from-space,
-     * i.e. the MBlocks containing objects that have been
-     * copied into to-space. These MBlocks will be freed
+     * Set containing the blocks in the from-space,
+     * i.e. the blocks containing objects that have been
+     * copied into to-space. These blocks will be freed
      * at the end of garbage collection.
-     * @name GC#deadMBlocks
+     * @name GC#deadBlocks
      */
-    this.deadMBlocks = new Set();
+    this.deadBlocks = new Set();
     /**
      * At each garbage collection, the live JSVals encountered are
      * recorded in {@link GC#liveJSValManager}.
@@ -106,12 +96,12 @@ export class GC {
 
   /**
    * Checks whether the provided memory address resides
-   * in a pinned MBlock. Used by {@link GC#evacuateClosure}
+   * in a pinned block. Used by {@link GC#evacuateClosure}
    * to avoid evacuating pinned objects.
    * @param addr The memory address to check
    */
   isPinned(addr) {
-    const bd = bdescr(addr),
+    const bd = this.components.exports.__ahc_Bdescr(addr),
       flags = this.memory.i16Load(bd + rtsConstants.offset_bdescr_flags);
     return Boolean(flags & rtsConstants.BF_PINNED);
   }
@@ -125,12 +115,12 @@ export class GC {
   copyClosure(c, bytes) {
     const dest_c = this.heapAlloc.allocate(Math.ceil(bytes / 4));
     this.memory.memcpy(dest_c, c, bytes);
-    const dest_block = bdescr(dest_c);
-    if (!this.liveMBlocks.has(dest_block)) {
+    const dest_block = this.components.exports.__ahc_Bdescr(dest_c);
+    if (!this.liveBlocks.has(dest_block)) {
       this.blocksToScavenge.push(dest_block);
-      this.liveMBlocks.add(dest_block);
+      this.liveBlocks.add(dest_block);
     }
-    this.deadMBlocks.add(bdescr(c));
+    this.deadBlocks.add(this.components.exports.__ahc_Bdescr(c));
     return dest_c;
   }
 
@@ -268,19 +258,19 @@ export class GC {
       this.nonMovedObjects.add(untagged_c);
       // ... but it will still be scavenged
       this.nonMovedObjectsToScavenge.push(untagged_c);
-      // Warning: do not set the MBlock as live,
+      // Warning: do not set the block as live,
       // because the static part of memory is not
-      // tracked by HeapAlloc.mgroups and it would
+      // tracked by HeapAlloc.bgroups and it would
       // break the checks in HeapAlloc.handleLiveness.
       return c;
     } else if (this.isPinned(untagged_c)) {
-      // The object belongs to a pinned MBlock:
+      // The object belongs to a pinned block:
       // it won't be copied ...
       this.nonMovedObjects.add(untagged_c);
       // ... but it will still be scavenged
       this.nonMovedObjectsToScavenge.push(untagged_c);
-      // Set the pinned MBlock as live
-      this.liveMBlocks.add(bdescr(untagged_c));
+      // Set the pinned block as live
+      this.liveBlocks.add(this.components.exports.__ahc_Bdescr(untagged_c));
       return c;
     }
     // The closure is heap-allocated and dynamic:
@@ -713,10 +703,10 @@ export class GC {
     // new objects of either kind.
     while (true) {
       if (!currentBlock) {
-        // We try and pick a new MBlock to scavenge
+        // We try and pick a new block to scavenge
         currentBlock = blocks.pop();
         if (currentBlock)
-          // If there exists a MBlock to scavenge,
+          // If there exists a block to scavenge,
           // start with the object pointed
           // by the `start` field in the block
           // descriptor
@@ -740,7 +730,7 @@ export class GC {
         if (currentObject >= currentLimit)
           // There are no more blocks to scavenge in the
           // `currentBlock`. Break, but do not unset
-          // the current MBlock, as we are not done with
+          // the current block, as we are not done with
           // it yet: scavenging the non-moved closures below
           // may add new objects to `currentBlock`.
           break;
@@ -750,7 +740,7 @@ export class GC {
         currentObject += this.scavengeClosure(currentObject);
       }
       if (blocks.length > 0) {
-        // There are more MBlocks to scavenge:
+        // There are more blocks to scavenge:
         // since we have completely processed the
         // current currentBlock, we can continue
         // and pick the next one
@@ -1021,9 +1011,9 @@ export class GC {
    * Performs garbage collection, using scheduler Thread State Objects (TSOs) as roots.
    */
   performGC() {
-    if (this.yolo || this.heapAlloc.liveSize() < this.gcThreshold) {
+    if (this.yolo || this.heapAlloc.liveSize() < (this.gcThreshold * rtsConstants.mblock_size)) {
       // Garbage collection is skipped. This happens in yolo mode,
-      // or when the total number of "live" MBlocks is below the given threshold
+      // or when the total number of "live" blocks is below the given threshold
       // (by "live", we mean allocated and not yet freed - see HeapAlloc.liveSize).
       // This avoids a lot of GC invocations
       // (see {@link https://github.com/tweag/asterius/pull/379}).
@@ -1078,8 +1068,8 @@ export class GC {
       }
     }
 
-    // mark unused MBlocks
-    this.heapAlloc.handleLiveness(this.liveMBlocks, this.deadMBlocks);
+    // mark unused blocks
+    this.heapAlloc.handleLiveness(this.liveBlocks, this.deadBlocks);
     // set current generation back to 0
     this.heapAlloc.setGenerationNo(0);
     // allocate a new nursery
@@ -1088,8 +1078,8 @@ export class GC {
     this.components.jsvalManager = this.liveJSValManager;
     // cleanup
     this.nonMovedObjects.clear();
-    this.liveMBlocks.clear();
-    this.deadMBlocks.clear();
+    this.liveBlocks.clear();
+    this.deadBlocks.clear();
     this.liveJSValManager = new JSValManager(this.components);
     this.reentrancyGuard.exit(1);
   }
