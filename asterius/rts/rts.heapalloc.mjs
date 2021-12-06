@@ -4,12 +4,6 @@ import { isI32 } from "./rts.typecheck.mjs";
 /**
  * Class implementing the allocation of nurseries,
  * and also individual heap objects.
- * In the asterius RTS - contrary to GHC - we don't
- * really distinguish between "blocks" and "MBlocks"
- * ("megablocks", "em-blocks"); here all blocks are
- * really MBlocks. MBlocks have a fixed size of 1MiB
- * and are allocated by {@link Memory}. Moreover,
- * MBlocks can be chained to form MegaGroups.
  * For more information on (mega)block allocation, see
  * {@link https://gitlab.haskell.org/ghc/ghc/wikis/commentary/rts/storage/block-alloc}.
  */
@@ -19,17 +13,17 @@ export class HeapAlloc {
     /**
      * An array with two entries:
      * 1. The unpinned pool, i.e. the address of the
-     *    block descriptor for the MBlock where
+     *    block descriptor for the block where
      *    unpinned objects are allocated,
      * 2. The pinned pool, i.e. the address of the
-     *    block descriptor for the MBlock where
+     *    block descriptor for the block where
      *    pinned objects are allocated.
      * @name HeapAlloc#currentPools
      */
     this.currentPools = [undefined, undefined];
     /**
      * An array containing the addresses of
-     * the (block descriptors of the) MBlocks
+     * the (block descriptors of the) block
      * allocated for each generation.
      * @name HeapAlloc#generations
      */
@@ -37,7 +31,7 @@ export class HeapAlloc {
     /**
      * The set of all currently allocated MegaGroups.
      */
-    this.mgroups = new Set();
+    this.bgroups = new Set();
     Object.freeze(this);
   }
 
@@ -46,43 +40,37 @@ export class HeapAlloc {
    */
   init() {
     this.setGenerationNo(0);
-    this.currentPools[1] = this.allocMegaGroup(1, true);
+    this.currentPools[1] = this.allocBlockGroup(1, true);
   }
   /**
    * Sets the current generation number, so that new closures and
-   * MBlocks are allocated in the right space and with correct flag.
+   * blocks are allocated in the right space and with correct flag.
    * @param {number} gen_no The generation number
    * @param {boolean} [forceNewAlloc=true] Force the allocation
-   *   of a new MBlock.
+   *   of a new block.
    */
   setGenerationNo(gen_no, forceNewAlloc=true) {
     let pool = this.generations[gen_no];
     if (forceNewAlloc || !pool) {
-      pool = this.allocMegaGroup(1, false, gen_no);
+      pool = this.allocBlockGroup(1, false, gen_no);
       this.generations[gen_no] = pool;
     }
     this.currentPools[0] = pool;
   }
 
   /**
-   * Allocates a new MegaGroup of enough MBlocks to
+   * Allocates a new block group of enough blocks to
    * accommodate the supplied amount of bytes.
    * @param b The number of bytes to allocate
-   * @param pinned Whether the MBlocks should be pinned
+   * @param pinned Whether the blocks should be pinned
    * @param gen_no The generation number
    * @returns The address of the block descriptor
-   *  of the first MBlock of the MegaGroup.
+   *  of the first block of the block group.
    */
   hpAlloc(b, pinned=false, gen_no=0) {
     isI32(b);
-    const mblocks =
-        b <= rtsConstants.sizeof_first_mblock
-          ? 1
-          : 1 +
-            Math.ceil(
-              (b - rtsConstants.sizeof_first_mblock) / rtsConstants.mblock_size
-            ),
-      bd = this.allocMegaGroup(mblocks, pinned, gen_no);
+    const blocks = Math.ceil(b / rtsConstants.block_size),
+      bd = this.allocBlockGroup(blocks, pinned, gen_no);
     return isI32(bd);
   }
 
@@ -151,104 +139,94 @@ export class HeapAlloc {
   }
 
   /**
-   * Allocates a new MegaGroup of size the supplied number of MBlocks.
-   * @param n The number of requested MBlocks
-   * @param pinned Whether the MBlocks should be pinned
+   * Allocates a new block group of size the supplied number of blocks.
+   * @param n The number of requested blocks
+   * @param pinned Whether the blocks should be pinned
    * @param gen_no The generation number
    * @return The address of the block descriptor
-   *  of the first MBlock of the MegaGroup
+   *  of the first block of the block group
    */
-  allocMegaGroup(n, pinned=false, gen_no=0) {
-    const req_blocks =
-        (rtsConstants.mblock_size * n - rtsConstants.offset_first_block) /
-        rtsConstants.block_size,
-      mblock = this.components.exports.aligned_alloc(rtsConstants.mblock_size, rtsConstants.mblock_size * n),
-      bd = mblock + rtsConstants.offset_first_bdescr,
-      block_addr = mblock + rtsConstants.offset_first_block;
-    this.components.memory.i32Store(bd + rtsConstants.offset_bdescr_start, block_addr);
-    this.components.memory.i32Store(bd + rtsConstants.offset_bdescr_free, block_addr);
-    this.components.memory.i32Store(bd + rtsConstants.offset_bdescr_link, 0);
-    this.components.memory.i16Store(bd + rtsConstants.offset_bdescr_node, n);
-    this.components.memory.i32Store(bd + rtsConstants.offset_bdescr_blocks, req_blocks);
+  allocBlockGroup(n, pinned=false, gen_no=0) {
+    const bd = this.components.exports.allocGroup(n);
     this.components.memory.i16Store(
       bd + rtsConstants.offset_bdescr_flags,
       pinned ? rtsConstants.BF_PINNED : 0
     );
     this.components.memory.i16Store(bd + rtsConstants.offset_bdescr_gen_no, gen_no);
-    this.mgroups.add(bd);
+    this.bgroups.add(bd);
     return bd;
   }
 
   /**
-   * Frees the garbage MBlocks by taking into account the
-   * information on live and dead MBlocks passed by the
+   * Frees the garbage blocks by taking into account the
+   * information on live and dead blocks passed by the
    * garbage collector. Used by {@link GC#performGC}.
-   * @param live_mblocks The set of current live MBlocks
-   * @param live_mblocks The set of current dead MBlocks
+   * @param live_blocks The set of current live blocks
+   * @param live_blocks The set of current dead blocks
    * @param major Whether this info comes from a minor or major GC
    */
-  handleLiveness(live_mblocks, dead_mblocks, major=true) {
-    for (const bd of live_mblocks) {
-      if (!this.mgroups.has(bd)) {
+  handleLiveness(live_blocks, dead_blocks, major=true) {
+    for (const bd of live_blocks) {
+      if (!this.bgroups.has(bd)) {
         throw new WebAssembly.RuntimeError(
-          `Invalid live mblock 0x${bd.toString(16)}`
+          `Invalid live block 0x${bd.toString(16)}`
         );
       }
     }
-    // Free MBlocks that have been copied during GC
-    for (const bd of dead_mblocks) {
-      if (!this.mgroups.has(bd)) {
+    // Free blocks that have been copied during GC
+    for (const bd of dead_blocks) {
+      if (!this.bgroups.has(bd)) {
         throw new WebAssembly.RuntimeError(
-          `Invalid dead mblock 0x${bd.toString(16)}`
+          `Invalid dead block 0x${bd.toString(16)}`
         );
       }
-      this.mgroups.delete(bd);
-      const p = bd - rtsConstants.offset_first_bdescr;
-      this.components.exports.free(p);
+      this.bgroups.delete(bd);
+      this.components.exports.freeGroup(bd);
     }
 
-    // Free unreachable MBlocks
-    for (const bd of Array.from(this.mgroups)) {
-      if (!live_mblocks.has(bd)) {
+    // Free unreachable blocks
+    for (const bd of Array.from(this.bgroups)) {
+      if (!live_blocks.has(bd)) {
         const
           gen_no = this.components.memory.i16Load(bd + rtsConstants.offset_bdescr_gen_no),
           pinned = Boolean(
             this.components.memory.i16Load(bd + rtsConstants.offset_bdescr_flags) & rtsConstants.BF_PINNED
           );
-        // Note: not all unreachable MBlocks can be
+        // Note: not all unreachable blocks can be
         // freed during a minor collection. This is because
-        // pinned MBlocks or older MBlocks may look unreachable
+        // pinned blocks or older blocks may look unreachable
         // since only the pointers to younger generations
         // are stored in the remembered set.
         if(major || (!pinned && gen_no == 0)) {
-          this.mgroups.delete(bd);
-          const p = bd - rtsConstants.offset_first_bdescr,
-            n = this.components.memory.i16Load(bd + rtsConstants.offset_bdescr_node);
-          this.components.exports.free(p);
+          this.bgroups.delete(bd);
+          this.components.exports.freeGroup(bd);
         }
       }
     }
     // Reallocate pinned pool if the current has been freed
-    if (!this.mgroups.has(this.currentPools[1])) {
-      this.currentPools[1] = this.allocMegaGroup(1, true);
+    if (!this.bgroups.has(this.currentPools[1])) {
+      this.currentPools[1] = this.allocBlockGroup(1, true);
     }
     // Reinitialize generations if necessary
     for (let i=0; i < this.generations.length; i++)
-      if (!this.mgroups.has(this.generations[i])) {
+      if (!this.bgroups.has(this.generations[i])) {
         this.generations[i] = undefined;
       }
   }
 
   /**
    * Estimates the size of living objects by counting the number
-   * of MBlocks that were allocated by {@link GC#getMBlocks}
-   * some time ago, but have not been yet been freed by {@link GC#freeMBlocks}.
-   * @returns The number of allocated MBlocks
+   * of blocks
+   * some time ago, but have not been yet been freed.
+   * @returns The size of allocated blocks
    */
   liveSize() {
     let acc = 0;
-    for (const bd of this.mgroups) {
-      acc += this.components.memory.i16Load(bd + rtsConstants.offset_bdescr_node);
+    for (const bd of this.bgroups) {
+      const blocks = this.components.memory.i32Load(
+        bd + rtsConstants.offset_bdescr_blocks
+      );
+      acc += rtsConstants.block_size * blocks;
     }
     return acc;
   }

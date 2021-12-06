@@ -14,27 +14,11 @@ __attribute__((export_name("block_size"))) uint32_t block_size() { return BLOCK_
 
 __attribute__((export_name("mblock_size"))) uint32_t mblock_size() { return MBLOCK_SIZE; }
 
-__attribute__((export_name("blocks_per_mblock"))) uint32_t blocks_per_mblock() { return BLOCKS_PER_MBLOCK; }
-
-__attribute__((export_name("offset_first_bdescr"))) uint32_t offset_first_bdescr() { return (uint32_t)FIRST_BDESCR(0); }
-
-__attribute__((export_name("offset_last_bdescr"))) uint32_t offset_last_bdescr() { return (uint32_t)LAST_BDESCR(0); }
-
-__attribute__((export_name("offset_first_block"))) uint32_t offset_first_block() { return (uint32_t)FIRST_BLOCK(0); }
-
-__attribute__((export_name("offset_last_block"))) uint32_t offset_last_block() { return (uint32_t)LAST_BLOCK(0); }
-
-__attribute__((export_name("sizeof_bdescr"))) uint32_t sizeof_bdescr() { return sizeof(bdescr); }
-
 __attribute__((export_name("offset_bdescr_start"))) uint32_t offset_bdescr_start() { return offsetof(bdescr, start); }
 
 __attribute__((export_name("offset_bdescr_free"))) uint32_t offset_bdescr_free() { return offsetof(bdescr, free); }
 
-__attribute__((export_name("offset_bdescr_link"))) uint32_t offset_bdescr_link() { return offsetof(bdescr, link); }
-
 __attribute__((export_name("offset_bdescr_gen_no"))) uint32_t offset_bdescr_gen_no() { return offsetof(bdescr, gen_no); }
-
-__attribute__((export_name("offset_bdescr_node"))) uint32_t offset_bdescr_node() { return offsetof(bdescr, node); }
 
 __attribute__((export_name("offset_bdescr_flags"))) uint32_t offset_bdescr_flags() { return offsetof(bdescr, flags); }
 

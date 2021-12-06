@@ -44,30 +44,6 @@ block_size = unsafePerformIO $ wasmtimeInvoke "block_size" []
 mblock_size :: Int
 mblock_size = unsafePerformIO $ wasmtimeInvoke "mblock_size" []
 
-{-# NOINLINE blocks_per_mblock #-}
-blocks_per_mblock :: Int
-blocks_per_mblock = unsafePerformIO $ wasmtimeInvoke "blocks_per_mblock" []
-
-{-# NOINLINE offset_first_bdescr #-}
-offset_first_bdescr :: Int
-offset_first_bdescr = unsafePerformIO $ wasmtimeInvoke "offset_first_bdescr" []
-
-{-# NOINLINE offset_last_bdescr #-}
-offset_last_bdescr :: Int
-offset_last_bdescr = unsafePerformIO $ wasmtimeInvoke "offset_last_bdescr" []
-
-{-# NOINLINE offset_first_block #-}
-offset_first_block :: Int
-offset_first_block = unsafePerformIO $ wasmtimeInvoke "offset_first_block" []
-
-{-# NOINLINE offset_last_block #-}
-offset_last_block :: Int
-offset_last_block = unsafePerformIO $ wasmtimeInvoke "offset_last_block" []
-
-{-# NOINLINE sizeof_bdescr #-}
-sizeof_bdescr :: Int
-sizeof_bdescr = unsafePerformIO $ wasmtimeInvoke "sizeof_bdescr" []
-
 {-# NOINLINE offset_bdescr_start #-}
 offset_bdescr_start :: Int
 offset_bdescr_start = unsafePerformIO $ wasmtimeInvoke "offset_bdescr_start" []
@@ -76,18 +52,10 @@ offset_bdescr_start = unsafePerformIO $ wasmtimeInvoke "offset_bdescr_start" []
 offset_bdescr_free :: Int
 offset_bdescr_free = unsafePerformIO $ wasmtimeInvoke "offset_bdescr_free" []
 
-{-# NOINLINE offset_bdescr_link #-}
-offset_bdescr_link :: Int
-offset_bdescr_link = unsafePerformIO $ wasmtimeInvoke "offset_bdescr_link" []
-
 {-# NOINLINE offset_bdescr_gen_no #-}
 offset_bdescr_gen_no :: Int
 offset_bdescr_gen_no =
   unsafePerformIO $ wasmtimeInvoke "offset_bdescr_gen_no" []
-
-{-# NOINLINE offset_bdescr_node #-}
-offset_bdescr_node :: Int
-offset_bdescr_node = unsafePerformIO $ wasmtimeInvoke "offset_bdescr_node" []
 
 {-# NOINLINE offset_bdescr_flags #-}
 offset_bdescr_flags :: Int
