@@ -5,22 +5,14 @@ module Asterius.Internals.Arena
   )
 where
 
-import Control.Exception
-import Foreign.C
+import Data.Coerce
 import Foreign.Ptr
+import Foreign.Marshal.Pool
 
-newtype Arena = Arena (Ptr Arena)
+newtype Arena = Arena Pool
 
 alloc :: Arena -> Int -> IO (Ptr a)
-alloc a len
-  | len > 0 = c_arenaAlloc a (fromIntegral len)
-  | otherwise = fail $ "arenaAlloc: invalid length " <> show len
+alloc = coerce pooledMallocBytes
 
 with :: (Arena -> IO r) -> IO r
-with = bracket new free
-
-foreign import ccall unsafe "newArena" new :: IO Arena
-
-foreign import ccall unsafe "arenaAlloc" c_arenaAlloc :: Arena -> CSize -> IO (Ptr a)
-
-foreign import ccall unsafe "arenaFree" free :: Arena -> IO ()
+with = withPool . coerce
