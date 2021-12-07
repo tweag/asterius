@@ -12,7 +12,6 @@
 module Asterius.CodeGen
   ( CodeGen,
     runCodeGen,
-    marshalHaskellIR,
     marshalCmmIR,
     marshalRawCmm,
   )
@@ -1693,10 +1692,6 @@ marshalCmmDecl decl = case decl of
         _ -> do
           cmm_str <- liftIO $ prettyShow g
           error $ cmm_str <> "\n" <> show err)
-
-
-marshalHaskellIR :: GHC.Module -> CmmIR -> CodeGen AsteriusModule
-marshalHaskellIR this_mod CmmIR {..} = marshalRawCmm this_mod cmmRaw
 
 marshalCmmIR :: GHC.Module -> CmmIR -> CodeGen AsteriusModule
 marshalCmmIR this_mod CmmIR {..} = marshalRawCmm this_mod cmmRaw
