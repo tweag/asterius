@@ -6,11 +6,10 @@ import { isI32 } from "./rts.typecheck.mjs";
   The methods of this class are related to exception handling in Haskell.
  */
 export class ExceptionHelper {
-  constructor(memory, heapalloc, exports, info_tables, symbol_table) {
+  constructor(memory, heapalloc, exports, symbol_table) {
     this.memory = memory;
     this.heapAlloc = heapalloc;
     this.exports = exports;
-    this.infoTables = info_tables;
     this.symbolTable = symbol_table;
     this.decoder = new TextDecoder("utf-8", { fatal: true });
     this.errorBuffer = "";
@@ -57,10 +56,6 @@ export class ExceptionHelper {
         ),
         raw_layout = this.memory.i32Load(
           info + rtsConstants.offset_StgInfoTable_layout
-        );
-      if (this.infoTables && !this.infoTables.has(info))
-        throw new WebAssembly.RuntimeError(
-          `Invalid info table 0x${info.toString(16)}`
         );
       switch (type) {
         case ClosureTypes.UPDATE_FRAME: {

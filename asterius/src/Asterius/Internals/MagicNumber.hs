@@ -1,8 +1,6 @@
 module Asterius.Internals.MagicNumber
   ( invalidAddress,
     defaultTableBase,
-    mkStaticDataAddress,
-    mkStaticFunctionAddress,
   )
 where
 
@@ -16,8 +14,3 @@ invalidAddress = 0x001fffffffff0000
 defaultTableBase :: Word32
 defaultTableBase = 1024
 
-mkStaticDataAddress :: Word32 -> Word32 -> Int32
-mkStaticDataAddress memory_base off = fromIntegral (memory_base + off)
-
-mkStaticFunctionAddress :: Word32 -> Int32
-mkStaticFunctionAddress off = fromIntegral (defaultTableBase + off)

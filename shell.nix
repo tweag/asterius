@@ -1,11 +1,9 @@
 { sources ? import ./nix/sources.nix { }
 , haskellNix ? import sources.haskell-nix { }
-, pkgs ? import haskellNix.sources.nixpkgs-unstable
-    (haskellNix.nixpkgsArgs // {
-      overlays = haskellNix.nixpkgsArgs.overlays ++ [
-        (import ./nix/binaryen.nix)
-      ];
-    })
+, pkgs ? import haskellNix.sources.nixpkgs-unstable (haskellNix.nixpkgsArgs // {
+    overlays = haskellNix.nixpkgsArgs.overlays
+      ++ [ (import ./nix/binaryen.nix) ];
+  })
 , ghc ? "ghc8107"
 , hsPkgs ? import ./nix/project.nix { inherit pkgs ghc; }
 }:
@@ -23,7 +21,7 @@
       pkgs.nodejs_latest
       pkgs.util-linux
       pkgs.wabt
-      (pkgs.callPackage "${sources.wasi-sdk}/nix/wasmtime.nix" { })
+      (pkgs.callPackage "${import ./nix/wasi-sdk.nix { }}/nix/wasmtime.nix" { })
       (import ./webpack/default.nix { inherit pkgs; })
       (pkgs.callPackage "${sources.ghc-asterius}/nix/wizer.nix" { })
     ];
@@ -36,13 +34,16 @@
     let p = import "${sources.ghc-asterius}/nix/wasi-rts.nix" { };
     in "${p}/bin/rts.wasm";
 
-  WASI_SDK_PREFIX = import "${sources.wasi-sdk}/nix/default.nix" { };
+  WASI_SDK_PREFIX =
+    import "${import ./nix/wasi-sdk.nix { }}/nix/default.nix" { };
 
   GHC_ASTERIUS = import "${sources.ghc-asterius}/nix/src-32.nix" { };
 
   GHC_ASTERIUS_BOOT = GHC_ASTERIUS.boot;
 
-  AHC_CONSTANTS = let p = import ./nix/ghcconstants.nix {}; in "${p}/bin/ghcconstants.wasm";
+  AHC_CONSTANTS =
+    let p = import ./nix/ghcconstants.nix { };
+    in "${p}/bin/ghcconstants.wasm";
 
   shellHook = ''
     taskset -pc 0-1000 $$

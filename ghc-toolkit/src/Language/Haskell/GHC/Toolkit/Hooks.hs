@@ -34,12 +34,6 @@ hooksFromCompiler Compiler {..} h = do
         GHC.runPhaseHook = Just $ \phase input_fn dflags -> case phase of
           GHC.HscOut _ _ GHC.HscRecomp {..} -> do
             output_fn <- GHC.phaseOutputFilename GHC.StopLn
-            liftIO $
-              withHaskellIR
-                dflags
-                (GHC.cg_module hscs_guts)
-                (HaskellIR hscs_guts)
-                output_fn
             GHC.PipeState {..} <- GHC.getPipeState
             final_iface <-
               liftIO

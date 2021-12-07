@@ -3,7 +3,7 @@
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
-module Asterius.Passes.DataOffsetTable
+module Asterius.Passes.DataSymbolTable
   ( makeMemory,
   )
 where
@@ -30,7 +30,6 @@ segAlignment = 4
 sizeofStatic :: AsteriusStatic -> Word32
 sizeofStatic = \case
   SymbolStatic {} -> 4
-  Uninitialized x -> fromIntegral x
   Serialized buf -> fromIntegral $ BS.length buf
 
 sizeofStatics :: AsteriusStatics -> Word32
@@ -52,39 +51,30 @@ makeDataOffsetTable AsteriusModule {..} =
 {-# INLINEABLE makeStaticSegment #-}
 makeStaticSegment ::
   SM.SymbolMap Word32 ->
-  SM.SymbolMap Word32 ->
-  Word32 ->
   Word32 ->
   AsteriusStatic ->
   (Word32, Bag DataSegment)
-makeStaticSegment fn_off_map ss_off_map memory_base current_off static =
-  ( current_off + sizeofStatic static,
+makeStaticSegment sym_map current_addr static =
+  ( current_addr + sizeofStatic static,
     case static of
       SymbolStatic sym o
-        | Just off <- SM.lookup sym fn_off_map ->
+        | Just p <- SM.lookup sym sym_map ->
           unitBag
             DataSegment
-              { content = encodeStorable $ mkStaticFunctionAddress (off + fromIntegral o),
-                offset = ConstI32 $ fromIntegral $ memory_base + current_off
-              }
-        | Just off <- SM.lookup sym ss_off_map ->
-          unitBag
-            DataSegment
-              { content = encodeStorable $ mkStaticDataAddress memory_base (off + fromIntegral o),
-                offset = ConstI32 $ fromIntegral $ memory_base + current_off
+              { content = encodeStorable $ p + fromIntegral o,
+                offset = ConstI32 $ fromIntegral current_addr
               }
         | otherwise ->
           unitBag
             DataSegment
               { content = encodeStorable invalidAddress,
-                offset = ConstI32 $ fromIntegral $ memory_base + current_off
+                offset = ConstI32 $ fromIntegral current_addr
               }
-      Uninitialized {} -> emptyBag
       Serialized buf ->
         unitBag
           DataSegment
             { content = buf,
-              offset = ConstI32 $ fromIntegral $ memory_base + current_off
+              offset = ConstI32 $ fromIntegral current_addr
             }
   )
 
@@ -92,10 +82,8 @@ makeStaticSegment fn_off_map ss_off_map memory_base current_off static =
 makeStaticMemory ::
   AsteriusModule ->
   SM.SymbolMap Word32 ->
-  SM.SymbolMap Word32 ->
-  Word32 ->
   [DataSegment]
-makeStaticMemory AsteriusModule {..} fn_off_map ss_off_map _memory_base =
+makeStaticMemory AsteriusModule {..} sym_map =
   concat
     $ SM.elems
     $ flip SM.mapWithKey staticsMap
@@ -104,20 +92,21 @@ makeStaticMemory AsteriusModule {..} fn_off_map ss_off_map _memory_base =
         $ unionManyBags
         $ snd
         $ mapAccumL
-          (makeStaticSegment fn_off_map ss_off_map _memory_base)
-          (ss_off_map SM.! statics_sym)
+          (makeStaticSegment sym_map)
+          (sym_map SM.! statics_sym)
           asteriusStatics
 
 makeMemory ::
   AsteriusModule ->
   SM.SymbolMap Word32 ->
-  ([DataSegment], SM.SymbolMap Word32, Word32, Word32, AsteriusModule) -- relocation function implementation
-makeMemory m_globals_resolved fn_off_map =
-    ( makeStaticMemory m_globals_resolved fn_off_map _ss_off_map _memory_base,
-      _ss_off_map,
-      _memory_base, _last_data_offset,
+  ([DataSegment], SM.SymbolMap Word32, Word32, AsteriusModule)
+makeMemory m_globals_resolved fn_sym_map =
+    ( makeStaticMemory m_globals_resolved _sym_map,
+      _sym_map, _last_data_offset,
       m_globals_resolved
     )
   where
     (_ss_off_map, _last_data_offset) = makeDataOffsetTable m_globals_resolved
     _memory_base = wizerInitAddr _last_data_offset
+    _ss_sym_map = fmap (+ _memory_base) _ss_off_map
+    _sym_map = fn_sym_map <> _ss_sym_map

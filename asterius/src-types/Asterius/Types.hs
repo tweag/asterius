@@ -10,12 +10,12 @@
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TypeApplications #-}
 {-# OPTIONS_GHC -Wno-incomplete-patterns #-}
+{-# LANGUAGE StandaloneDeriving #-}
 
 module Asterius.Types
   ( BinaryenIndex,
     AsteriusCodeGenError (..),
     AsteriusStatic (..),
-    AsteriusStaticsType (..),
     AsteriusStatics (..),
     AsteriusModule (..),
     AsteriusCachedModule (..),
@@ -26,8 +26,6 @@ module Asterius.Types
     UnresolvedLocalReg (..),
     UnresolvedGlobalReg (..),
     ValueType (..),
-    Mutability (..),
-    GlobalType (..),
     FunctionType (..),
     UnaryOp (..),
     BinaryOp (..),
@@ -40,9 +38,6 @@ module Asterius.Types
     FunctionExport (..),
     FunctionTable (..),
     DataSegment (..),
-    GlobalExport (..),
-    GlobalImport (..),
-    Global (..),
     Module (..),
     RelooperAddBlock (..),
     RelooperAddBranch (..),
@@ -70,6 +65,7 @@ import qualified Asterius.Types.SymbolMap as SM
 import Asterius.Types.SymbolSet (SymbolSet)
 import qualified Asterius.Types.SymbolSet as SS
 import qualified Binary as GHC
+import Control.DeepSeq
 import Control.Exception
 import Control.Monad
 import qualified Data.ByteString as BS
@@ -99,21 +95,12 @@ instance Exception AsteriusCodeGenError
 
 data AsteriusStatic
   = SymbolStatic EntitySymbol Int
-  | Uninitialized Int
   | Serialized BS.ByteString
   deriving (Show, Data)
 
-data AsteriusStaticsType
-  = ConstBytes
-  | Bytes
-  | InfoTable
-  | Closure
-  deriving (Eq, Show, Data)
-
-data AsteriusStatics
+newtype AsteriusStatics
   = AsteriusStatics
-      { staticsType :: AsteriusStaticsType,
-        asteriusStatics :: [AsteriusStatic]
+      { asteriusStatics :: [AsteriusStatic]
       }
   deriving (Show, Data)
 
@@ -121,8 +108,6 @@ data AsteriusModule
   = AsteriusModule
       { staticsMap :: SymbolMap AsteriusStatics,
         functionMap :: SymbolMap Function,
-        globalsMap :: SymbolMap Global,
-        sptMap :: SymbolMap (Word64, Word64),
         ffiMarshalState :: FFIMarshalState
       }
   deriving (Show, Data)
@@ -171,7 +156,7 @@ toCachedModule :: AsteriusModule -> AsteriusCachedModule
 toCachedModule m =
   AsteriusCachedModule
     { fromCachedModule = m,
-      dependencyMap = staticsMap m `add` (functionMap m `add` (globalsMap m `add` SM.empty))
+      dependencyMap = staticsMap m `add` (functionMap m `add` SM.empty)
     }
   where
     add :: Data a => SymbolMap a -> SymbolMap SymbolSet -> SymbolMap SymbolSet
@@ -358,21 +343,6 @@ data BinaryOp
   | GeFloat64
   deriving (Show, Data)
 
--- | 'Mutability' of variables.
-data Mutability
-  = Mutable
-  | Immutable
-  deriving (Eq, Ord, Show, Data)
-
--- | 'GlobalType's classify global variables which hold a value and can either
--- be mutable or immutable.
-data GlobalType
-  = GlobalType
-      { globalValueType :: ValueType,
-        globalMutability :: Mutability
-      }
-  deriving (Eq, Ord, Show, Data)
-
 data FFIHint
   = NoHint
   | AddrHint
@@ -431,14 +401,6 @@ data Expression
         value :: Expression,
         valueType :: ValueType
       }
-  | GetGlobal
-      { globalSymbol :: EntitySymbol,
-        valueType :: ValueType
-      }
-  | SetGlobal
-      { globalSymbol :: EntitySymbol,
-        value :: Expression
-      }
   | Load
       { signed :: Bool,
         bytes, offset :: BinaryenIndex,
@@ -493,17 +455,6 @@ data Expression
       }
   deriving (Show, Data)
 
--- | A 'Global' captures a single global variable. Each 'Global' stores a
--- single value of the given global type.  Moreover, each 'Global' is
--- initialized with an initial value, given by a constant initializer
--- expression.
-data Global
-  = Global
-      { globalType :: GlobalType,
-        globalInit :: Expression
-      }
-  deriving (Show, Data)
-
 data Function
   = Function
       { functionType :: FunctionType,
@@ -551,19 +502,6 @@ data DataSegment
       }
   deriving (Show, Data)
 
-data GlobalExport
-  = GlobalExport
-      { internalName, externalName :: BS.ByteString
-      }
-  deriving (Show, Data)
-
-data GlobalImport
-  = GlobalImport
-      { internalName, externalModuleName, externalBaseName :: BS.ByteString,
-        globalType :: GlobalType
-      }
-  deriving (Show, Data)
-
 data Module
   = Module
       { functionMap' :: LM.Map BS.ByteString Function,
@@ -572,9 +510,6 @@ data Module
         functionTable :: FunctionTable,
         tableImport :: Maybe TableImport,
         tableSlots :: Int,
-        globalImports :: [GlobalImport],
-        globalExports :: [GlobalExport],
-        globalMap :: SymbolMap Global,
         memorySegments :: [DataSegment],
         memoryImport :: Maybe MemoryImport
       }
@@ -693,9 +628,7 @@ $(genNFData ''AsteriusCodeGenError)
 
 $(genNFData ''AsteriusStatic)
 
-$(genNFData ''AsteriusStaticsType)
-
-$(genNFData ''AsteriusStatics)
+deriving newtype instance NFData AsteriusStatics
 
 $(genNFData ''AsteriusModule)
 
@@ -712,12 +645,6 @@ $(genNFData ''FunctionType)
 $(genNFData ''UnaryOp)
 
 $(genNFData ''BinaryOp)
-
-$(genNFData ''Mutability)
-
-$(genNFData ''GlobalType)
-
-$(genNFData ''Global)
 
 $(genNFData ''FFIHint)
 
@@ -736,10 +663,6 @@ $(genNFData ''FunctionExport)
 $(genNFData ''FunctionTable)
 
 $(genNFData ''DataSegment)
-
-$(genNFData ''GlobalImport)
-
-$(genNFData ''GlobalExport)
 
 $(genNFData ''Module)
 
@@ -771,9 +694,7 @@ $(genBinary ''AsteriusCodeGenError)
 
 $(genBinary ''AsteriusStatic)
 
-$(genBinary ''AsteriusStaticsType)
-
-$(genBinary ''AsteriusStatics)
+deriving newtype instance GHC.Binary AsteriusStatics
 
 $(genBinary ''AsteriusModule)
 
@@ -788,12 +709,6 @@ $(genBinary ''FunctionType)
 $(genBinary ''UnaryOp)
 
 $(genBinary ''BinaryOp)
-
-$(genBinary ''Mutability)
-
-$(genBinary ''GlobalType)
-
-$(genBinary ''Global)
 
 $(genBinary ''FFIHint)
 
@@ -812,10 +727,6 @@ $(genBinary ''FunctionExport)
 $(genBinary ''FunctionTable)
 
 $(genBinary ''DataSegment)
-
-$(genBinary ''GlobalImport)
-
-$(genBinary ''GlobalExport)
 
 $(genBinary ''Module)
 

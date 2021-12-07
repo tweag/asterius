@@ -1,16 +1,10 @@
 export class SymbolTable {
   constructor(
-    fn_offset_table,
-    ss_offset_table,
-    table_base,
-    memory_base
+    sym_map
   ) {
     this.symbolTable = new Map();
-    for (const [k, off] of Object.entries(fn_offset_table)) {
-      this.symbolTable.set(k, table_base + off);
-    }
-    for (const [k, off] of Object.entries(ss_offset_table)) {
-      this.symbolTable.set(k, memory_base + off);
+    for (const [k, p] of Object.entries(sym_map)) {
+      this.symbolTable.set(k, p);
     }
     Object.freeze(this);
   }

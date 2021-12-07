@@ -19,13 +19,13 @@ import Data.Maybe
 import Data.Word
 
 genExportStaticObj :: FFIMarshalState -> SM.SymbolMap Word32 -> Builder
-genExportStaticObj FFIMarshalState {..} ss_off_map =
+genExportStaticObj FFIMarshalState {..} sym_map =
   "["
     <> mconcat
       ( intersperse
           ","
           $ catMaybes
-            [ genExportStaticFunc k export_decl ss_off_map
+            [ genExportStaticFunc k export_decl sym_map
               | (k, export_decl) <- SM.toList ffiExportDecls
             ]
       )
@@ -36,13 +36,13 @@ genExportStaticFunc ::
   FFIExportDecl ->
   SM.SymbolMap Word32 ->
   Maybe Builder
-genExportStaticFunc k FFIExportDecl {ffiFunctionType = FFIFunctionType {..}, ..} ss_off_map = do
-  off <- SM.lookup ffiExportClosure ss_off_map
+genExportStaticFunc k FFIExportDecl {ffiFunctionType = FFIFunctionType {..}, ..} sym_map = do
+  p <- SM.lookup ffiExportClosure sym_map
   pure $
     "[\""
       <> byteString (entityName k)
       <> "\",0x"
-      <> word32HexFixed off
+      <> word32HexFixed p
       <> ",0x"
       <> int64HexFixed (encodeTys ffiParamTypes)
       <> ",0x"

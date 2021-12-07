@@ -14,9 +14,9 @@ import Asterius.Binary.Orphans ()
 import Asterius.Builtins
 import Asterius.JSFFI
 import Asterius.MemoryTrap
-import Asterius.Passes.DataOffsetTable
+import Asterius.Passes.DataSymbolTable
 import Asterius.Passes.FindCCall
-import Asterius.Passes.FunctionOffsetTable
+import Asterius.Passes.FunctionSymbolTable
 import Asterius.Passes.GCSections
 import Asterius.Passes.Tracing
 import Asterius.Types
@@ -35,37 +35,28 @@ unresolvedGlobalRegType gr = case gr of
   DoubleReg _ -> F64
   _ -> I32
 
-makeInfoTableOffsetSet :: AsteriusModule -> SM.SymbolMap Word32 -> [Word32]
-makeInfoTableOffsetSet AsteriusModule {..} ss_off_map =
-  SM.elems $ SM.restrictKeys ss_off_map $ SM.keysSet $
-    SM.filter
-      ((== InfoTable) . staticsType)
-      staticsMap
-
 resolveAsteriusModule ::
   Bool ->
   AsteriusModule ->
   ( Module,
     AsteriusModule,
     SM.SymbolMap Word32,
-    SM.SymbolMap Word32,
-    Word32,
     Word32,
     Int
   )
 resolveAsteriusModule debug m_globals_resolved =
-  (new_mod, final_m, ss_off_map, fn_off_map, memory_base, last_data_offset, table_slots)
+  (new_mod, final_m, sym_map, last_data_offset, table_slots)
   where
     -- Create the function offset table first. A dummy relocation function
     -- already so the map will be created correctly.
-    (fn_off_map, last_func_offset) = makeFunctionOffsetTable m_globals_resolved
+    (fn_sym_map, last_func_offset) = makeFunctionSymbolTable m_globals_resolved
     -- Create the data segments, the statics offset table, and the final module
     -- next. If we are generating position independent code (i.e. @--pic@ is
     -- on), the relocation function must be replaced, and new data segments
     -- (and corresponding statics) must be added, to hold the offsets needed by
     -- the relocation function. All this is handled by @makeMemory@.
-    (segs, ss_off_map, memory_base, last_data_offset, final_m) = makeMemory m_globals_resolved fn_off_map
-    func_table = makeFunctionTable fn_off_map
+    (segs, sym_map, last_data_offset, final_m) = makeMemory m_globals_resolved fn_sym_map
+    func_table = makeFunctionTable fn_sym_map
     table_slots = fromIntegral last_func_offset
     func_imports =
       rtsFunctionImports debug <> generateFFIFunctionImports (ffiMarshalState final_m)
@@ -89,9 +80,6 @@ resolveAsteriusModule debug m_globals_resolved =
         functionTable = func_table,
         tableImport = Nothing,
         tableSlots = table_slots,
-        globalImports = rtsGlobalImports,
-        globalExports = rtsGlobalExports,
-        globalMap = globalsMap final_m, -- Copy as-is.
         memorySegments = segs,
         memoryImport = Nothing
       }
@@ -105,17 +93,10 @@ linkStart ::
 linkStart debug store root_syms export_funcs =
   ( result_m,
     LinkReport
-      { staticsOffsetMap = ss_off_map,
-        functionOffsetMap = fn_off_map,
-        memoryBase = memory_base,
+      { symbolMap = sym_map,
         lastDataOffset = last_data_offset,
-        infoTableOffsetSet = makeInfoTableOffsetSet merged_m ss_off_map,
         Asterius.Types.LinkReport.tableSlots = tbl_slots,
-        sptEntries = sptMap merged_m,
-        bundledFFIMarshalState = ffiMarshalState merged_m,
-        usedCCalls =
-          filter (not . (`SM.member` functionMap merged_m) . fromString) $
-            findCCall (functionMap merged_m)
+        bundledFFIMarshalState = ffiMarshalState merged_m
       }
   )
   where
@@ -124,5 +105,5 @@ linkStart debug store root_syms export_funcs =
     !merged_m1
       | debug = traceModule $ addMemoryTrap merged_m0_evaluated
       | otherwise = merged_m0_evaluated
-    (!result_m, !merged_m, !ss_off_map, !fn_off_map, !memory_base, !last_data_offset, !tbl_slots) =
+    (!result_m, !merged_m, !sym_map, !last_data_offset, !tbl_slots) =
       resolveAsteriusModule debug merged_m1

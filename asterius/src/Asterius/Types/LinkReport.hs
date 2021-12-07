@@ -14,13 +14,10 @@ import Data.Word
 
 data LinkReport
   = LinkReport
-      { staticsOffsetMap, functionOffsetMap :: SymbolMap Word32,
-        memoryBase, lastDataOffset :: Word32,
-        infoTableOffsetSet :: [Word32],
+      { symbolMap :: SymbolMap Word32,
+        lastDataOffset :: Word32,
         tableSlots :: Int,
-        sptEntries :: SymbolMap (Word64, Word64),
-        bundledFFIMarshalState :: FFIMarshalState,
-        usedCCalls :: [String]
+        bundledFFIMarshalState :: FFIMarshalState
       }
   deriving (Show)
 

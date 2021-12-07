@@ -12,7 +12,6 @@
 module Asterius.CodeGen
   ( CodeGen,
     runCodeGen,
-    marshalHaskellIR,
     marshalCmmIR,
     marshalRawCmm,
   )
@@ -153,28 +152,16 @@ marshalCmmStatic st = case st of
       sym <- marshalCLabel clbl
       pure $ SymbolStatic sym o
     _ -> throwM $ UnsupportedCmmLit $ showBS lit
-  GHC.CmmUninitialised s -> pure $ Uninitialized s
+  GHC.CmmUninitialised l -> pure $ Serialized $ BS.pack $ replicate l 0
   GHC.CmmString s -> pure $ Serialized $ s `BS.snoc` 0
 
-marshalCmmSectionType :: EntitySymbol -> GHC.Section -> AsteriusStaticsType
-marshalCmmSectionType _ (GHC.Section GHC.ReadOnlyData16 _) =
-  error "ReadOnlyData16"
-marshalCmmSectionType sym sec@(GHC.Section _ clbl)
-  | GHC.isGcPtrLabel clbl = Closure
-  | "_info" `BS.isSuffixOf` entityName sym = InfoTable
-  | GHC.sectionProtection sec /= GHC.ReadWriteSection = ConstBytes
-  | otherwise = Bytes
-
 marshalCmmData ::
-  EntitySymbol ->
-  GHC.Section ->
   GHC.CmmStatics ->
   CodeGen AsteriusStatics
-marshalCmmData sym sec (GHC.Statics _ ss) = do
+marshalCmmData (GHC.Statics _ ss) = do
   ass <- for ss marshalCmmStatic
   pure AsteriusStatics
-    { staticsType = marshalCmmSectionType sym sec,
-      asteriusStatics = ass
+    { asteriusStatics = ass
     }
 
 marshalCmmLocalReg :: GHC.LocalReg -> CodeGen (UnresolvedLocalReg, ValueType)
@@ -1677,9 +1664,9 @@ marshalCmmProc GHC.CmmGraph {g_graph = GHC.GMany _ body _, ..} = do
 marshalCmmDecl ::
   GHC.GenCmmDecl GHC.CmmStatics h GHC.CmmGraph -> CodeGen AsteriusModule
 marshalCmmDecl decl = case decl of
-  GHC.CmmData sec d@(GHC.Statics clbl _) -> do
+  GHC.CmmData _ d@(GHC.Statics clbl _) -> do
     sym <- marshalCLabel clbl
-    r <- marshalCmmData sym sec d
+    r <- marshalCmmData d
     pure $ mempty {staticsMap = SM.fromList [(sym, r)]}
   GHC.CmmProc _ clbl _ g -> do
     sym <- marshalCLabel clbl
@@ -1693,19 +1680,6 @@ marshalCmmDecl decl = case decl of
         _ -> do
           cmm_str <- liftIO $ prettyShow g
           error $ cmm_str <> "\n" <> show err)
-
-
-marshalHaskellIR :: GHC.Module -> [GHC.SptEntry] -> CmmIR -> CodeGen AsteriusModule
-marshalHaskellIR this_mod spt_entries CmmIR {..} = do
-  (dflags, _) <- ask
-  let spt_map =
-        SM.fromList
-          [ (sym, (w0, w1))
-            | GHC.SptEntry (idClosureSymbol dflags -> sym) (Fingerprint w0 w1) <-
-                spt_entries
-          ]
-  r <- marshalRawCmm this_mod cmmRaw
-  pure r {sptMap = spt_map}
 
 marshalCmmIR :: GHC.Module -> CmmIR -> CodeGen AsteriusModule
 marshalCmmIR this_mod CmmIR {..} = marshalRawCmm this_mod cmmRaw
