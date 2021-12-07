@@ -30,7 +30,6 @@ module Asterius.EDSL
     i64Local,
     i64MutLocal,
     global,
-    newGlobal,
     pointer,
     pointerI64,
     pointerI32,
@@ -46,7 +45,6 @@ module Asterius.EDSL
     storeI8,
     storeF64,
     unTagClosure,
-    dynamicTableBase,
     call,
     call',
     callImport,
@@ -221,15 +219,6 @@ global gr = LVal
     putLVal = emit . unresolvedSetGlobal gr
   }
 
-newGlobal :: EntitySymbol -> GlobalType -> LVal
-newGlobal k GlobalType {..} = LVal
-  { getLVal = GetGlobal
-      { globalSymbol = k,
-        valueType = globalValueType
-      },
-    putLVal = emit . SetGlobal k
-  }
-
 pointer :: ValueType -> BinaryenIndex -> Expression -> Int -> LVal
 pointer vt b bp o = LVal
   { getLVal = Load
@@ -297,13 +286,6 @@ nandInt64 e1 e2 = notInt64 $ andInt64 e1 e2
 
 unTagClosure :: Expression -> Expression
 unTagClosure p = p `andInt32` constI32 0xFFFFFFFC
-
-dynamicTableBase :: Expression
-dynamicTableBase =
-  GetGlobal
-    { globalSymbol = "__asterius_table_base",
-      valueType = I32
-    }
 
 call :: EntitySymbol -> [Expression] -> EDSL ()
 call f xs =

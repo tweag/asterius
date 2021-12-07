@@ -89,9 +89,6 @@ resolveAsteriusModule debug m_globals_resolved =
         functionTable = func_table,
         tableImport = Nothing,
         tableSlots = table_slots,
-        globalImports = rtsGlobalImports,
-        globalExports = rtsGlobalExports,
-        globalMap = globalsMap final_m, -- Copy as-is.
         memorySegments = segs,
         memoryImport = Nothing
       }

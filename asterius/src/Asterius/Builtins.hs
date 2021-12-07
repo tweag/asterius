@@ -8,8 +8,6 @@ module Asterius.Builtins
     rtsAsteriusModule,
     rtsFunctionImports,
     rtsFunctionExports,
-    rtsGlobalImports,
-    rtsGlobalExports,
     emitErrorMessage,
     generateWrapperFunction,
     ShouldSext (..),
@@ -111,19 +109,11 @@ rtsAsteriusModule opts =
                 { staticsType = Bytes,
                   asteriusStatics = [Serialized $ BS.pack $ replicate 8 0]
                 }
-            )
-          ],
-      globalsMap =
-        SM.fromList $
-          [ ( "__asterius_pc",
-              Global
-                { globalType = GlobalType
-                    { globalValueType = I32,
-                      globalMutability = Mutable
-                    },
-                  globalInit = ConstI32 invalidAddress
-                }
-            )
+            ),
+            ("__asterius_pc", AsteriusStatics {
+              staticsType = Bytes,
+              asteriusStatics = [Serialized $ encodeStorable (0 :: Word32)]
+            })
           ],
       functionMap =
         SM.fromList $
@@ -514,31 +504,6 @@ rtsFunctionExports debug =
       }
   ]
 
-rtsGlobalImports :: [GlobalImport]
-rtsGlobalImports =
-  [ GlobalImport
-      { internalName = "__asterius_memory_base",
-        externalModuleName = "env",
-        externalBaseName = "__memory_base",
-        globalType = GlobalType
-          { globalValueType = I32,
-            globalMutability = Immutable
-          }
-      },
-    GlobalImport
-      { internalName = "__asterius_table_base",
-        externalModuleName = "env",
-        externalBaseName = "__table_base",
-        globalType = GlobalType
-          { globalValueType = I32,
-            globalMutability = Immutable
-          }
-      }
-  ]
-
-rtsGlobalExports :: [GlobalExport]
-rtsGlobalExports = mempty
-
 emitErrorMessage :: [ValueType] -> BS.ByteString -> Expression
 emitErrorMessage vts ev = Barf {barfMessage = ev, barfReturnTypes = vts}
 
@@ -870,15 +835,6 @@ newCAFFunction _ = runEDSL "newCAF" $ do
   storeI32 caf 0 $ symbol "stg_IND_STATIC_info"
   emit bh
 
-asterius_pc_global :: LVal
-asterius_pc_global =
-  newGlobal
-    "__asterius_pc"
-    GlobalType
-      { globalValueType = I32,
-        globalMutability = Mutable
-      }
-
 -- Repeatedly calls the function pointed by ``__asterius_pc`` until this
 -- pointer is NULL.
 --
@@ -888,11 +844,10 @@ asterius_pc_global =
 -- ``stgRun`` performs the call.
 stgRun :: Expression -> EDSL ()
 stgRun init_f = do
-  let pc = asterius_pc_global
   pc_reg <- mutLocal I32
-  putLVal pc init_f
+  storeI32 (symbol "__asterius_pc") 0 init_f
   loop' [] $ \loop_lbl -> do
-    putLVal pc_reg $ getLVal pc
+    putLVal pc_reg $ loadI32 (symbol "__asterius_pc") 0
     if' [] (eqZInt32 (getLVal pc_reg)) mempty $ do
       callIndirect (getLVal pc_reg)
       break' loop_lbl Nothing
@@ -900,7 +855,7 @@ stgRun init_f = do
 -- Return from a STG function
 stgReturnFunction :: BuiltinsOptions -> AsteriusModule
 stgReturnFunction _ =
-  runEDSL "StgReturn" $ putLVal asterius_pc_global $ constI32 0 -- store NULL in the __asterius_pc register. This will break stgRun
+  runEDSL "StgReturn" $ storeI32 (symbol "__asterius_pc") 0 (constI32 0) -- store NULL in the __asterius_pc register. This will break stgRun
       -- trampolining loop.
 
 getStablePtrWrapperFunction :: BuiltinsOptions -> AsteriusModule

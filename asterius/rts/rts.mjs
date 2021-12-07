@@ -26,21 +26,12 @@ import * as rtsConstants from "./rts.constants.mjs";
 export async function newAsteriusInstance(req) {
   const __asterius_components = {};
 
-  let __asterius_table_base = new WebAssembly.Global(
-      { value: "i32", mutable: false },
-      req.defaultTableBase // TODO: make dynamic.
-    ),
-    __asterius_memory_base = new WebAssembly.Global(
-      { value: "i32", mutable: false },
-      req.memoryBase // TODO: make dynamic.
-    );
-
   let mkInfoTable = function (offset_info_tables) {
     if (!(typeof offset_info_table === "undefined")) {
       const absolute_info_tables = new Set();
       for (const off of offset_info_tables.keys()) {
         absolute_info_tables.add(
-          __asterius_memory_base.value + off
+          req.memoryBase + off
         );
       }
       return absolute_info_tables;
@@ -53,8 +44,8 @@ export async function newAsteriusInstance(req) {
     __asterius_symbol_table = new SymbolTable(
       req.functionsOffsetTable,
       req.staticsOffsetTable,
-      __asterius_table_base.value,
-      __asterius_memory_base.value
+      req.defaultTableBase,
+      req.memoryBase
     ),
     __asterius_info_tables = mkInfoTable(req.offsetInfoTables),
     __asterius_reentrancy_guard = new ReentrancyGuard(["Scheduler", "GC"]),
@@ -148,10 +139,6 @@ export async function newAsteriusInstance(req) {
     req.jsffiFactory(__asterius_jsffi_instance),
     {
       wasi_snapshot_preview1: __asterius_wasi.wasiImport,
-      env: {
-        __memory_base: __asterius_memory_base,
-        __table_base: __asterius_table_base
-      },
       rts: {
         printI64: x => __asterius_fs.writeNonMemory(1, `${__asterius_show_I64(x)}\n`),
         assertEqI64: function(x, y) {
@@ -215,7 +202,7 @@ export async function newAsteriusInstance(req) {
         f
       ] = __asterius_exports.newHaskellCallback(
         __asterius_stableptr_manager.newStablePtr(
-         __asterius_memory_base.value + off
+         req.memoryBase + off
         ),
         a,
         r,

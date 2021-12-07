@@ -28,8 +28,6 @@ infer expr = case expr of
   GetLocal {..} -> [valueType]
   SetLocal {} -> []
   TeeLocal {..} -> [valueType]
-  GetGlobal {..} -> [valueType]
-  SetGlobal {} -> []
   Load {..} -> [valueType]
   Store {} -> []
   ConstI32 {} -> [I32]

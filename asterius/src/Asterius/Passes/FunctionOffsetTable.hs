@@ -6,7 +6,7 @@ module Asterius.Passes.FunctionOffsetTable
   )
 where
 
-import Asterius.EDSL
+import Asterius.Internals.MagicNumber
 import Asterius.Types
 import qualified Asterius.Types.SymbolMap as SM
 import Data.Tuple
@@ -21,5 +21,5 @@ makeFunctionOffsetTable AsteriusModule {..} =
 makeFunctionTable :: SM.SymbolMap Word32 -> FunctionTable
 makeFunctionTable func_off_map = FunctionTable
   { tableFunctionNames = map entityName $ SM.keys func_off_map,
-    tableOffset = dynamicTableBase
+    tableOffset = ConstI32 $ fromIntegral defaultTableBase
   }
