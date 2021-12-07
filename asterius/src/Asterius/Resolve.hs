@@ -35,10 +35,6 @@ unresolvedGlobalRegType gr = case gr of
   DoubleReg _ -> F64
   _ -> I32
 
-makeInfoTableOffsetSet :: AsteriusModule -> SM.SymbolMap Word32 -> [Word32]
-makeInfoTableOffsetSet AsteriusModule {..} ss_off_map =
-  SM.elems $ SM.restrictKeys ss_off_map $ SM.keysSet staticsMap
-
 resolveAsteriusModule ::
   Bool ->
   AsteriusModule ->
@@ -103,7 +99,6 @@ linkStart debug store root_syms export_funcs =
         functionOffsetMap = fn_off_map,
         memoryBase = memory_base,
         lastDataOffset = last_data_offset,
-        infoTableOffsetSet = makeInfoTableOffsetSet merged_m ss_off_map,
         Asterius.Types.LinkReport.tableSlots = tbl_slots,
         bundledFFIMarshalState = ffiMarshalState merged_m,
         usedCCalls =

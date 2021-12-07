@@ -26,18 +26,6 @@ import * as rtsConstants from "./rts.constants.mjs";
 export async function newAsteriusInstance(req) {
   const __asterius_components = {};
 
-  let mkInfoTable = function (offset_info_tables) {
-    if (!(typeof offset_info_table === "undefined")) {
-      const absolute_info_tables = new Set();
-      for (const off of offset_info_tables.keys()) {
-        absolute_info_tables.add(
-          req.memoryBase + off
-        );
-      }
-      return absolute_info_tables;
-    }
-  };
-
   let __asterius_persistent_state = req.persistentState
       ? req.persistentState
       : {},
@@ -47,7 +35,6 @@ export async function newAsteriusInstance(req) {
       req.defaultTableBase,
       req.memoryBase
     ),
-    __asterius_info_tables = mkInfoTable(req.offsetInfoTables),
     __asterius_reentrancy_guard = new ReentrancyGuard(["Scheduler", "GC"]),
     __asterius_fs = new FS(__asterius_components),
     __asterius_logger = new EventLogManager(),
@@ -83,7 +70,6 @@ export async function newAsteriusInstance(req) {
       __asterius_stableptr_manager,
       __asterius_stablename_manager,
       __asterius_scheduler,
-      __asterius_info_tables,
       __asterius_symbol_table,
       __asterius_reentrancy_guard,
       req.yolo,
@@ -104,7 +90,6 @@ export async function newAsteriusInstance(req) {
       __asterius_memory,
       __asterius_heapalloc,
       __asterius_exports,
-      __asterius_info_tables,
       __asterius_symbol_table
     );
   const __asterius_wasi = new WASI(req.progName);

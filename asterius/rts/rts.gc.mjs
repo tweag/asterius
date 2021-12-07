@@ -16,7 +16,6 @@ export class GC {
     stableptr_manager,
     stablename_manager,
     scheduler,
-    info_tables,
     symbol_table,
     reentrancy_guard,
     yolo,
@@ -28,7 +27,6 @@ export class GC {
     this.stablePtrManager = stableptr_manager;
     this.stableNameManager = stablename_manager;
     this.scheduler = scheduler;
-    this.infoTables = info_tables;
     this.symbolTable = symbol_table;
     this.reentrancyGuard = reentrancy_guard;
     /**
@@ -275,10 +273,6 @@ export class GC {
     }
     // The closure is heap-allocated and dynamic:
     // proceed to evacuate it into to-space
-    if (this.infoTables && !this.infoTables.has(info))
-      throw new WebAssembly.RuntimeError(
-        `Invalid info table 0x${info.toString(16)}`
-      );
     let dest_c = undefined;
     // Get the type of the closure from info tables
     let type = this.memory.i32Load(
@@ -492,10 +486,6 @@ export class GC {
     this.scavengeClosureAt(c + offset_fun);
     const fun = this.memory.i32Load(c + offset_fun),
       fun_info = (this.memory.i32Load(Memory.unDynTag(fun)));
-    if (this.infoTables && !this.infoTables.has(fun_info))
-      throw new WebAssembly.RuntimeError(
-        `Invalid info table 0x${fun_info.toString(16)}`
-      );
     switch (
       this.memory.i32Load(
         fun_info +
@@ -562,10 +552,6 @@ export class GC {
         ),
         raw_layout = this.memory.i32Load(
           info + rtsConstants.offset_StgInfoTable_layout
-        );
-      if (this.infoTables && !this.infoTables.has(info))
-        throw new WebAssembly.RuntimeError(
-          `Invalid info table 0x${info.toString(16)}`
         );
       if (this.memory.i32Load(info + rtsConstants.offset_StgInfoTable_srt))
         this.evacuateClosure(
@@ -769,10 +755,6 @@ export class GC {
   scavengeClosure(c) {
     const info = (this.memory.i32Load(c)),
       type = this.memory.i32Load(info + rtsConstants.offset_StgInfoTable_type);
-    if (this.infoTables && !this.infoTables.has(info))
-      throw new WebAssembly.RuntimeError(
-        `Invalid info table 0x${info.toString(16)}`
-      );
     switch (type) {
       case ClosureTypes.CONSTR_1_0: {
         this.scavengePointersFirst(c + 4, 1);
