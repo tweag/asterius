@@ -169,13 +169,7 @@ genDefEntry task =
       "import req from \"./",
       out_base,
       ".req.mjs\";\n",
-      mconcat
-        [ "module.then(m => rts.newAsteriusInstance(Object.assign(req, {module: m}))).then(i => {\n",
-          "i.exports.main().catch(err => {if (!(err.startsWith('ExitSuccess') || err.startsWith('ExitFailure '))) i.fs.writeNonMemory(2, `",
-          string7 $ takeBaseName $ inputHS task,
-          ": ${err}\n`)});\n",
-          "});\n"
-        ]
+      "module.then(m => rts.newAsteriusInstance(Object.assign(req, {module: m}))).then(i => i.exports.main())"
     ]
   where
     out_base = string7 (outputBaseName task)
