@@ -1,9 +1,10 @@
 { sources ? import ./sources.nix { }
 , haskellNix ? import sources.haskell-nix { }
-, pkgs ? import haskellNix.sources.nixpkgs-unstable { } }:
+, pkgs ? import haskellNix.sources.nixpkgs-unstable { }
+}:
 let
   ghc_asterius = import "${sources.ghc-asterius}/nix/src-32.nix" { };
-  wasi-sdk = import "${sources.wasi-sdk}/nix/default.nix" { };
+  wasi-sdk = import "${import ./wasi-sdk.nix { }}/nix/default.nix" { };
 in
 pkgs.callPackage
   ({ stdenv, stdenvNoCC }:

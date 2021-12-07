@@ -12,10 +12,10 @@
         "homepage": "https://input-output-hk.github.io/haskell.nix",
         "owner": "input-output-hk",
         "repo": "haskell.nix",
-        "rev": "b2479523c0bafc9a6ce63cafefd38a110dd01331",
-        "sha256": "0i77m8348klzqh2hry7gmykmkk3ngdnabnfjja2mwpynazpgvvzh",
+        "rev": "e0d8b052c0a7326b6064d99c96417a4f572b8867",
+        "sha256": "0ia3dmw6vjz3k76z2n2ds4fllncci55ra47b1sclv2l5kxnbg2c5",
         "type": "tarball",
-        "url": "https://github.com/input-output-hk/haskell.nix/archive/b2479523c0bafc9a6ce63cafefd38a110dd01331.tar.gz",
+        "url": "https://github.com/input-output-hk/haskell.nix/archive/e0d8b052c0a7326b6064d99c96417a4f572b8867.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "hs-nix-tools": {
@@ -29,12 +29,5 @@
         "type": "tarball",
         "url": "https://github.com/TerrorJack/hs-nix-tools/archive/c674bc038d151bb41fe2570b1af0558014859f41.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
-    },
-    "wasi-sdk": {
-        "branch": "dejavu",
-        "repo": "https://github.com/tweag/wasi-sdk.git",
-        "rev": "91119cf54859867ea4e24faf1821035f956acf0b",
-        "sha256": "07jkxvxwxgwh03gqr7v0505dymw8dlz71ij2fcspkmivgprqgpw7",
-        "type": "git"
     }
 }
