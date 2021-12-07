@@ -30,7 +30,6 @@ segAlignment = 4
 sizeofStatic :: AsteriusStatic -> Word32
 sizeofStatic = \case
   SymbolStatic {} -> 4
-  Uninitialized x -> fromIntegral x
   Serialized buf -> fromIntegral $ BS.length buf
 
 sizeofStatics :: AsteriusStatics -> Word32
@@ -79,7 +78,6 @@ makeStaticSegment fn_off_map ss_off_map memory_base current_off static =
               { content = encodeStorable invalidAddress,
                 offset = ConstI32 $ fromIntegral $ memory_base + current_off
               }
-      Uninitialized {} -> emptyBag
       Serialized buf ->
         unitBag
           DataSegment

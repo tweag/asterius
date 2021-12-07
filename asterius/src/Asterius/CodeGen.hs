@@ -152,7 +152,7 @@ marshalCmmStatic st = case st of
       sym <- marshalCLabel clbl
       pure $ SymbolStatic sym o
     _ -> throwM $ UnsupportedCmmLit $ showBS lit
-  GHC.CmmUninitialised s -> pure $ Uninitialized s
+  GHC.CmmUninitialised l -> pure $ Serialized $ BS.pack $ replicate l 0
   GHC.CmmString s -> pure $ Serialized $ s `BS.snoc` 0
 
 marshalCmmData ::

@@ -10,6 +10,7 @@ where
 import Asterius.EDSL
 import Asterius.Types
 import qualified Asterius.Types.SymbolMap as SM
+import qualified Data.ByteString as BS
 
 envImports :: [FunctionImport]
 envImports =
@@ -40,7 +41,7 @@ envArgvBuf =
         SM.singleton
           "__asterius_argv_buf"
           AsteriusStatics
-            { asteriusStatics = [Uninitialized 1024]
+            { asteriusStatics = [Serialized $ BS.pack $ replicate 1024 0]
             }
     }
 

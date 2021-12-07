@@ -95,7 +95,6 @@ instance Exception AsteriusCodeGenError
 
 data AsteriusStatic
   = SymbolStatic EntitySymbol Int
-  | Uninitialized Int
   | Serialized BS.ByteString
   deriving (Show, Data)
 

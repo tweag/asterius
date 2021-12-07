@@ -294,7 +294,7 @@ posixDirentBuf =
         SM.singleton
           "__asterius_posix_dirent_buf"
           AsteriusStatics
-            { asteriusStatics = [Uninitialized 4096]
+            { asteriusStatics = [Serialized $ BS.pack $ replicate 4096 0]
             }
     }
 
@@ -327,7 +327,7 @@ posixGetenvBuf =
         SM.singleton
           "__asterius_posix_getenv_buf"
           AsteriusStatics
-            { asteriusStatics = [Uninitialized 32768]
+            { asteriusStatics = [Serialized $ BS.pack $ replicate 32768 0]
             }
     }
 
