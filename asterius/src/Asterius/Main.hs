@@ -117,26 +117,14 @@ parseTask args = case err_msgs of
 getTask :: IO Task
 getTask = parseTask <$> getArgs
 
-genStaticsOffsetTableDict :: SM.SymbolMap Word32 -> Builder
-genStaticsOffsetTableDict ss_off_map =
+genSymbolTableDict :: SM.SymbolMap Word32 -> Builder
+genSymbolTableDict sym_map =
   "Object.freeze({"
     <> mconcat
       ( intersperse
           ","
-          [ "\"" <> byteString (entityName sym) <> "\":" <> intHex sym_off
-            | (sym, sym_off) <- SM.toList ss_off_map
-          ]
-      )
-    <> "})"
-
-genFunctionsOffsetTableDict :: SM.SymbolMap Word32 -> Builder
-genFunctionsOffsetTableDict fn_off_map =
-  "Object.freeze({"
-    <> mconcat
-      ( intersperse
-          ","
-          [ "\"" <> byteString (entityName sym) <> "\":" <> intHex sym_off
-            | (sym, sym_off) <- SM.toList fn_off_map
+          [ "\"" <> byteString (entityName sym) <> "\":" <> intHex sym_addr
+            | (sym, sym_addr) <- SM.toList sym_map
           ]
       )
     <> "})"
@@ -152,20 +140,14 @@ genReq task LinkReport {..} =
       stringUtf8 $ show $ takeBaseName $ inputHS task,
       ", jsffiFactory: ",
       generateFFIImportObjectFactory bundledFFIMarshalState,
-      ", exportsStaticOffsets: ",
-      genExportStaticObj bundledFFIMarshalState staticsOffsetMap,
-      ", functionsOffsetTable: ",
-      genFunctionsOffsetTableDict fn_off_map,
-      ", staticsOffsetTable: ",
-      genStaticsOffsetTableDict ss_off_map,
+      ", exportsStaticEntries: ",
+      genExportStaticObj bundledFFIMarshalState symbolMap,
+      ", symbolTable: ",
+      genSymbolTableDict sym_map,
       ", tableSlots: ",
       intDec tableSlots,
       ", yolo: ",
       if yolo task then "true" else "false",
-      ", defaultTableBase: ",
-      intHex defaultTableBase,
-      ", memoryBase: ",
-      intHex memoryBase,
       ", consoleHistory: ",
       if consoleHistory task then "true" else "false",
       ", gcThreshold: ",
@@ -175,8 +157,7 @@ genReq task LinkReport {..} =
     ]
   where
     all_roots = SS.fromList (extraRootSymbols task) <> rtsUsedSymbols
-    fn_off_map = SM.restrictKeys functionOffsetMap all_roots
-    ss_off_map = SM.restrictKeys staticsOffsetMap all_roots
+    sym_map = SM.restrictKeys symbolMap all_roots
 
 genDefEntry :: Task -> Builder
 genDefEntry task =
@@ -266,8 +247,7 @@ ahcDistMain logger task (final_m, report) = do
   m_ref <-
     Binaryen.marshalModule
       (verboseErr task)
-      (staticsOffsetMap report)
-      (functionOffsetMap report)
+      (symbolMap report)
       (lastDataOffset report)
       final_m
   when (optimizeLevel task > 0 || shrinkLevel task > 0) $ do

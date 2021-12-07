@@ -251,11 +251,8 @@ data MarshalEnv = MarshalEnv
     envArena :: A.Arena,
     -- | Whether the @verbose_err@ extension is on.
     envIsVerboseErrOn :: Bool,
-    -- | The offset map for the current module (statics).
-    envStaticsOffsetMap :: SM.SymbolMap Word32,
-    -- | The offset map for the current module (functions).
-    envFunctionsOffsetMap :: SM.SymbolMap Word32,
-    envMemoryBase :: Word32,
+    -- | The symbol map for the current module.
+    envSymbolMap :: SM.SymbolMap Word32,
     -- | The current module reference.
     envModuleRef :: Binaryen.Module
   }
@@ -271,15 +268,8 @@ isVerboseErrOn :: CodeGen Bool
 isVerboseErrOn = reader envIsVerboseErrOn
 
 -- | Retrieve the offset map from the local environment (statics).
-askStaticsOffsetMap :: CodeGen (SM.SymbolMap Word32)
-askStaticsOffsetMap = reader envStaticsOffsetMap
-
--- | Retrieve the offset map from the local environment (functions).
-askFunctionsOffsetMap :: CodeGen (SM.SymbolMap Word32)
-askFunctionsOffsetMap = reader envFunctionsOffsetMap
-
-askMemoryBase :: CodeGen Word32
-askMemoryBase = reader envMemoryBase
+askSymbolMap :: CodeGen (SM.SymbolMap Word32)
+askSymbolMap = reader envSymbolMap
 
 -- | Retrieve the reference to the current module.
 askModuleRef :: CodeGen Binaryen.Module
@@ -330,9 +320,9 @@ marshalExpression e' = do
       Binaryen.switch m nsp (fromIntegral nl) dn c (coerce nullPtr)
   Call {..} -> do
     verbose_err <- isVerboseErrOn
-    fn_off_map <- askFunctionsOffsetMap
+    sym_map <- askSymbolMap
     libc_func_names <- asks envLibCFuncNames
-    if  | target `SM.member` fn_off_map || entityName target `Set.member` libc_func_names -> do
+    if  | target `SM.member` sym_map || entityName target `Set.member` libc_func_names -> do
           os <-
             mapM
               marshalExpression
@@ -429,14 +419,14 @@ marshalExpression e' = do
     m <- askModuleRef
     lift $ Binaryen.drop m x
   ReturnCall {..} -> do
-      fn_off_map <- askFunctionsOffsetMap
-      case SM.lookup returnCallTarget fn_off_map of
-        Just off -> do
+      sym_map <- askSymbolMap
+      case SM.lookup returnCallTarget sym_map of
+        Just p -> do
           s <-
             marshalExpression
               Store
                 { bytes=4, offset=0, ptr = Symbol "__asterius_pc" 0,
-                  value = ConstI32 $ mkStaticFunctionAddress off,
+                  value = ConstI32 $ fromIntegral p,
                   valueType = I32
                 }
           m <- askModuleRef
@@ -469,16 +459,11 @@ marshalExpression e' = do
   CFG {..} -> marshalExpression $ relooper graph
   Symbol {..} -> do
     verbose_err <- isVerboseErrOn
-    ss_off_map <- askStaticsOffsetMap
-    fn_off_map <- askFunctionsOffsetMap
-    memory_base <- askMemoryBase
+    sym_map <- askSymbolMap
     m <- askModuleRef
-    if  | Just off <- SM.lookup unresolvedSymbol ss_off_map ->
+    if  | Just p <- SM.lookup unresolvedSymbol sym_map ->
           marshalExpression $
-            ConstI32 $ mkStaticDataAddress memory_base $ off + fromIntegral symbolOffset
-        | Just off <- SM.lookup unresolvedSymbol fn_off_map ->
-          marshalExpression $
-            ConstI32 $ mkStaticFunctionAddress $ off + fromIntegral symbolOffset
+            ConstI32 $ fromIntegral $ p + fromIntegral symbolOffset
         | verbose_err ->
           marshalExpression $ barf (entityName unresolvedSymbol) [I32]
         | otherwise ->
@@ -601,16 +586,14 @@ marshalMemoryImport m MemoryImport {..} = do
 marshalModule ::
   Bool ->
   SM.SymbolMap Word32 ->
-  SM.SymbolMap Word32 ->
   Word32 ->
   Module ->
   IO Binaryen.Module
-marshalModule verbose_err ss_off_map fn_off_map last_data_offset hs_mod@Module {..} = do
-  (m, memory_base) <- do
-    (bs, memory_base) <- wizer last_data_offset
-    m <- BS.unsafeUseAsCStringLen bs $
+marshalModule verbose_err sym_map last_data_offset hs_mod@Module {..} = do
+  m <- do
+    (bs, _) <- wizer last_data_offset
+    BS.unsafeUseAsCStringLen bs $
         \(p, l) -> Binaryen.Module.read p (fromIntegral l)
-    pure (m, memory_base)
   checkOverlapDataSegment m
   Binaryen.setFeatures m
     $ foldl1' (.|.) [Binaryen.mvp, Binaryen.bulkMemory, Binaryen.signExt]
@@ -623,9 +606,7 @@ marshalModule verbose_err ss_off_map fn_off_map last_data_offset hs_mod@Module {
               envLibCFuncNames = Set.fromList $ map fst libc_func_names,
               envArena = a,
               envIsVerboseErrOn = verbose_err,
-              envStaticsOffsetMap = ss_off_map,
-              envFunctionsOffsetMap = fn_off_map,
-              envMemoryBase = memory_base,
+              envSymbolMap = sym_map,
               envModuleRef = m
             }
         fts = generateWasmFunctionTypeSet hs_mod

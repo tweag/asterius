@@ -14,8 +14,8 @@ import Data.Word
 
 data LinkReport
   = LinkReport
-      { staticsOffsetMap, functionOffsetMap :: SymbolMap Word32,
-        memoryBase, lastDataOffset :: Word32,
+      { symbolMap :: SymbolMap Word32,
+        lastDataOffset :: Word32,
         tableSlots :: Int,
         bundledFFIMarshalState :: FFIMarshalState
       }

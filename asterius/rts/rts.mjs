@@ -30,10 +30,7 @@ export async function newAsteriusInstance(req) {
       ? req.persistentState
       : {},
     __asterius_symbol_table = new SymbolTable(
-      req.functionsOffsetTable,
-      req.staticsOffsetTable,
-      req.defaultTableBase,
-      req.memoryBase
+      req.symbolTable
     ),
     __asterius_reentrancy_guard = new ReentrancyGuard(["Scheduler", "GC"]),
     __asterius_fs = new FS(__asterius_components),
@@ -182,12 +179,12 @@ export async function newAsteriusInstance(req) {
     __asterius_heapalloc.init();
     __asterius_scheduler.setGC(__asterius_gc);
 
-    for (const [f, off, a, r, i] of req.exportsStaticOffsets) {
+    for (const [f, p, a, r, i] of req.exportsStaticEntries) {
       __asterius_exports[
         f
       ] = __asterius_exports.newHaskellCallback(
         __asterius_stableptr_manager.newStablePtr(
-         req.memoryBase + off
+         p
         ),
         a,
         r,

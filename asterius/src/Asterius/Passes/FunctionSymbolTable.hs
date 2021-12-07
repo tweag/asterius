@@ -1,7 +1,7 @@
 {-# LANGUAGE RecordWildCards #-}
 
-module Asterius.Passes.FunctionOffsetTable
-  ( makeFunctionOffsetTable,
+module Asterius.Passes.FunctionSymbolTable
+  ( makeFunctionSymbolTable,
     makeFunctionTable,
   )
 where
@@ -9,13 +9,13 @@ where
 import Asterius.Internals.MagicNumber
 import Asterius.Types
 import qualified Asterius.Types.SymbolMap as SM
-import Data.Tuple
 import Data.Word
 
-{-# INLINEABLE makeFunctionOffsetTable #-}
-makeFunctionOffsetTable :: AsteriusModule -> (SM.SymbolMap Word32, Word32)
-makeFunctionOffsetTable AsteriusModule {..} =
-  swap $ SM.mapAccum (\a _ -> (succ a, a)) 0 functionMap
+{-# INLINEABLE makeFunctionSymbolTable #-}
+makeFunctionSymbolTable :: AsteriusModule -> (SM.SymbolMap Word32, Word32)
+makeFunctionSymbolTable AsteriusModule {..} = (fn_sym_map, last_func_addr - defaultTableBase)
+ where
+  (last_func_addr, fn_sym_map) = SM.mapAccum (\a _ -> (succ a, a)) defaultTableBase functionMap
 
 {-# INLINEABLE makeFunctionTable #-}
 makeFunctionTable :: SM.SymbolMap Word32 -> FunctionTable

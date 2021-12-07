@@ -317,7 +317,7 @@ asteriusWriteIServ hsc_env i a
           asteriusRunTH
             i
             st
-            (fromIntegral (mkStaticDataAddress (error "TODO") $ staticsOffsetMap link_report ! sym)) -- TODO: make dynamic.
+            (fromIntegral (symbolMap link_report ! sym)) -- TODO: make dynamic.
             ty
             loc
             js_s
