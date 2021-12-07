@@ -100,10 +100,7 @@ linkStart debug store root_syms export_funcs =
         memoryBase = memory_base,
         lastDataOffset = last_data_offset,
         Asterius.Types.LinkReport.tableSlots = tbl_slots,
-        bundledFFIMarshalState = ffiMarshalState merged_m,
-        usedCCalls =
-          filter (not . (`SM.member` functionMap merged_m) . fromString) $
-            findCCall (functionMap merged_m)
+        bundledFFIMarshalState = ffiMarshalState merged_m
       }
   )
   where

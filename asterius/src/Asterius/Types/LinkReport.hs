@@ -17,8 +17,7 @@ data LinkReport
       { staticsOffsetMap, functionOffsetMap :: SymbolMap Word32,
         memoryBase, lastDataOffset :: Word32,
         tableSlots :: Int,
-        bundledFFIMarshalState :: FFIMarshalState,
-        usedCCalls :: [String]
+        bundledFFIMarshalState :: FFIMarshalState
       }
   deriving (Show)
 
