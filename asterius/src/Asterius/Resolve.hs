@@ -111,7 +111,6 @@ linkStart debug store root_syms export_funcs =
         lastDataOffset = last_data_offset,
         infoTableOffsetSet = makeInfoTableOffsetSet merged_m ss_off_map,
         Asterius.Types.LinkReport.tableSlots = tbl_slots,
-        sptEntries = sptMap merged_m,
         bundledFFIMarshalState = ffiMarshalState merged_m,
         usedCCalls =
           filter (not . (`SM.member` functionMap merged_m) . fromString) $

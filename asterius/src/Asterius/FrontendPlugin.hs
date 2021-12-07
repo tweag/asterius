@@ -74,24 +74,15 @@ frontendPlugin = do
         `GHC.gopt_set` GHC.Opt_DoStgLinting
         `GHC.gopt_set` GHC.Opt_DoCmmLinting
   do
-    spt_entries_map_ref <- liftIO $ newIORef M.empty
     dflags <- GHC.getSessionDynFlags
     h' <-
       liftIO $
         hooksFromCompiler
           ( Compiler
-              { withHaskellIR =
-                  \dflags this_mod HaskellIR {cgGuts = GHC.CgGuts {..}} _ ->
-                    atomicModifyIORef' spt_entries_map_ref $
-                      \m -> (M.insert this_mod cg_spt_entries m, ()),
-                withCmmIR = \dflags this_mod ir@CmmIR {..} obj_path -> do
+              { withCmmIR = \dflags this_mod ir@CmmIR {..} obj_path -> do
                   ffi_mod <- getFFIModule dflags this_mod
-                  m_spt_entries <- atomicModifyIORef' spt_entries_map_ref $
-                    \m -> swap $ M.updateLookupWithKey (\_ _ -> Nothing) this_mod m
                   m' <- runCodeGen
-                    ( case m_spt_entries of
-                        Just spt_entries -> marshalHaskellIR this_mod spt_entries ir
-                        _ -> marshalCmmIR this_mod ir
+                    ( marshalCmmIR this_mod ir
                     )
                     dflags
                     this_mod

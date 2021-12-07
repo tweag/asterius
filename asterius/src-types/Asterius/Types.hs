@@ -122,7 +122,6 @@ data AsteriusModule
       { staticsMap :: SymbolMap AsteriusStatics,
         functionMap :: SymbolMap Function,
         globalsMap :: SymbolMap Global,
-        sptMap :: SymbolMap (Word64, Word64),
         ffiMarshalState :: FFIMarshalState
       }
   deriving (Show, Data)

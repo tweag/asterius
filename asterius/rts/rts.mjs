@@ -9,7 +9,6 @@ import { HeapAlloc } from "./rts.heapalloc.mjs";
 import { JSValManager } from "./rts.jsval.mjs";
 import { StablePtrManager } from "./rts.stableptr.mjs";
 import { StableNameManager } from "./rts.stablename.mjs";
-import { StaticPtrManager } from "./rts.staticptr.mjs";
 import { Scheduler } from "./rts.scheduler.mjs";
 import { IntegerManager } from "./rts.integer.mjs";
 import { TimeCBits } from "./rts.time.mjs";
@@ -36,17 +35,6 @@ export async function newAsteriusInstance(req) {
       req.memoryBase // TODO: make dynamic.
     );
 
-  let mkSptEntries = function (spt_offset_entries) {
-    const absolute_spt_entries = new Map();
-    for (const [k, off] of spt_offset_entries.entries()) {
-      absolute_spt_entries.set(
-        k,
-        __asterius_memory_base.value + off
-      );
-    }
-    return absolute_spt_entries;
-  };
-
   let mkInfoTable = function (offset_info_tables) {
     if (!(typeof offset_info_table === "undefined")) {
       const absolute_info_tables = new Set();
@@ -68,7 +56,6 @@ export async function newAsteriusInstance(req) {
       __asterius_table_base.value,
       __asterius_memory_base.value
     ),
-    __asterius_spt_entries = mkSptEntries(req.sptOffsetEntries),
     __asterius_info_tables = mkInfoTable(req.offsetInfoTables),
     __asterius_reentrancy_guard = new ReentrancyGuard(["Scheduler", "GC"]),
     __asterius_fs = new FS(__asterius_components),
@@ -89,11 +76,6 @@ export async function newAsteriusInstance(req) {
       __asterius_memory,
       __asterius_heapalloc,
       __asterius_symbol_table
-    ),
-    __asterius_staticptr_manager = new StaticPtrManager(
-      __asterius_memory,
-      __asterius_stableptr_manager,
-      __asterius_spt_entries
     ),
     __asterius_scheduler = new Scheduler(
       __asterius_components,
@@ -196,7 +178,6 @@ export async function newAsteriusInstance(req) {
       Messages: modulify(__asterius_messages),
       StablePtr: modulify(__asterius_stableptr_manager),
       StableName: modulify(__asterius_stablename_manager),
-      StaticPtr: modulify(__asterius_staticptr_manager),
       Unicode: modulify(__asterius_unicode),
       Tracing: modulify(__asterius_tracer),
       Exports: {

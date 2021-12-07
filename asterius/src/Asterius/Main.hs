@@ -22,7 +22,6 @@ import Asterius.Internals.MagicNumber
 import Asterius.Internals.Temp
 import Asterius.JSFFI
 import qualified Asterius.JSGen.Bundle as Bundle
-import Asterius.JSGen.SPT
 import Asterius.JSGen.Wasm
 import Asterius.Ld (rtsUsedSymbols)
 import Asterius.Main.Task
@@ -168,8 +167,6 @@ genReq task LinkReport {..} =
           mconcat
             [", offsetInfoTables: ", genOffsetInfoTables infoTableOffsetSet]
         else mempty,
-      ", sptOffsetEntries: ",
-      genSPT staticsOffsetMap sptEntries,
       ", tableSlots: ",
       intDec tableSlots,
       ", yolo: ",

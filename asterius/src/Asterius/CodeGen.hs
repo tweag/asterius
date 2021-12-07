@@ -1695,17 +1695,8 @@ marshalCmmDecl decl = case decl of
           error $ cmm_str <> "\n" <> show err)
 
 
-marshalHaskellIR :: GHC.Module -> [GHC.SptEntry] -> CmmIR -> CodeGen AsteriusModule
-marshalHaskellIR this_mod spt_entries CmmIR {..} = do
-  (dflags, _) <- ask
-  let spt_map =
-        SM.fromList
-          [ (sym, (w0, w1))
-            | GHC.SptEntry (idClosureSymbol dflags -> sym) (Fingerprint w0 w1) <-
-                spt_entries
-          ]
-  r <- marshalRawCmm this_mod cmmRaw
-  pure r {sptMap = spt_map}
+marshalHaskellIR :: GHC.Module -> CmmIR -> CodeGen AsteriusModule
+marshalHaskellIR this_mod CmmIR {..} = marshalRawCmm this_mod cmmRaw
 
 marshalCmmIR :: GHC.Module -> CmmIR -> CodeGen AsteriusModule
 marshalCmmIR this_mod CmmIR {..} = marshalRawCmm this_mod cmmRaw

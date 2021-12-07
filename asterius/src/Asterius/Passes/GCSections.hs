@@ -60,7 +60,6 @@ gcModule mod_syms export_funcs m =
     { staticsMap = statics,
       functionMap = functions,
       globalsMap = globals,
-      sptMap = spt_map,
       ffiMarshalState =
         FFIMarshalState
           { ffiImportDecls = ffi_imports,
@@ -71,7 +70,6 @@ gcModule mod_syms export_funcs m =
     statics = staticsMap m `SM.restrictKeys` mod_syms
     functions = functionMap m `SM.restrictKeys` mod_syms
     globals = globalsMap m `SM.restrictKeys` mod_syms
-    spt_map = sptMap m `SM.restrictKeys` mod_syms
     -- Since each JSFFI import comes in two parts (a function import and a
     -- wrapper function), we only keep the import whose wrapper function is
     -- used; the rest are definitely unreachable.

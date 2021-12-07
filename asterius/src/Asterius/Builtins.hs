@@ -28,7 +28,6 @@ import Asterius.Builtins.Posix
 import Asterius.Builtins.Primitive
 import Asterius.Builtins.Scheduler
 import Asterius.Builtins.SM
-import Asterius.Builtins.SPT
 import Asterius.Builtins.Sparks
 import Asterius.Builtins.StgPrimFloat
 import Asterius.Builtins.Time
@@ -176,7 +175,6 @@ rtsAsteriusModule opts =
     <> cmathCBits
     <> envCBits
     <> posixCBits
-    <> sptCBits
     <> stgPrimFloatCBits
     <> primitiveCBits
     <> endiannessCBits
@@ -466,7 +464,6 @@ rtsFunctionImports debug =
     <> exportsImports
     <> envImports
     <> posixImports
-    <> sptImports
     <> timeImports
     <> primitiveImports
     <> barfImports
