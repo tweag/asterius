@@ -37,10 +37,7 @@ unresolvedGlobalRegType gr = case gr of
 
 makeInfoTableOffsetSet :: AsteriusModule -> SM.SymbolMap Word32 -> [Word32]
 makeInfoTableOffsetSet AsteriusModule {..} ss_off_map =
-  SM.elems $ SM.restrictKeys ss_off_map $ SM.keysSet $
-    SM.filter
-      ((== InfoTable) . staticsType)
-      staticsMap
+  SM.elems $ SM.restrictKeys ss_off_map $ SM.keysSet staticsMap
 
 resolveAsteriusModule ::
   Bool ->

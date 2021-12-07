@@ -40,8 +40,7 @@ envArgvBuf =
         SM.singleton
           "__asterius_argv_buf"
           AsteriusStatics
-            { staticsType = Bytes,
-              asteriusStatics = [Uninitialized 1024]
+            { asteriusStatics = [Uninitialized 1024]
             }
     }
 

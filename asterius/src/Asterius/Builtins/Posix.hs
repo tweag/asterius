@@ -294,8 +294,7 @@ posixDirentBuf =
         SM.singleton
           "__asterius_posix_dirent_buf"
           AsteriusStatics
-            { staticsType = Bytes,
-              asteriusStatics = [Uninitialized 4096]
+            { asteriusStatics = [Uninitialized 4096]
             }
     }
 
@@ -328,8 +327,7 @@ posixGetenvBuf =
         SM.singleton
           "__asterius_posix_getenv_buf"
           AsteriusStatics
-            { staticsType = Bytes,
-              asteriusStatics = [Uninitialized 32768]
+            { asteriusStatics = [Uninitialized 32768]
             }
     }
 

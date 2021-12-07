@@ -10,12 +10,12 @@
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TypeApplications #-}
 {-# OPTIONS_GHC -Wno-incomplete-patterns #-}
+{-# LANGUAGE StandaloneDeriving #-}
 
 module Asterius.Types
   ( BinaryenIndex,
     AsteriusCodeGenError (..),
     AsteriusStatic (..),
-    AsteriusStaticsType (..),
     AsteriusStatics (..),
     AsteriusModule (..),
     AsteriusCachedModule (..),
@@ -65,6 +65,7 @@ import qualified Asterius.Types.SymbolMap as SM
 import Asterius.Types.SymbolSet (SymbolSet)
 import qualified Asterius.Types.SymbolSet as SS
 import qualified Binary as GHC
+import Control.DeepSeq
 import Control.Exception
 import Control.Monad
 import qualified Data.ByteString as BS
@@ -98,17 +99,9 @@ data AsteriusStatic
   | Serialized BS.ByteString
   deriving (Show, Data)
 
-data AsteriusStaticsType
-  = ConstBytes
-  | Bytes
-  | InfoTable
-  | Closure
-  deriving (Eq, Show, Data)
-
-data AsteriusStatics
+newtype AsteriusStatics
   = AsteriusStatics
-      { staticsType :: AsteriusStaticsType,
-        asteriusStatics :: [AsteriusStatic]
+      { asteriusStatics :: [AsteriusStatic]
       }
   deriving (Show, Data)
 
@@ -636,9 +629,7 @@ $(genNFData ''AsteriusCodeGenError)
 
 $(genNFData ''AsteriusStatic)
 
-$(genNFData ''AsteriusStaticsType)
-
-$(genNFData ''AsteriusStatics)
+deriving newtype instance NFData AsteriusStatics
 
 $(genNFData ''AsteriusModule)
 
@@ -704,9 +695,7 @@ $(genBinary ''AsteriusCodeGenError)
 
 $(genBinary ''AsteriusStatic)
 
-$(genBinary ''AsteriusStaticsType)
-
-$(genBinary ''AsteriusStatics)
+deriving newtype instance GHC.Binary AsteriusStatics
 
 $(genBinary ''AsteriusModule)
 

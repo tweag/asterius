@@ -62,8 +62,7 @@ rtsAsteriusModule opts =
         SM.fromList
           [ ( "MainCapability",
               AsteriusStatics
-                { staticsType = Bytes,
-                  asteriusStatics =
+                { asteriusStatics =
                     [ Serialized $ BS.pack $
                         replicate
                           (4 * roundup_bytes_to_words sizeof_Capability)
@@ -73,26 +72,22 @@ rtsAsteriusModule opts =
             ),
             ( "rts_stop_on_exception",
               AsteriusStatics
-                { staticsType = Bytes,
-                  asteriusStatics = [Serialized $ encodeStorable (0 :: Word32)]
+                { asteriusStatics = [Serialized $ encodeStorable (0 :: Word32)]
                 }
             ),
             ( "n_capabilities",
               AsteriusStatics
-                { staticsType = ConstBytes,
-                  asteriusStatics = [Serialized $ encodeStorable (1 :: Word32)]
+                { asteriusStatics = [Serialized $ encodeStorable (1 :: Word32)]
                 }
             ),
             ( "enabled_capabilities",
               AsteriusStatics
-                { staticsType = ConstBytes,
-                  asteriusStatics = [Serialized $ encodeStorable (1 :: Word32)]
+                { asteriusStatics = [Serialized $ encodeStorable (1 :: Word32)]
                 }
             ),
             ( "prog_name",
               AsteriusStatics
-                { staticsType = ConstBytes,
-                  asteriusStatics =
+                { asteriusStatics =
                     [ Serialized $
                         fromString (progName opts <> "\0")
                     ]
@@ -100,18 +95,15 @@ rtsAsteriusModule opts =
             ),
             ( "__asterius_localeEncoding",
               AsteriusStatics
-                { staticsType = ConstBytes,
-                  asteriusStatics = [Serialized "UTF-8\0"]
+                { asteriusStatics = [Serialized "UTF-8\0"]
                 }
             ),
             ( "__asterius_i64_slot",
               AsteriusStatics
-                { staticsType = Bytes,
-                  asteriusStatics = [Serialized $ BS.pack $ replicate 8 0]
+                { asteriusStatics = [Serialized $ BS.pack $ replicate 8 0]
                 }
             ),
             ("__asterius_pc", AsteriusStatics {
-              staticsType = Bytes,
               asteriusStatics = [Serialized $ encodeStorable (0 :: Word32)]
             })
           ],
