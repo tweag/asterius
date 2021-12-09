@@ -5,8 +5,6 @@ module Asterius.Passes.CCall
   )
 where
 
-import Asterius.EDSL
-import Asterius.TypeInfer
 import Asterius.Types
 import qualified Data.ByteString as BS
 import qualified Data.Map.Strict as M
