@@ -34,51 +34,9 @@ __attribute__((export_name("offset_Capability_no"))) uint32_t offset_Capability_
 
 __attribute__((export_name("offset_Capability_node"))) uint32_t offset_Capability_node() { return offsetof(Capability, node); }
 
-__attribute__((export_name("offset_Capability_running_task"))) uint32_t offset_Capability_running_task() {
-return offsetof(Capability, running_task);
-}
-
-__attribute__((export_name("offset_Capability_in_haskell"))) uint32_t offset_Capability_in_haskell() {
-return offsetof(Capability, in_haskell);
-}
-
 __attribute__((export_name("offset_Capability_idle"))) uint32_t offset_Capability_idle() { return offsetof(Capability, idle); }
 
 __attribute__((export_name("offset_Capability_disabled"))) uint32_t offset_Capability_disabled() { return offsetof(Capability, disabled); }
-
-__attribute__((export_name("offset_Capability_run_queue_hd"))) uint32_t offset_Capability_run_queue_hd() {
-return offsetof(Capability, run_queue_hd);
-}
-
-__attribute__((export_name("offset_Capability_run_queue_tl"))) uint32_t offset_Capability_run_queue_tl() {
-return offsetof(Capability, run_queue_tl);
-}
-
-__attribute__((export_name("offset_Capability_n_run_queue"))) uint32_t offset_Capability_n_run_queue() {
-return offsetof(Capability, n_run_queue);
-}
-
-__attribute__((export_name("offset_Capability_suspended_ccalls"))) uint32_t offset_Capability_suspended_ccalls() {
-return offsetof(Capability, suspended_ccalls);
-}
-
-__attribute__((export_name("offset_Capability_n_suspended_ccalls"))) uint32_t offset_Capability_n_suspended_ccalls() {
-return offsetof(Capability, n_suspended_ccalls);
-}
-
-__attribute__((export_name("offset_Capability_mut_lists"))) uint32_t offset_Capability_mut_lists() { return offsetof(Capability, mut_lists); }
-
-__attribute__((export_name("offset_Capability_saved_mut_lists"))) uint32_t offset_Capability_saved_mut_lists() {
-return offsetof(Capability, saved_mut_lists);
-}
-
-__attribute__((export_name("offset_Capability_pinned_object_block"))) uint32_t offset_Capability_pinned_object_block() {
-return offsetof(Capability, pinned_object_block);
-}
-
-__attribute__((export_name("offset_Capability_pinned_object_blocks"))) uint32_t offset_Capability_pinned_object_blocks() {
-return offsetof(Capability, pinned_object_blocks);
-}
 
 __attribute__((export_name("offset_Capability_weak_ptr_list_hd"))) uint32_t offset_Capability_weak_ptr_list_hd() {
 return offsetof(Capability, weak_ptr_list_hd);
@@ -96,26 +54,6 @@ __attribute__((export_name("offset_Capability_interrupt"))) uint32_t offset_Capa
 
 __attribute__((export_name("offset_Capability_total_allocated"))) uint32_t offset_Capability_total_allocated() {
 return offsetof(Capability, total_allocated);
-}
-
-__attribute__((export_name("offset_Capability_free_tvar_watch_queues"))) uint32_t offset_Capability_free_tvar_watch_queues() {
-return offsetof(Capability, free_tvar_watch_queues);
-}
-
-__attribute__((export_name("offset_Capability_free_trec_chunks"))) uint32_t offset_Capability_free_trec_chunks() {
-return offsetof(Capability, free_trec_chunks);
-}
-
-__attribute__((export_name("offset_Capability_free_trec_headers"))) uint32_t offset_Capability_free_trec_headers() {
-return offsetof(Capability, free_trec_headers);
-}
-
-__attribute__((export_name("offset_Capability_transaction_tokens"))) uint32_t offset_Capability_transaction_tokens() {
-return offsetof(Capability, transaction_tokens);
-}
-
-__attribute__((export_name("sizeof_MessageBlackHole"))) uint32_t sizeof_MessageBlackHole() {
-return sizeof(MessageBlackHole);
 }
 
 __attribute__((export_name("offset_MessageBlackHole_link"))) uint32_t offset_MessageBlackHole_link() {
@@ -152,8 +90,6 @@ __attribute__((export_name("sizeof_StgArrBytes"))) uint32_t sizeof_StgArrBytes()
 
 __attribute__((export_name("offset_StgArrBytes_bytes"))) uint32_t offset_StgArrBytes_bytes() { return offsetof(StgArrBytes, bytes); }
 
-__attribute__((export_name("offset_StgArrBytes_payload"))) uint32_t offset_StgArrBytes_payload() { return offsetof(StgArrBytes, payload); }
-
 __attribute__((export_name("sizeof_StgBlockingQueue"))) uint32_t sizeof_StgBlockingQueue() {
 return sizeof(StgBlockingQueue);
 }
@@ -174,8 +110,6 @@ __attribute__((export_name("offset_StgBlockingQueue_queue"))) uint32_t offset_St
 return offsetof(StgBlockingQueue, queue);
 }
 
-__attribute__((export_name("sizeof_StgClosure"))) uint32_t sizeof_StgClosure() { return sizeof(StgClosure); }
-
 __attribute__((export_name("offset_StgClosure_payload"))) uint32_t offset_StgClosure_payload() { return offsetof(StgClosure, payload); }
 
 __attribute__((export_name("sizeof_StgInd"))) uint32_t sizeof_StgInd() { return sizeof(StgInd); }
@@ -186,10 +120,6 @@ __attribute__((export_name("sizeof_StgIndStatic"))) uint32_t sizeof_StgIndStatic
 
 __attribute__((export_name("offset_StgIndStatic_indirectee"))) uint32_t offset_StgIndStatic_indirectee() {
 return offsetof(StgIndStatic, indirectee);
-}
-
-__attribute__((export_name("offset_StgIndStatic_static_link"))) uint32_t offset_StgIndStatic_static_link() {
-return offsetof(StgIndStatic, static_link);
 }
 
 __attribute__((export_name("offset_StgIndStatic_saved_info"))) uint32_t offset_StgIndStatic_saved_info() {
@@ -210,8 +140,6 @@ __attribute__((export_name("offset_StgFunInfoTable_i"))) uint32_t offset_StgFunI
 
 __attribute__((export_name("offset_StgFunInfoTable_f"))) uint32_t offset_StgFunInfoTable_f() { return offsetof(StgFunInfoTable, f); }
 
-__attribute__((export_name("sizeof_StgFunTable"))) uint32_t sizeof_StgFunTable() { return sizeof(StgFunTable); }
-
 __attribute__((export_name("offset_StgFunTable_stgEagerBlackholeInfo"))) uint32_t offset_StgFunTable_stgEagerBlackholeInfo() {
 return offsetof(StgFunTable, stgEagerBlackholeInfo);
 }
@@ -221,8 +149,6 @@ return offsetof(StgFunTable, stgGCEnter1);
 }
 
 __attribute__((export_name("offset_StgFunTable_stgGCFun"))) uint32_t offset_StgFunTable_stgGCFun() { return offsetof(StgFunTable, stgGCFun); }
-
-__attribute__((export_name("offset_StgInfoTable_entry"))) uint32_t offset_StgInfoTable_entry() { return offsetof(StgInfoTable, entry); }
 
 __attribute__((export_name("offset_StgInfoTable_layout"))) uint32_t offset_StgInfoTable_layout() { return offsetof(StgInfoTable, layout); }
 
@@ -239,8 +165,6 @@ return offsetof(StgLargeBitmap, bitmap);
 __attribute__((export_name("sizeof_StgMutArrPtrs"))) uint32_t sizeof_StgMutArrPtrs() { return sizeof(StgMutArrPtrs); }
 
 __attribute__((export_name("offset_StgMutArrPtrs_ptrs"))) uint32_t offset_StgMutArrPtrs_ptrs() { return offsetof(StgMutArrPtrs, ptrs); }
-
-__attribute__((export_name("offset_StgMutArrPtrs_size"))) uint32_t offset_StgMutArrPtrs_size() { return offsetof(StgMutArrPtrs, size); }
 
 __attribute__((export_name("offset_StgMutArrPtrs_payload"))) uint32_t offset_StgMutArrPtrs_payload() {
 return offsetof(StgMutArrPtrs, payload);
@@ -273,8 +197,6 @@ __attribute__((export_name("offset_StgRetFun_payload"))) uint32_t offset_StgRetF
 __attribute__((export_name("offset_StgRetInfoTable_i"))) uint32_t offset_StgRetInfoTable_i() { return offsetof(StgRetInfoTable, i); }
 
 __attribute__((export_name("offset_StgRetInfoTable_srt"))) uint32_t offset_StgRetInfoTable_srt() { return offsetof(StgRetInfoTable, srt); }
-
-__attribute__((export_name("sizeof_StgRegTable"))) uint32_t sizeof_StgRegTable() { return sizeof(StgRegTable); }
 
 __attribute__((export_name("offset_StgRegTable_rR1"))) uint32_t offset_StgRegTable_rR1() { return offsetof(StgRegTable, rR1); }
 
@@ -332,18 +254,12 @@ __attribute__((export_name("offset_StgRegTable_rHpLim"))) uint32_t offset_StgReg
 
 __attribute__((export_name("offset_StgRegTable_rCCCS"))) uint32_t offset_StgRegTable_rCCCS() { return offsetof(StgRegTable, rCCCS); }
 
-__attribute__((export_name("offset_StgRegTable_rNursery"))) uint32_t offset_StgRegTable_rNursery() { return offsetof(StgRegTable, rNursery); }
-
 __attribute__((export_name("offset_StgRegTable_rCurrentTSO"))) uint32_t offset_StgRegTable_rCurrentTSO() {
 return offsetof(StgRegTable, rCurrentTSO);
 }
 
 __attribute__((export_name("offset_StgRegTable_rCurrentNursery"))) uint32_t offset_StgRegTable_rCurrentNursery() {
 return offsetof(StgRegTable, rCurrentNursery);
-}
-
-__attribute__((export_name("offset_StgRegTable_rCurrentAlloc"))) uint32_t offset_StgRegTable_rCurrentAlloc() {
-return offsetof(StgRegTable, rCurrentAlloc);
 }
 
 __attribute__((export_name("offset_StgRegTable_rHpAlloc"))) uint32_t offset_StgRegTable_rHpAlloc() { return offsetof(StgRegTable, rHpAlloc); }
@@ -363,8 +279,6 @@ return offsetof(StgSmallMutArrPtrs, ptrs);
 __attribute__((export_name("offset_StgSmallMutArrPtrs_payload"))) uint32_t offset_StgSmallMutArrPtrs_payload() {
 return offsetof(StgSmallMutArrPtrs, payload);
 }
-
-__attribute__((export_name("sizeof_StgStack"))) uint32_t sizeof_StgStack() { return sizeof(StgStack); }
 
 __attribute__((export_name("offset_StgStack_stack_size"))) uint32_t offset_StgStack_stack_size() { return offsetof(StgStack, stack_size); }
 
@@ -390,8 +304,6 @@ return offsetof(StgThunkInfoTable, srt);
 
 __attribute__((export_name("sizeof_StgTSO"))) uint32_t sizeof_StgTSO() { return sizeof(StgTSO); }
 
-__attribute__((export_name("offset_StgTSO__link"))) uint32_t offset_StgTSO__link() { return offsetof(StgTSO, _link); }
-
 __attribute__((export_name("offset_StgTSO_stackobj"))) uint32_t offset_StgTSO_stackobj() { return offsetof(StgTSO, stackobj); }
 
 __attribute__((export_name("offset_StgTSO_what_next"))) uint32_t offset_StgTSO_what_next() { return offsetof(StgTSO, what_next); }
@@ -408,17 +320,11 @@ __attribute__((export_name("offset_StgTSO_saved_errno"))) uint32_t offset_StgTSO
 
 __attribute__((export_name("offset_StgTSO_dirty"))) uint32_t offset_StgTSO_dirty() { return offsetof(StgTSO, dirty); }
 
-__attribute__((export_name("offset_StgTSO_bound"))) uint32_t offset_StgTSO_bound() { return offsetof(StgTSO, bound); }
-
 __attribute__((export_name("offset_StgTSO_cap"))) uint32_t offset_StgTSO_cap() { return offsetof(StgTSO, cap); }
-
-__attribute__((export_name("offset_StgTSO_trec"))) uint32_t offset_StgTSO_trec() { return offsetof(StgTSO, trec); }
 
 __attribute__((export_name("offset_StgTSO_blocked_exceptions"))) uint32_t offset_StgTSO_blocked_exceptions() {
 return offsetof(StgTSO, blocked_exceptions);
 }
-
-__attribute__((export_name("offset_StgTSO_bq"))) uint32_t offset_StgTSO_bq() { return offsetof(StgTSO, bq); }
 
 __attribute__((export_name("offset_StgTSO_alloc_limit"))) uint32_t offset_StgTSO_alloc_limit() { return offsetof(StgTSO, alloc_limit); }
 
@@ -429,8 +335,6 @@ return offsetof(StgTSO, tot_stack_size);
 __attribute__((export_name("offset_StgUpdateFrame_updatee"))) uint32_t offset_StgUpdateFrame_updatee() {
 return offsetof(StgUpdateFrame, updatee);
 }
-
-__attribute__((export_name("sizeof_StgWeak"))) uint32_t sizeof_StgWeak() { return sizeof(StgWeak); }
 
 __attribute__((export_name("offset_StgWeak_cfinalizers"))) uint32_t offset_StgWeak_cfinalizers() { return offsetof(StgWeak, cfinalizers); }
 
@@ -444,103 +348,15 @@ __attribute__((export_name("offset_StgWeak_link"))) uint32_t offset_StgWeak_link
 
 __attribute__((export_name("next_ThreadRunGHC"))) uint32_t next_ThreadRunGHC() { return ThreadRunGHC; }
 
-__attribute__((export_name("next_ThreadInterpret"))) uint32_t next_ThreadInterpret() { return ThreadInterpret; }
-
-__attribute__((export_name("next_ThreadKilled"))) uint32_t next_ThreadKilled() { return ThreadKilled; }
-
-__attribute__((export_name("next_ThreadComplete"))) uint32_t next_ThreadComplete() { return ThreadComplete; }
-
-__attribute__((export_name("bf_EVACUATED"))) uint32_t bf_EVACUATED() { return BF_EVACUATED; }
-
-__attribute__((export_name("bf_LARGE"))) uint32_t bf_LARGE() { return BF_LARGE; }
-
 __attribute__((export_name("bf_PINNED"))) uint32_t bf_PINNED() { return BF_PINNED; }
-
-__attribute__((export_name("bf_MARKED"))) uint32_t bf_MARKED() { return BF_MARKED; }
-
-__attribute__((export_name("bf_EXEC"))) uint32_t bf_EXEC() { return BF_EXEC; }
-
-__attribute__((export_name("bf_FRAGMENTED"))) uint32_t bf_FRAGMENTED() { return BF_FRAGMENTED; }
-
-__attribute__((export_name("bf_KNOWN"))) uint32_t bf_KNOWN() { return BF_KNOWN; }
-
-__attribute__((export_name("bf_SWEPT"))) uint32_t bf_SWEPT() { return BF_SWEPT; }
-
-__attribute__((export_name("bf_COMPACT"))) uint32_t bf_COMPACT() { return BF_COMPACT; }
 
 __attribute__((export_name("blocked_NotBlocked"))) uint32_t blocked_NotBlocked() { return NotBlocked; }
 
-__attribute__((export_name("blocked_BlockedOnMVar"))) uint32_t blocked_BlockedOnMVar() { return BlockedOnMVar; }
-
-__attribute__((export_name("blocked_BlockedOnMVarRead"))) uint32_t blocked_BlockedOnMVarRead() { return BlockedOnMVarRead; }
-
-__attribute__((export_name("blocked_BlockedOnBlackHole"))) uint32_t blocked_BlockedOnBlackHole() { return BlockedOnBlackHole; }
-
-__attribute__((export_name("blocked_BlockedOnRead"))) uint32_t blocked_BlockedOnRead() { return BlockedOnRead; }
-
-__attribute__((export_name("blocked_BlockedOnWrite"))) uint32_t blocked_BlockedOnWrite() { return BlockedOnWrite; }
-
-__attribute__((export_name("blocked_BlockedOnDelay"))) uint32_t blocked_BlockedOnDelay() { return BlockedOnDelay; }
-
-__attribute__((export_name("blocked_BlockedOnSTM"))) uint32_t blocked_BlockedOnSTM() { return BlockedOnSTM; }
-
-__attribute__((export_name("blocked_BlockedOnDoProc"))) uint32_t blocked_BlockedOnDoProc() { return BlockedOnDoProc; }
-
 __attribute__((export_name("blocked_BlockedOnCCall"))) uint32_t blocked_BlockedOnCCall() { return BlockedOnCCall; }
-
-__attribute__((export_name("blocked_BlockedOnCCall_Interruptible"))) uint32_t blocked_BlockedOnCCall_Interruptible() {
-return BlockedOnCCall_Interruptible;
-}
-
-__attribute__((export_name("blocked_BlockedOnMsgThrowTo"))) uint32_t blocked_BlockedOnMsgThrowTo() { return BlockedOnMsgThrowTo; }
-
-__attribute__((export_name("blocked_ThreadMigrating"))) uint32_t blocked_ThreadMigrating() { return ThreadMigrating; }
-
-__attribute__((export_name("ret_HeapOverflow"))) uint32_t ret_HeapOverflow() { return HeapOverflow; }
-
-__attribute__((export_name("ret_StackOverflow"))) uint32_t ret_StackOverflow() { return StackOverflow; }
-
-__attribute__((export_name("ret_ThreadYielding"))) uint32_t ret_ThreadYielding() { return ThreadYielding; }
 
 __attribute__((export_name("ret_ThreadBlocked"))) uint32_t ret_ThreadBlocked() { return ThreadBlocked; }
 
-__attribute__((export_name("ret_ThreadFinished"))) uint32_t ret_ThreadFinished() { return ThreadFinished; }
-
-__attribute__((export_name("sched_SCHED_RUNNING"))) uint32_t sched_SCHED_RUNNING() { return SCHED_RUNNING; }
-
-__attribute__((export_name("sched_SCHED_INTERRUPTING"))) uint32_t sched_SCHED_INTERRUPTING() { return SCHED_INTERRUPTING; }
-
-__attribute__((export_name("sched_SCHED_SHUTTING_DOWN"))) uint32_t sched_SCHED_SHUTTING_DOWN() { return SCHED_SHUTTING_DOWN; }
-
-__attribute__((export_name("scheduler_NoStatus"))) uint32_t scheduler_NoStatus() { return NoStatus; }
-
 __attribute__((export_name("scheduler_Success"))) uint32_t scheduler_Success() { return Success; }
-
-__attribute__((export_name("scheduler_Killed"))) uint32_t scheduler_Killed() { return Killed; }
-
-__attribute__((export_name("scheduler_Interrupted"))) uint32_t scheduler_Interrupted() { return Interrupted; }
-
-__attribute__((export_name("scheduler_HeapExhausted"))) uint32_t scheduler_HeapExhausted() { return HeapExhausted; }
-
-__attribute__((export_name("sizeof_bool"))) uint32_t sizeof_bool() { return sizeof(bool); }
-
-__attribute__((export_name("sizeof_int"))) uint32_t sizeof_int() { return sizeof(int); }
-
-__attribute__((export_name("sizeof_SchedulerStatus"))) uint32_t sizeof_SchedulerStatus() { return sizeof(SchedulerStatus); }
-
-__attribute__((export_name("tso_LOCKED"))) uint32_t tso_LOCKED() { return TSO_LOCKED; }
-
-__attribute__((export_name("tso_BLOCKEX"))) uint32_t tso_BLOCKEX() { return TSO_BLOCKEX; }
-
-__attribute__((export_name("tso_INTERRUPTIBLE"))) uint32_t tso_INTERRUPTIBLE() { return TSO_INTERRUPTIBLE; }
-
-__attribute__((export_name("tso_STOPPED_ON_BREAKPOINT"))) uint32_t tso_STOPPED_ON_BREAKPOINT() { return TSO_STOPPED_ON_BREAKPOINT; }
-
-__attribute__((export_name("tso_MARKED"))) uint32_t tso_MARKED() { return TSO_MARKED; }
-
-__attribute__((export_name("tso_SQUEEZED"))) uint32_t tso_SQUEEZED() { return TSO_SQUEEZED; }
-
-__attribute__((export_name("tso_ALLOC_LIMIT"))) uint32_t tso_ALLOC_LIMIT() { return TSO_ALLOC_LIMIT; }
 
 __attribute__((export_name("sizeof_StgStableName"))) uint32_t sizeof_StgStableName() { return sizeof(StgStableName); }
 

@@ -88,16 +88,6 @@ offset_Capability_node :: Int
 offset_Capability_node =
   unsafePerformIO $ wasmtimeInvoke "offset_Capability_node" []
 
-{-# NOINLINE offset_Capability_running_task #-}
-offset_Capability_running_task :: Int
-offset_Capability_running_task =
-  unsafePerformIO $ wasmtimeInvoke "offset_Capability_running_task" []
-
-{-# NOINLINE offset_Capability_in_haskell #-}
-offset_Capability_in_haskell :: Int
-offset_Capability_in_haskell =
-  unsafePerformIO $ wasmtimeInvoke "offset_Capability_in_haskell" []
-
 {-# NOINLINE offset_Capability_idle #-}
 offset_Capability_idle :: Int
 offset_Capability_idle =
@@ -107,51 +97,6 @@ offset_Capability_idle =
 offset_Capability_disabled :: Int
 offset_Capability_disabled =
   unsafePerformIO $ wasmtimeInvoke "offset_Capability_disabled" []
-
-{-# NOINLINE offset_Capability_run_queue_hd #-}
-offset_Capability_run_queue_hd :: Int
-offset_Capability_run_queue_hd =
-  unsafePerformIO $ wasmtimeInvoke "offset_Capability_run_queue_hd" []
-
-{-# NOINLINE offset_Capability_run_queue_tl #-}
-offset_Capability_run_queue_tl :: Int
-offset_Capability_run_queue_tl =
-  unsafePerformIO $ wasmtimeInvoke "offset_Capability_run_queue_tl" []
-
-{-# NOINLINE offset_Capability_n_run_queue #-}
-offset_Capability_n_run_queue :: Int
-offset_Capability_n_run_queue =
-  unsafePerformIO $ wasmtimeInvoke "offset_Capability_n_run_queue" []
-
-{-# NOINLINE offset_Capability_suspended_ccalls #-}
-offset_Capability_suspended_ccalls :: Int
-offset_Capability_suspended_ccalls =
-  unsafePerformIO $ wasmtimeInvoke "offset_Capability_suspended_ccalls" []
-
-{-# NOINLINE offset_Capability_n_suspended_ccalls #-}
-offset_Capability_n_suspended_ccalls :: Int
-offset_Capability_n_suspended_ccalls =
-  unsafePerformIO $ wasmtimeInvoke "offset_Capability_n_suspended_ccalls" []
-
-{-# NOINLINE offset_Capability_mut_lists #-}
-offset_Capability_mut_lists :: Int
-offset_Capability_mut_lists =
-  unsafePerformIO $ wasmtimeInvoke "offset_Capability_mut_lists" []
-
-{-# NOINLINE offset_Capability_saved_mut_lists #-}
-offset_Capability_saved_mut_lists :: Int
-offset_Capability_saved_mut_lists =
-  unsafePerformIO $ wasmtimeInvoke "offset_Capability_saved_mut_lists" []
-
-{-# NOINLINE offset_Capability_pinned_object_block #-}
-offset_Capability_pinned_object_block :: Int
-offset_Capability_pinned_object_block =
-  unsafePerformIO $ wasmtimeInvoke "offset_Capability_pinned_object_block" []
-
-{-# NOINLINE offset_Capability_pinned_object_blocks #-}
-offset_Capability_pinned_object_blocks :: Int
-offset_Capability_pinned_object_blocks =
-  unsafePerformIO $ wasmtimeInvoke "offset_Capability_pinned_object_blocks" []
 
 {-# NOINLINE offset_Capability_weak_ptr_list_hd #-}
 offset_Capability_weak_ptr_list_hd :: Int
@@ -177,31 +122,6 @@ offset_Capability_interrupt =
 offset_Capability_total_allocated :: Int
 offset_Capability_total_allocated =
   unsafePerformIO $ wasmtimeInvoke "offset_Capability_total_allocated" []
-
-{-# NOINLINE offset_Capability_free_tvar_watch_queues #-}
-offset_Capability_free_tvar_watch_queues :: Int
-offset_Capability_free_tvar_watch_queues =
-  unsafePerformIO $ wasmtimeInvoke "offset_Capability_free_tvar_watch_queues" []
-
-{-# NOINLINE offset_Capability_free_trec_chunks #-}
-offset_Capability_free_trec_chunks :: Int
-offset_Capability_free_trec_chunks =
-  unsafePerformIO $ wasmtimeInvoke "offset_Capability_free_trec_chunks" []
-
-{-# NOINLINE offset_Capability_free_trec_headers #-}
-offset_Capability_free_trec_headers :: Int
-offset_Capability_free_trec_headers =
-  unsafePerformIO $ wasmtimeInvoke "offset_Capability_free_trec_headers" []
-
-{-# NOINLINE offset_Capability_transaction_tokens #-}
-offset_Capability_transaction_tokens :: Int
-offset_Capability_transaction_tokens =
-  unsafePerformIO $ wasmtimeInvoke "offset_Capability_transaction_tokens" []
-
-{-# NOINLINE sizeof_MessageBlackHole #-}
-sizeof_MessageBlackHole :: Int
-sizeof_MessageBlackHole =
-  unsafePerformIO $ wasmtimeInvoke "sizeof_MessageBlackHole" []
 
 {-# NOINLINE offset_MessageBlackHole_link #-}
 offset_MessageBlackHole_link :: Int
@@ -267,11 +187,6 @@ offset_StgArrBytes_bytes :: Int
 offset_StgArrBytes_bytes =
   unsafePerformIO $ wasmtimeInvoke "offset_StgArrBytes_bytes" []
 
-{-# NOINLINE offset_StgArrBytes_payload #-}
-offset_StgArrBytes_payload :: Int
-offset_StgArrBytes_payload =
-  unsafePerformIO $ wasmtimeInvoke "offset_StgArrBytes_payload" []
-
 {-# NOINLINE sizeof_StgBlockingQueue #-}
 sizeof_StgBlockingQueue :: Int
 sizeof_StgBlockingQueue =
@@ -297,10 +212,6 @@ offset_StgBlockingQueue_queue :: Int
 offset_StgBlockingQueue_queue =
   unsafePerformIO $ wasmtimeInvoke "offset_StgBlockingQueue_queue" []
 
-{-# NOINLINE sizeof_StgClosure #-}
-sizeof_StgClosure :: Int
-sizeof_StgClosure = unsafePerformIO $ wasmtimeInvoke "sizeof_StgClosure" []
-
 {-# NOINLINE offset_StgClosure_payload #-}
 offset_StgClosure_payload :: Int
 offset_StgClosure_payload =
@@ -323,11 +234,6 @@ sizeof_StgIndStatic = unsafePerformIO $ wasmtimeInvoke "sizeof_StgIndStatic" []
 offset_StgIndStatic_indirectee :: Int
 offset_StgIndStatic_indirectee =
   unsafePerformIO $ wasmtimeInvoke "offset_StgIndStatic_indirectee" []
-
-{-# NOINLINE offset_StgIndStatic_static_link #-}
-offset_StgIndStatic_static_link :: Int
-offset_StgIndStatic_static_link =
-  unsafePerformIO $ wasmtimeInvoke "offset_StgIndStatic_static_link" []
 
 {-# NOINLINE offset_StgIndStatic_saved_info #-}
 offset_StgIndStatic_saved_info :: Int
@@ -359,10 +265,6 @@ offset_StgFunInfoTable_f :: Int
 offset_StgFunInfoTable_f =
   unsafePerformIO $ wasmtimeInvoke "offset_StgFunInfoTable_f" []
 
-{-# NOINLINE sizeof_StgFunTable #-}
-sizeof_StgFunTable :: Int
-sizeof_StgFunTable = unsafePerformIO $ wasmtimeInvoke "sizeof_StgFunTable" []
-
 {-# NOINLINE offset_StgFunTable_stgEagerBlackholeInfo #-}
 offset_StgFunTable_stgEagerBlackholeInfo :: Int
 offset_StgFunTable_stgEagerBlackholeInfo =
@@ -377,11 +279,6 @@ offset_StgFunTable_stgGCEnter1 =
 offset_StgFunTable_stgGCFun :: Int
 offset_StgFunTable_stgGCFun =
   unsafePerformIO $ wasmtimeInvoke "offset_StgFunTable_stgGCFun" []
-
-{-# NOINLINE offset_StgInfoTable_entry #-}
-offset_StgInfoTable_entry :: Int
-offset_StgInfoTable_entry =
-  unsafePerformIO $ wasmtimeInvoke "offset_StgInfoTable_entry" []
 
 {-# NOINLINE offset_StgInfoTable_layout #-}
 offset_StgInfoTable_layout :: Int
@@ -417,11 +314,6 @@ sizeof_StgMutArrPtrs =
 offset_StgMutArrPtrs_ptrs :: Int
 offset_StgMutArrPtrs_ptrs =
   unsafePerformIO $ wasmtimeInvoke "offset_StgMutArrPtrs_ptrs" []
-
-{-# NOINLINE offset_StgMutArrPtrs_size #-}
-offset_StgMutArrPtrs_size :: Int
-offset_StgMutArrPtrs_size =
-  unsafePerformIO $ wasmtimeInvoke "offset_StgMutArrPtrs_size" []
 
 {-# NOINLINE offset_StgMutArrPtrs_payload #-}
 offset_StgMutArrPtrs_payload :: Int
@@ -491,10 +383,6 @@ offset_StgRetInfoTable_i =
 offset_StgRetInfoTable_srt :: Int
 offset_StgRetInfoTable_srt =
   unsafePerformIO $ wasmtimeInvoke "offset_StgRetInfoTable_srt" []
-
-{-# NOINLINE sizeof_StgRegTable #-}
-sizeof_StgRegTable :: Int
-sizeof_StgRegTable = unsafePerformIO $ wasmtimeInvoke "sizeof_StgRegTable" []
 
 {-# NOINLINE offset_StgRegTable_rR1 #-}
 offset_StgRegTable_rR1 :: Int
@@ -636,11 +524,6 @@ offset_StgRegTable_rCCCS :: Int
 offset_StgRegTable_rCCCS =
   unsafePerformIO $ wasmtimeInvoke "offset_StgRegTable_rCCCS" []
 
-{-# NOINLINE offset_StgRegTable_rNursery #-}
-offset_StgRegTable_rNursery :: Int
-offset_StgRegTable_rNursery =
-  unsafePerformIO $ wasmtimeInvoke "offset_StgRegTable_rNursery" []
-
 {-# NOINLINE offset_StgRegTable_rCurrentTSO #-}
 offset_StgRegTable_rCurrentTSO :: Int
 offset_StgRegTable_rCurrentTSO =
@@ -650,11 +533,6 @@ offset_StgRegTable_rCurrentTSO =
 offset_StgRegTable_rCurrentNursery :: Int
 offset_StgRegTable_rCurrentNursery =
   unsafePerformIO $ wasmtimeInvoke "offset_StgRegTable_rCurrentNursery" []
-
-{-# NOINLINE offset_StgRegTable_rCurrentAlloc #-}
-offset_StgRegTable_rCurrentAlloc :: Int
-offset_StgRegTable_rCurrentAlloc =
-  unsafePerformIO $ wasmtimeInvoke "offset_StgRegTable_rCurrentAlloc" []
 
 {-# NOINLINE offset_StgRegTable_rHpAlloc #-}
 offset_StgRegTable_rHpAlloc :: Int
@@ -689,10 +567,6 @@ offset_StgSmallMutArrPtrs_ptrs =
 offset_StgSmallMutArrPtrs_payload :: Int
 offset_StgSmallMutArrPtrs_payload =
   unsafePerformIO $ wasmtimeInvoke "offset_StgSmallMutArrPtrs_payload" []
-
-{-# NOINLINE sizeof_StgStack #-}
-sizeof_StgStack :: Int
-sizeof_StgStack = unsafePerformIO $ wasmtimeInvoke "sizeof_StgStack" []
 
 {-# NOINLINE offset_StgStack_stack_size #-}
 offset_StgStack_stack_size :: Int
@@ -740,10 +614,6 @@ offset_StgThunkInfoTable_srt =
 sizeof_StgTSO :: Int
 sizeof_StgTSO = unsafePerformIO $ wasmtimeInvoke "sizeof_StgTSO" []
 
-{-# NOINLINE offset_StgTSO__link #-}
-offset_StgTSO__link :: Int
-offset_StgTSO__link = unsafePerformIO $ wasmtimeInvoke "offset_StgTSO__link" []
-
 {-# NOINLINE offset_StgTSO_stackobj #-}
 offset_StgTSO_stackobj :: Int
 offset_StgTSO_stackobj =
@@ -781,26 +651,14 @@ offset_StgTSO_saved_errno =
 offset_StgTSO_dirty :: Int
 offset_StgTSO_dirty = unsafePerformIO $ wasmtimeInvoke "offset_StgTSO_dirty" []
 
-{-# NOINLINE offset_StgTSO_bound #-}
-offset_StgTSO_bound :: Int
-offset_StgTSO_bound = unsafePerformIO $ wasmtimeInvoke "offset_StgTSO_bound" []
-
 {-# NOINLINE offset_StgTSO_cap #-}
 offset_StgTSO_cap :: Int
 offset_StgTSO_cap = unsafePerformIO $ wasmtimeInvoke "offset_StgTSO_cap" []
-
-{-# NOINLINE offset_StgTSO_trec #-}
-offset_StgTSO_trec :: Int
-offset_StgTSO_trec = unsafePerformIO $ wasmtimeInvoke "offset_StgTSO_trec" []
 
 {-# NOINLINE offset_StgTSO_blocked_exceptions #-}
 offset_StgTSO_blocked_exceptions :: Int
 offset_StgTSO_blocked_exceptions =
   unsafePerformIO $ wasmtimeInvoke "offset_StgTSO_blocked_exceptions" []
-
-{-# NOINLINE offset_StgTSO_bq #-}
-offset_StgTSO_bq :: Int
-offset_StgTSO_bq = unsafePerformIO $ wasmtimeInvoke "offset_StgTSO_bq" []
 
 {-# NOINLINE offset_StgTSO_alloc_limit #-}
 offset_StgTSO_alloc_limit :: Int
@@ -816,10 +674,6 @@ offset_StgTSO_tot_stack_size =
 offset_StgUpdateFrame_updatee :: Int
 offset_StgUpdateFrame_updatee =
   unsafePerformIO $ wasmtimeInvoke "offset_StgUpdateFrame_updatee" []
-
-{-# NOINLINE sizeof_StgWeak #-}
-sizeof_StgWeak :: Int
-sizeof_StgWeak = unsafePerformIO $ wasmtimeInvoke "sizeof_StgWeak" []
 
 {-# NOINLINE offset_StgWeak_cfinalizers #-}
 offset_StgWeak_cfinalizers :: Int
@@ -848,216 +702,26 @@ offset_StgWeak_link = unsafePerformIO $ wasmtimeInvoke "offset_StgWeak_link" []
 next_ThreadRunGHC :: Int
 next_ThreadRunGHC = unsafePerformIO $ wasmtimeInvoke "next_ThreadRunGHC" []
 
-{-# NOINLINE next_ThreadInterpret #-}
-next_ThreadInterpret :: Int
-next_ThreadInterpret =
-  unsafePerformIO $ wasmtimeInvoke "next_ThreadInterpret" []
-
-{-# NOINLINE next_ThreadKilled #-}
-next_ThreadKilled :: Int
-next_ThreadKilled = unsafePerformIO $ wasmtimeInvoke "next_ThreadKilled" []
-
-{-# NOINLINE next_ThreadComplete #-}
-next_ThreadComplete :: Int
-next_ThreadComplete = unsafePerformIO $ wasmtimeInvoke "next_ThreadComplete" []
-
-{-# NOINLINE bf_EVACUATED #-}
-bf_EVACUATED :: Int
-bf_EVACUATED = unsafePerformIO $ wasmtimeInvoke "bf_EVACUATED" []
-
-{-# NOINLINE bf_LARGE #-}
-bf_LARGE :: Int
-bf_LARGE = unsafePerformIO $ wasmtimeInvoke "bf_LARGE" []
-
 {-# NOINLINE bf_PINNED #-}
 bf_PINNED :: Int
 bf_PINNED = unsafePerformIO $ wasmtimeInvoke "bf_PINNED" []
 
-{-# NOINLINE bf_MARKED #-}
-bf_MARKED :: Int
-bf_MARKED = unsafePerformIO $ wasmtimeInvoke "bf_MARKED" []
-
-{-# NOINLINE bf_EXEC #-}
-bf_EXEC :: Int
-bf_EXEC = unsafePerformIO $ wasmtimeInvoke "bf_EXEC" []
-
-{-# NOINLINE bf_FRAGMENTED #-}
-bf_FRAGMENTED :: Int
-bf_FRAGMENTED = unsafePerformIO $ wasmtimeInvoke "bf_FRAGMENTED" []
-
-{-# NOINLINE bf_KNOWN #-}
-bf_KNOWN :: Int
-bf_KNOWN = unsafePerformIO $ wasmtimeInvoke "bf_KNOWN" []
-
-{-# NOINLINE bf_SWEPT #-}
-bf_SWEPT :: Int
-bf_SWEPT = unsafePerformIO $ wasmtimeInvoke "bf_SWEPT" []
-
-{-# NOINLINE bf_COMPACT #-}
-bf_COMPACT :: Int
-bf_COMPACT = unsafePerformIO $ wasmtimeInvoke "bf_COMPACT" []
-
 {-# NOINLINE blocked_NotBlocked #-}
 blocked_NotBlocked :: Int
 blocked_NotBlocked = unsafePerformIO $ wasmtimeInvoke "blocked_NotBlocked" []
-
-{-# NOINLINE blocked_BlockedOnMVar #-}
-blocked_BlockedOnMVar :: Int
-blocked_BlockedOnMVar =
-  unsafePerformIO $ wasmtimeInvoke "blocked_BlockedOnMVar" []
-
-{-# NOINLINE blocked_BlockedOnMVarRead #-}
-blocked_BlockedOnMVarRead :: Int
-blocked_BlockedOnMVarRead =
-  unsafePerformIO $ wasmtimeInvoke "blocked_BlockedOnMVarRead" []
-
-{-# NOINLINE blocked_BlockedOnBlackHole #-}
-blocked_BlockedOnBlackHole :: Int
-blocked_BlockedOnBlackHole =
-  unsafePerformIO $ wasmtimeInvoke "blocked_BlockedOnBlackHole" []
-
-{-# NOINLINE blocked_BlockedOnRead #-}
-blocked_BlockedOnRead :: Int
-blocked_BlockedOnRead =
-  unsafePerformIO $ wasmtimeInvoke "blocked_BlockedOnRead" []
-
-{-# NOINLINE blocked_BlockedOnWrite #-}
-blocked_BlockedOnWrite :: Int
-blocked_BlockedOnWrite =
-  unsafePerformIO $ wasmtimeInvoke "blocked_BlockedOnWrite" []
-
-{-# NOINLINE blocked_BlockedOnDelay #-}
-blocked_BlockedOnDelay :: Int
-blocked_BlockedOnDelay =
-  unsafePerformIO $ wasmtimeInvoke "blocked_BlockedOnDelay" []
-
-{-# NOINLINE blocked_BlockedOnSTM #-}
-blocked_BlockedOnSTM :: Int
-blocked_BlockedOnSTM =
-  unsafePerformIO $ wasmtimeInvoke "blocked_BlockedOnSTM" []
-
-{-# NOINLINE blocked_BlockedOnDoProc #-}
-blocked_BlockedOnDoProc :: Int
-blocked_BlockedOnDoProc =
-  unsafePerformIO $ wasmtimeInvoke "blocked_BlockedOnDoProc" []
 
 {-# NOINLINE blocked_BlockedOnCCall #-}
 blocked_BlockedOnCCall :: Int
 blocked_BlockedOnCCall =
   unsafePerformIO $ wasmtimeInvoke "blocked_BlockedOnCCall" []
 
-{-# NOINLINE blocked_BlockedOnCCall_Interruptible #-}
-blocked_BlockedOnCCall_Interruptible :: Int
-blocked_BlockedOnCCall_Interruptible =
-  unsafePerformIO $ wasmtimeInvoke "blocked_BlockedOnCCall_Interruptible" []
-
-{-# NOINLINE blocked_BlockedOnMsgThrowTo #-}
-blocked_BlockedOnMsgThrowTo :: Int
-blocked_BlockedOnMsgThrowTo =
-  unsafePerformIO $ wasmtimeInvoke "blocked_BlockedOnMsgThrowTo" []
-
-{-# NOINLINE blocked_ThreadMigrating #-}
-blocked_ThreadMigrating :: Int
-blocked_ThreadMigrating =
-  unsafePerformIO $ wasmtimeInvoke "blocked_ThreadMigrating" []
-
-{-# NOINLINE ret_HeapOverflow #-}
-ret_HeapOverflow :: Int
-ret_HeapOverflow = unsafePerformIO $ wasmtimeInvoke "ret_HeapOverflow" []
-
-{-# NOINLINE ret_StackOverflow #-}
-ret_StackOverflow :: Int
-ret_StackOverflow = unsafePerformIO $ wasmtimeInvoke "ret_StackOverflow" []
-
-{-# NOINLINE ret_ThreadYielding #-}
-ret_ThreadYielding :: Int
-ret_ThreadYielding = unsafePerformIO $ wasmtimeInvoke "ret_ThreadYielding" []
-
 {-# NOINLINE ret_ThreadBlocked #-}
 ret_ThreadBlocked :: Int
 ret_ThreadBlocked = unsafePerformIO $ wasmtimeInvoke "ret_ThreadBlocked" []
 
-{-# NOINLINE ret_ThreadFinished #-}
-ret_ThreadFinished :: Int
-ret_ThreadFinished = unsafePerformIO $ wasmtimeInvoke "ret_ThreadFinished" []
-
-{-# NOINLINE sched_SCHED_RUNNING #-}
-sched_SCHED_RUNNING :: Int
-sched_SCHED_RUNNING = unsafePerformIO $ wasmtimeInvoke "sched_SCHED_RUNNING" []
-
-{-# NOINLINE sched_SCHED_INTERRUPTING #-}
-sched_SCHED_INTERRUPTING :: Int
-sched_SCHED_INTERRUPTING =
-  unsafePerformIO $ wasmtimeInvoke "sched_SCHED_INTERRUPTING" []
-
-{-# NOINLINE sched_SCHED_SHUTTING_DOWN #-}
-sched_SCHED_SHUTTING_DOWN :: Int
-sched_SCHED_SHUTTING_DOWN =
-  unsafePerformIO $ wasmtimeInvoke "sched_SCHED_SHUTTING_DOWN" []
-
-{-# NOINLINE scheduler_NoStatus #-}
-scheduler_NoStatus :: Int
-scheduler_NoStatus = unsafePerformIO $ wasmtimeInvoke "scheduler_NoStatus" []
-
 {-# NOINLINE scheduler_Success #-}
 scheduler_Success :: Int
 scheduler_Success = unsafePerformIO $ wasmtimeInvoke "scheduler_Success" []
-
-{-# NOINLINE scheduler_Killed #-}
-scheduler_Killed :: Int
-scheduler_Killed = unsafePerformIO $ wasmtimeInvoke "scheduler_Killed" []
-
-{-# NOINLINE scheduler_Interrupted #-}
-scheduler_Interrupted :: Int
-scheduler_Interrupted =
-  unsafePerformIO $ wasmtimeInvoke "scheduler_Interrupted" []
-
-{-# NOINLINE scheduler_HeapExhausted #-}
-scheduler_HeapExhausted :: Int
-scheduler_HeapExhausted =
-  unsafePerformIO $ wasmtimeInvoke "scheduler_HeapExhausted" []
-
-{-# NOINLINE sizeof_bool #-}
-sizeof_bool :: Int
-sizeof_bool = unsafePerformIO $ wasmtimeInvoke "sizeof_bool" []
-
-{-# NOINLINE sizeof_int #-}
-sizeof_int :: Int
-sizeof_int = unsafePerformIO $ wasmtimeInvoke "sizeof_int" []
-
-{-# NOINLINE sizeof_SchedulerStatus #-}
-sizeof_SchedulerStatus :: Int
-sizeof_SchedulerStatus =
-  unsafePerformIO $ wasmtimeInvoke "sizeof_SchedulerStatus" []
-
-{-# NOINLINE tso_LOCKED #-}
-tso_LOCKED :: Int
-tso_LOCKED = unsafePerformIO $ wasmtimeInvoke "tso_LOCKED" []
-
-{-# NOINLINE tso_BLOCKEX #-}
-tso_BLOCKEX :: Int
-tso_BLOCKEX = unsafePerformIO $ wasmtimeInvoke "tso_BLOCKEX" []
-
-{-# NOINLINE tso_INTERRUPTIBLE #-}
-tso_INTERRUPTIBLE :: Int
-tso_INTERRUPTIBLE = unsafePerformIO $ wasmtimeInvoke "tso_INTERRUPTIBLE" []
-
-{-# NOINLINE tso_STOPPED_ON_BREAKPOINT #-}
-tso_STOPPED_ON_BREAKPOINT :: Int
-tso_STOPPED_ON_BREAKPOINT =
-  unsafePerformIO $ wasmtimeInvoke "tso_STOPPED_ON_BREAKPOINT" []
-
-{-# NOINLINE tso_MARKED #-}
-tso_MARKED :: Int
-tso_MARKED = unsafePerformIO $ wasmtimeInvoke "tso_MARKED" []
-
-{-# NOINLINE tso_SQUEEZED #-}
-tso_SQUEEZED :: Int
-tso_SQUEEZED = unsafePerformIO $ wasmtimeInvoke "tso_SQUEEZED" []
-
-{-# NOINLINE tso_ALLOC_LIMIT #-}
-tso_ALLOC_LIMIT :: Int
-tso_ALLOC_LIMIT = unsafePerformIO $ wasmtimeInvoke "tso_ALLOC_LIMIT" []
 
 {-# NOINLINE sizeof_StgStableName #-}
 sizeof_StgStableName :: Int
