@@ -14,7 +14,6 @@ where
 
 import Asterius.EDSL
 import Asterius.Foreign.Internals
-import Asterius.Foreign.SupportedTypes
 import Asterius.Foreign.TypesTag
 import Asterius.Passes.GlobalRegs
 import Asterius.Types
@@ -28,7 +27,6 @@ import Data.List
 import qualified Data.Map.Strict as M
 import qualified GhcPlugins as GHC
 import Language.Haskell.GHC.Toolkit.Constants
-import qualified CmmCallConv as GHC
 
 recoverWasmWrapperValueType :: FFIValueType -> ValueType
 recoverWasmWrapperValueType FFIValueType {..} = case ffiValueTypeRep of
@@ -87,8 +85,8 @@ getFFIModule dflags ms_mod = do
   pure $ generateFFIWrapperModule dflags ffi_import_state
 
 generateImplicitCastExpression ::
-  Bool -> [ValueType] -> [ValueType] -> Expression -> Expression
-generateImplicitCastExpression signed src_ts dest_ts src_expr
+  [ValueType] -> [ValueType] -> Expression -> Expression
+generateImplicitCastExpression src_ts dest_ts src_expr
       | src_ts == dest_ts =
         src_expr
       | otherwise =
@@ -107,24 +105,18 @@ generateFFIImportWrapperFunction dflags k imp_decl@FFIImportDecl {..}
         varTypes = [],
         body =
           generateImplicitCastExpression
-            ( case ffiResultTypes ffiFunctionType of
-                [ffi_vt] -> ffiValueTypeSigned ffi_vt
-                _ -> False
-            )
             (returnTypes import_func_type)
             (returnTypes wrapper_func_type)
             $ CallImport
               { target' = entityName k,
                 operands =
                   [ generateImplicitCastExpression
-                      (ffiValueTypeSigned param_t)
                       [wrapper_param_t]
                       [import_param_t]
                       GetLocal {index = i, valueType = wrapper_param_t}
-                    | (i, param_t, wrapper_param_t, import_param_t) <-
-                        zip4
+                    | (i, wrapper_param_t, import_param_t) <-
+                        zip3
                           [0 ..]
-                          ffi_param_types
                           (paramTypes wrapper_func_type)
                           (paramTypes import_func_type)
                   ],
@@ -134,7 +126,6 @@ generateFFIImportWrapperFunction dflags k imp_decl@FFIImportDecl {..}
   | otherwise = asyncImportWrapper dflags k imp_decl
   where
     is_unsafe = ffiSafety == FFIUnsafe
-    ffi_param_types = ffiParamTypes ffiFunctionType
     import_func_type = recoverWasmImportFunctionType FFIUnsafe ffiFunctionType
     wrapper_func_type = recoverWasmWrapperFunctionType FFIUnsafe ffiFunctionType
 
@@ -179,7 +170,6 @@ asyncImportWrapper dflags k FFIImportDecl {..} =
                   { target' = entityName k,
                     operands =
                       [ generateImplicitCastExpression
-                          (ffiValueTypeSigned param_t)
                           [recoverWasmWrapperValueType param_t]
                           [import_param_t]
                           (unresolvedGetGlobal param_reg)

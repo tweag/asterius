@@ -2,8 +2,7 @@
 {-# LANGUAGE RecordWildCards #-}
 
 module Asterius.Foreign.SupportedTypes
-  ( ffiValueTypeSigned,
-    getFFIValueType0,
+  ( getFFIValueType0,
     getFFIValueType1,
     ffiBoxedValueTypeList,
     isJSValTy,
@@ -20,25 +19,6 @@ import qualified TysPrim as GHC
 
 ffiJSVal :: FFIValueType
 ffiJSVal = FFIValueType {ffiValueTypeRep = FFIJSValRep, hsTyCon = "JSVal"}
-
-ffiValueTypeSigned :: FFIValueType -> Bool
-ffiValueTypeSigned FFIValueType {..} = case ffiValueTypeRep of
-  FFILiftedRep -> False
-  FFIUnliftedRep -> False
-  FFIJSValRep -> False
-  FFIIntRep -> True
-  FFIInt8Rep -> True
-  FFIInt16Rep -> True
-  FFIInt32Rep -> True
-  FFIInt64Rep -> True
-  FFIWordRep -> False
-  FFIWord8Rep -> False
-  FFIWord16Rep -> False
-  FFIWord32Rep -> False
-  FFIWord64Rep -> False
-  FFIAddrRep -> False
-  FFIFloatRep -> True
-  FFIDoubleRep -> True
 
 getFFIValueTypeRep :: GHC.TyCon -> FFIValueTypeRep
 getFFIValueTypeRep tc = case GHC.tyConPrimRep tc of
