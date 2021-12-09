@@ -15,7 +15,6 @@ import Asterius.Builtins
 import Asterius.JSFFI
 import Asterius.MemoryTrap
 import Asterius.Passes.DataSymbolTable
-import Asterius.Passes.FindCCall
 import Asterius.Passes.FunctionSymbolTable
 import Asterius.Passes.GCSections
 import Asterius.Passes.Tracing
