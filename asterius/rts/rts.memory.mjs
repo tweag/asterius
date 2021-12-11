@@ -138,11 +138,6 @@ export class Memory {
     return new t(this.memory.buffer, p, len);
   }
 
-  strlen(_str) {
-    isI32(_str);
-    return isI32(this.components.exports.strlen(_str));
-  }
-
   strLoad(_str) {
     let p = _str;
     let s = "";
@@ -156,13 +151,6 @@ export class Memory {
       s += String.fromCharCode(c);
       i++;
     }
-  }
-
-  memchr(_ptr, val, num) {
-    isI32(_ptr);
-    isI32(val);
-    isI32(num);
-    return isI32(this.components.exports.memchr(_ptr, val, num));
   }
 
   memcpy(_dst, _src, n) {

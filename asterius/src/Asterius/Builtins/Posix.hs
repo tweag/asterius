@@ -96,42 +96,6 @@ posixImports =
             { paramTypes = [I32, I32],
               returnTypes = [I32]
             }
-      },
-    FunctionImport
-      { internalName = "closedir",
-        externalModuleName = "posix",
-        externalBaseName = "closedir",
-        functionType = FunctionType {paramTypes = [I32], returnTypes = [I32]}
-      },
-    FunctionImport
-      { internalName = "__asterius_posix_getenv",
-        externalModuleName = "posix",
-        externalBaseName = "getenv",
-        functionType =
-          FunctionType
-            { paramTypes = [I32, I32],
-              returnTypes = [I32]
-            }
-      },
-    FunctionImport
-      { internalName = "access",
-        externalModuleName = "posix",
-        externalBaseName = "access",
-        functionType =
-          FunctionType
-            { paramTypes = [I32, I32],
-              returnTypes = [I32]
-            }
-      },
-    FunctionImport
-      { internalName = "getcwd",
-        externalModuleName = "posix",
-        externalBaseName = "getcwd",
-        functionType =
-          FunctionType
-            { paramTypes = [I32, I32],
-              returnTypes = [I32]
-            }
       }
   ]
 
@@ -147,8 +111,6 @@ posixCBits =
     <> posixReaddir
     <> posixFreeDirent
     <> posixDName
-    <> posixGetenvBuf
-    <> posixGetenv
 
 posixFstatGetters :: AsteriusModule
 posixFstatGetters =
@@ -319,24 +281,3 @@ posixDName = runEDSL "__hscore_d_name" $ do
   setReturnTypes [I32]
   _ <- param I32
   emit $ symbol "__asterius_posix_dirent_buf"
-
-posixGetenvBuf :: AsteriusModule
-posixGetenvBuf =
-  mempty
-    { staticsMap =
-        SM.singleton
-          "__asterius_posix_getenv_buf"
-          AsteriusStatics
-            { asteriusStatics = [Serialized $ BS.pack $ replicate 32768 0]
-            }
-    }
-
-posixGetenv :: AsteriusModule
-posixGetenv = runEDSL "getenv" $ do
-  setReturnTypes [I32]
-  p <- param I32
-  call'
-      "__asterius_posix_getenv"
-      [p, symbol "__asterius_posix_getenv_buf"]
-      I32
-    >>= emit

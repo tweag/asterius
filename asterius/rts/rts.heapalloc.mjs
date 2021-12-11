@@ -80,7 +80,7 @@ export class HeapAlloc {
    * @param n The number of (64 bit) words to allocate
    * @param pinned Whether to allocate in the pinned pool
    */
-  allocate(n, pinned = false) {
+  allocate(cap, n, pinned = false) {
     isI32(n);
     const b = n << 2; // The size in bytes
     // Large objects are forced to be pinned as well
@@ -134,8 +134,12 @@ export class HeapAlloc {
    * Allocates the given number of words in the pinned pool.
    * @param n The number of (64 bit) words to allocate
    */
-  allocatePinned(n) {
-    return this.allocate(n, true);
+  allocatePinned(cap, n) {
+    return this.allocate(cap, n, true);
+  }
+
+  allocateMightFail(cap, n) {
+    return this.allocate(cap, n, false);
   }
 
   /**

@@ -6,7 +6,7 @@ export class JSValManager {
   }
 
   newJSValzh(v) {
-    const c = this.components.heapAlloc.allocate(1);
+    const c = this.components.heapAlloc.allocate(0xdeadbeef, 1);
     this.components.memory.i32Store(
       c,
       this.components.symbolTable.addressOf("stg_JSVAL_info")

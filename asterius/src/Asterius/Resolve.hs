@@ -75,7 +75,7 @@ resolveAsteriusModule debug m_globals_resolved =
                     )
                     func_imports
             )
-            $ rtsFunctionExports debug,
+            $ rtsFunctionExports,
         functionTable = func_table,
         tableImport = Nothing,
         tableSlots = table_slots,

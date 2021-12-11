@@ -21,6 +21,7 @@ export class StableNameManager {
 
     // https://github.com/ghc/ghc/blob/fe819dd637842fb564524a7cf80612a3673ce14c/includes/rts/storage/Closures.h#L197
     let stableptr = this.heapalloc.allocate(
+      0xdeadbeef,
       Math.ceil(rtsConstants.sizeof_StgStableName / 4)
     );
     this.memory.i32Store(stableptr, this.SymbolTable.addressOf("stg_STABLE_NAME_info"));
