@@ -26,7 +26,6 @@ import qualified Asterius.Internals.Arena as A
 import Asterius.Internals.Barf
 import Asterius.Internals.MagicNumber
 import Asterius.Internals.Marshal
-import Asterius.Passes.CCall
 import Asterius.Passes.Relooper
 import Asterius.Types
 import qualified Asterius.Types.SymbolMap as SM
@@ -243,9 +242,7 @@ marshalFunctionType FunctionType {..} = do
 
 -- | Environment used during marshaling of Asterius' types to Binaryen.
 data MarshalEnv = MarshalEnv
-  { -- | Info about exported functions in the libc module, indexed by external name.
-    envLibCFuncInfo :: M.Map BS.ByteString (BS.ByteString, FunctionType),
-    -- | Internal names of exported functions in the libc module.
+  { -- | Internal names of exported functions in the libc module.
     envLibCFuncNames :: Set.Set BS.ByteString,
     -- | The 'A.Arena' for allocating temporary buffers.
     envArena :: A.Arena,
@@ -276,9 +273,7 @@ askModuleRef :: CodeGen Binaryen.Module
 askModuleRef = reader envModuleRef
 
 marshalExpression :: Expression -> CodeGen Binaryen.Expression
-marshalExpression e' = do
- libc_func_info <- asks envLibCFuncInfo
- let e = handleCCall libc_func_info e'
+marshalExpression e =
  case e of
   Block {..} -> do
     bs <- forM bodys marshalExpression
@@ -599,11 +594,9 @@ marshalModule verbose_err sym_map last_data_offset hs_mod@Module {..} = do
     $ foldl1' (.|.) [Binaryen.mvp, Binaryen.bulkMemory, Binaryen.signExt]
   A.with $ \a -> do
     libc_func_names <- binaryenModuleExportNames m
-    libc_func_info <- fmap M.fromList $ for libc_func_names $ \(in_name, ext_name) -> (ext_name,) . (in_name,) <$> binaryenFunctionType m in_name
     let env =
           MarshalEnv
-              { envLibCFuncInfo = libc_func_info,
-              envLibCFuncNames = Set.fromList $ map fst libc_func_names,
+              { envLibCFuncNames = Set.fromList $ map fst libc_func_names,
               envArena = a,
               envIsVerboseErrOn = verbose_err,
               envSymbolMap = sym_map,

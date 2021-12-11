@@ -293,8 +293,7 @@ call f xs =
     Call
       { target = f,
         operands = xs,
-        callReturnTypes = [],
-        callHint = Nothing
+        callReturnTypes = []
       }
 
 call' :: EntitySymbol -> [Expression] -> ValueType -> EDSL Expression
@@ -305,8 +304,7 @@ call' f xs vt = do
     Call
       { target = f,
         operands = xs,
-        callReturnTypes = [vt],
-        callHint = Nothing
+        callReturnTypes = [vt]
       }
   pure $ getLVal lr
 

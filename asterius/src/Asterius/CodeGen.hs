@@ -686,8 +686,7 @@ marshalCmmUnMathPrimCall op vt r x = do
                     op
                       <> (if vt == F32 then "f" else ""),
                 operands = [xe],
-                callReturnTypes = [vt],
-                callHint = Just ([NoHint], [NoHint])
+                callReturnTypes = [vt]
               }
         }
     ]
@@ -713,8 +712,7 @@ marshalCmmBinMathPrimCall op vt r x y = do
                     op
                       <> (if vt == F32 then "f" else ""),
                 operands = [xe, ye],
-                callReturnTypes = [vt],
-                callHint = Just ([NoHint, NoHint], [NoHint])
+                callReturnTypes = [vt]
               }
         }
     ]
@@ -1241,8 +1239,7 @@ marshalCmmPrimCall (GHC.MO_BSwap GHC.W16) [r] [x] = do
             Call
             { target = "hs_bswap16",
               operands = [xe],
-              callReturnTypes = [I32],
-              callHint = Just ([NoHint], [NoHint])
+              callReturnTypes = [I32]
             }
         }
     ]
@@ -1256,8 +1253,7 @@ marshalCmmPrimCall (GHC.MO_BSwap GHC.W32) [r] [x] = do
             Call
             { target = "hs_bswap32",
               operands = [xe],
-              callReturnTypes = [I32],
-              callHint = Just ([NoHint], [NoHint])
+              callReturnTypes = [I32]
             }
         }
     ]
@@ -1271,8 +1267,7 @@ marshalCmmPrimCall (GHC.MO_BSwap GHC.W64) [r] [x] = do
             Call
             { target = "hs_bswap64",
               operands = [xe],
-              callReturnTypes = [I64],
-              callHint = Just ([NoHint], [NoHint])
+              callReturnTypes = [I64]
             }
         }
     ]
@@ -1407,7 +1402,7 @@ marshalCmmUnsafeCall p@(GHC.CmmLit (GHC.CmmLabel clbl)) f@(GHC.ForeignConvention
   case rs of
     [] ->
       pure
-        [ Call {target = sym, operands = xes, callReturnTypes = [], callHint = Just (map marshalForeignHint xs_hint, map marshalForeignHint rs_hint)}
+        [ Call {target = sym, operands = xes, callReturnTypes = []}
         ]
     [r] -> do
       (lr, vt) <- marshalCmmLocalReg r
@@ -1418,8 +1413,7 @@ marshalCmmUnsafeCall p@(GHC.CmmLit (GHC.CmmLabel clbl)) f@(GHC.ForeignConvention
                 Call
                 { target = sym,
                   operands = xes,
-                  callReturnTypes = [vt],
-                  callHint = Just (map marshalForeignHint xs_hint, map marshalForeignHint rs_hint)
+                  callReturnTypes = [vt]
                 }
             }
         ]

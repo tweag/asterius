@@ -582,8 +582,7 @@ generateWrapperFunction func_sym Function {functionType = FunctionType {..}} =
               | (i, wrapper_param_type, from_wrapper_param_type) <-
                   wrapper_param_types
             ],
-          callReturnTypes = returnTypes,
-          callHint = Nothing
+          callReturnTypes = returnTypes
         }
     }
   where
