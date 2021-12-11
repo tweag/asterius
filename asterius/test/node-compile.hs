@@ -54,7 +54,7 @@ shrinkExpression = preserve Unreachable $ \expr -> case expr of
   Call {..} -> do
     _new_operands <- traverse shrinkExpression operands
     pure expr {operands = _new_operands}
-  CallImport {..} -> do
+  Call {..} -> do
     _new_operands <- traverse shrinkExpression operands
     pure expr {operands = _new_operands}
   CallIndirect {..} -> do

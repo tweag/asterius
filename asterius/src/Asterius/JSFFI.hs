@@ -107,8 +107,8 @@ generateFFIImportWrapperFunction dflags k imp_decl@FFIImportDecl {..}
           generateImplicitCastExpression
             (returnTypes import_func_type)
             (returnTypes wrapper_func_type)
-            $ CallImport
-              { target' = entityName k,
+            $ Call
+              { target = k,
                 operands =
                   [ generateImplicitCastExpression
                       [wrapper_param_t]
@@ -120,7 +120,7 @@ generateFFIImportWrapperFunction dflags k imp_decl@FFIImportDecl {..}
                           (paramTypes wrapper_func_type)
                           (paramTypes import_func_type)
                   ],
-                callImportReturnTypes = returnTypes import_func_type
+                callReturnTypes = returnTypes import_func_type
               }
       }
   | otherwise = asyncImportWrapper dflags k imp_decl
@@ -166,8 +166,8 @@ asyncImportWrapper dflags k FFIImportDecl {..} =
         Block
           { name = "",
             bodys =
-              [ CallImport
-                  { target' = entityName k,
+              [ Call
+                  { target = k,
                     operands =
                       [ generateImplicitCastExpression
                           [recoverWasmWrapperValueType param_t]
@@ -179,7 +179,7 @@ asyncImportWrapper dflags k FFIImportDecl {..} =
                               ffi_param_types
                               (paramTypes import_func_type)
                       ],
-                    callImportReturnTypes = []
+                    callReturnTypes = []
                   },
                 Store
                   { bytes = 4,

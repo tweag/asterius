@@ -29,8 +29,8 @@ addMemoryTrapDeep sym = w
       Just HRefl -> case t of
         Load {ptr = i32_ptr, ..} ->
           let new_i32_ptr = w i32_ptr
-           in CallImport
-                { target' =
+           in Call
+                { target =
                     "__asterius_load_"
                       <> load_fn_suffix valueType bytes signed,
                   operands =
@@ -38,20 +38,20 @@ addMemoryTrapDeep sym = w
                       new_i32_ptr,
                       ConstI32 $ fromIntegral offset
                     ],
-                  callImportReturnTypes = [valueType]
+                  callReturnTypes = [valueType]
                 }
         Store {ptr = i32_ptr, ..} ->
           let new_i32_ptr = w i32_ptr
               new_value = w value
-           in CallImport
-                { target' = "__asterius_store_" <> store_fn_suffix valueType bytes,
+           in Call
+                { target = "__asterius_store_" <> store_fn_suffix valueType bytes,
                   operands =
                     [ Symbol {unresolvedSymbol = sym, symbolOffset = 0},
                       new_i32_ptr,
                       ConstI32 $ fromIntegral offset,
                       new_value
                     ],
-                  callImportReturnTypes = []
+                  callReturnTypes = []
                 }
         _ -> go
       _ -> go

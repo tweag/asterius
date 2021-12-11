@@ -65,6 +65,7 @@ import Foreign.C
 import GHC.Exts
 import Asterius.JSGen.Wizer
 import qualified Binaryen.Features as Binaryen
+import System.IO
 
 newtype MarshalError
   = UnsupportedExpression Expression
@@ -242,14 +243,14 @@ marshalFunctionType FunctionType {..} = do
 
 -- | Environment used during marshaling of Asterius' types to Binaryen.
 data MarshalEnv = MarshalEnv
-  { -- | Internal names of exported functions in the libc module.
-    envLibCFuncNames :: Set.Set BS.ByteString,
-    -- | The 'A.Arena' for allocating temporary buffers.
+  { -- | The 'A.Arena' for allocating temporary buffers.
     envArena :: A.Arena,
     -- | Whether the @verbose_err@ extension is on.
     envIsVerboseErrOn :: Bool,
     -- | The symbol map for the current module.
     envSymbolMap :: SM.SymbolMap Word32,
+    -- | Symbols of functions and function imports
+    envSymbolSet :: Set.Set EntitySymbol,
     -- | The current module reference.
     envModuleRef :: Binaryen.Module
   }
@@ -314,10 +315,8 @@ marshalExpression e =
       dn <- marshalBS a defaultName
       Binaryen.switch m nsp (fromIntegral nl) dn c (coerce nullPtr)
   Call {..} -> do
-    verbose_err <- isVerboseErrOn
-    sym_map <- askSymbolMap
-    libc_func_names <- asks envLibCFuncNames
-    if  | target `SM.member` sym_map || entityName target `Set.member` libc_func_names -> do
+    syms <- reader envSymbolSet
+    if | Set.member target syms -> do
           os <-
             mapM
               marshalExpression
@@ -336,21 +335,9 @@ marshalExpression e =
             (ops, osl) <- marshalV a os
             tp <- marshalBS a (entityName target)
             Binaryen.call m tp ops (fromIntegral osl) rts
-        | verbose_err ->
-          marshalExpression $
-            barf (entityName target) callReturnTypes
-        | otherwise -> do
-          m <- askModuleRef
-          lift $ Binaryen.Expression.unreachable m
-  CallImport {..} -> do
-    os <- forM operands marshalExpression
-    rts <- marshalReturnTypes callImportReturnTypes
-    m <- askModuleRef
-    a <- askArena
-    lift $ do
-      (ops, osl) <- marshalV a os
-      tp <- marshalBS a target'
-      Binaryen.call m tp ops (fromIntegral osl) rts
+       | otherwise -> do
+          liftIO $ hPutStrLn stderr $ "[DEBUG] Missing symbol " <> show target
+          marshalExpression Unreachable
   CallIndirect {..} -> do
     t <- marshalExpression indirectTarget
     os <- forM operands marshalExpression
@@ -592,14 +579,14 @@ marshalModule verbose_err sym_map last_data_offset hs_mod@Module {..} = do
   checkOverlapDataSegment m
   Binaryen.setFeatures m
     $ foldl1' (.|.) [Binaryen.mvp, Binaryen.bulkMemory, Binaryen.signExt]
+  libc_syms <- binaryenModuleExportNames m
   A.with $ \a -> do
-    libc_func_names <- binaryenModuleExportNames m
     let env =
           MarshalEnv
-              { envLibCFuncNames = Set.fromList $ map fst libc_func_names,
-              envArena = a,
+              { envArena = a,
               envIsVerboseErrOn = verbose_err,
               envSymbolMap = sym_map,
+              envSymbolSet = Set.fromList [mkEntitySymbol internalName | FunctionImport {..} <- functionImports ] <> Set.fromList [mkEntitySymbol k | k <- M.keys functionMap' ] <> Set.fromList [mkEntitySymbol k | k <- libc_syms],
               envModuleRef = m
             }
         fts = generateWasmFunctionTypeSet hs_mod
@@ -710,7 +697,7 @@ binaryenFunctionType m in_name = do
   pure FunctionType {paramTypes = args_tys, returnTypes = res_tys}
 
 binaryenModuleExportNames ::
-  Binaryen.Module -> IO [(BS.ByteString, BS.ByteString)]
+  Binaryen.Module -> IO [BS.ByteString]
 binaryenModuleExportNames m = do
   n <- Binaryen.getNumExports m
   fmap catMaybes $
@@ -720,8 +707,7 @@ binaryenModuleExportNames m = do
       if k == Binaryen.externalFunction
         then do
           in_name <- BS.packCString =<< Binaryen.Export.getValue e
-          ext_name <- BS.packCString =<< Binaryen.Export.getName e
-          pure $ Just (in_name, ext_name)
+          pure $ Just in_name
         else pure Nothing
 
 foreign import ccall unsafe "BinaryenGetMemoryInitial" c_BinaryenGetMemoryInitial :: Binaryen.Module -> IO Binaryen.Index

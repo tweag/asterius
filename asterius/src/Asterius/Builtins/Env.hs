@@ -48,6 +48,6 @@ envArgvBuf =
 envGetProgArgv :: AsteriusModule
 envGetProgArgv = runEDSL "getProgArgv" $ do
   [argc, argv] <- params [I32, I32]
-  callImport "__asterius_getProgArgv" [argc, symbol "__asterius_argv_buf"]
+  call "__asterius_getProgArgv" [argc, symbol "__asterius_argv_buf"]
   storeI32 (symbol "__asterius_argv_buf") 0 (symbol "prog_name")
   storeI32 argv 0 $ symbol "__asterius_argv_buf"

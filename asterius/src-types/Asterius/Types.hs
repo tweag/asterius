@@ -377,11 +377,6 @@ data Expression
         operands :: [Expression],
         callReturnTypes :: [ValueType]
       }
-  | CallImport
-      { target' :: BS.ByteString,
-        operands :: [Expression],
-        callImportReturnTypes :: [ValueType]
-      }
   | CallIndirect
       { indirectTarget :: Expression,
         operands :: [Expression],

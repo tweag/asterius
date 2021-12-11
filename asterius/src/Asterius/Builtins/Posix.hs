@@ -57,7 +57,7 @@ posixImports =
         externalBaseName = "ftruncate",
         functionType =
           FunctionType
-            { paramTypes = [I32, I32],
+            { paramTypes = [I32, I64],
               returnTypes = [I32]
             }
       },
@@ -259,7 +259,7 @@ offset_stat_mtime,
 posixLockFile, posixUnlockFile :: AsteriusModule
 posixLockFile = runEDSL "lockFile" $ do
   setReturnTypes [I32]
-  _ <- params [I32, I32, I32, I32]
+  _ <- params [I32, I64, I64, I32]
   emit $ constI32 0
 posixUnlockFile = runEDSL "unlockFile" $ do
   setReturnTypes [I32]
@@ -281,7 +281,7 @@ posixOpendir =
     $ do
       setReturnTypes [I32]
       p <- param I32
-      callImport'
+      call'
           "__asterius_posix_opendir"
           [p]
           I32
@@ -302,7 +302,7 @@ posixReaddir :: AsteriusModule
 posixReaddir = runEDSL "__hscore_readdir" $ do
   setReturnTypes [I32]
   [dirPtr, pDirEnt] <- params [I32, I32]
-  callImport'
+  call'
       "__asterius_posix_readdir"
       [dirPtr, symbol "__asterius_posix_dirent_buf"]
       I32
@@ -335,7 +335,7 @@ posixGetenv :: AsteriusModule
 posixGetenv = runEDSL "getenv" $ do
   setReturnTypes [I32]
   p <- param I32
-  callImport'
+  call'
       "__asterius_posix_getenv"
       [p, symbol "__asterius_posix_getenv_buf"]
       I32

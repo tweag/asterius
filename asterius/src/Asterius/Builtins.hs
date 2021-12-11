@@ -500,7 +500,7 @@ floatCBits :: [(EntitySymbol, (FunctionImport, Function))]
 floatCBits =
   map
     ( \(func_sym, param_vts, ret_vts) ->
-        ( mkEntitySymbol func_sym,
+        ( func_sym,
           generateRTSWrapper "floatCBits" func_sym param_vts ret_vts
         )
     )
@@ -522,15 +522,15 @@ floatCBits =
 
 generateRTSWrapper ::
   BS.ByteString ->
-  BS.ByteString ->
+  EntitySymbol ->
   [ValueType] ->
   [ValueType] ->
   (FunctionImport, Function)
 generateRTSWrapper mod_sym func_sym param_vts ret_vts =
   ( FunctionImport
-      { internalName = "__asterius_" <> func_sym,
+      { internalName = "__asterius_" <> entityName func_sym,
         externalModuleName = mod_sym,
-        externalBaseName = func_sym,
+        externalBaseName = entityName func_sym,
         functionType = FunctionType
           { paramTypes = map fst xs,
             returnTypes = fst ret
@@ -544,10 +544,10 @@ generateRTSWrapper mod_sym func_sym param_vts ret_vts =
         varTypes = [],
         body = snd
           ret
-          CallImport
-            { target' = "__asterius_" <> func_sym,
+          Call
+            { target = "__asterius_" <> func_sym,
               operands = map snd xs,
-              callImportReturnTypes = fst ret
+              callReturnTypes = fst ret
             }
       }
   )
@@ -628,7 +628,7 @@ initCapability = do
 hsInitFunction :: BuiltinsOptions -> AsteriusModule
 hsInitFunction _ = runEDSL "hs_init" $ do
   initCapability
-  bd_nursery <- callImport' "__asterius_hpAlloc" [constI32 4] I32
+  bd_nursery <- call' "__asterius_hpAlloc" [constI32 4] I32
   putLVal currentNursery bd_nursery
 
 rtsApplyFunction :: BuiltinsOptions -> AsteriusModule
@@ -649,7 +649,7 @@ rtsGetSchedStatusFunction :: BuiltinsOptions -> AsteriusModule
 rtsGetSchedStatusFunction _ = runEDSL "rts_getSchedStatus" $ do
   setReturnTypes [I32]
   tid <- param I32
-  callImport' "__asterius_getTSOrstat" [tid] I32 >>= emit
+  call' "__asterius_getTSOrstat" [tid] I32 >>= emit
 
 rtsCheckSchedStatusFunction :: BuiltinsOptions -> AsteriusModule
 rtsCheckSchedStatusFunction _ = runEDSL "rts_checkSchedStatus" $ do
@@ -744,7 +744,7 @@ createThreadFunction BuiltinsOptions {..} = runEDSL "createThread" $ do
       `subInt32` constI32 (4 * roundup_bytes_to_words sizeof_StgStopFrame)
   storeI32 (loadI32 stack_p offset_StgStack_sp) 0 $
     symbol "stg_stop_thread_info"
-  callImport' "__asterius_newTSO" [] I32 >>= storeI32 tso_p offset_StgTSO_id
+  call' "__asterius_newTSO" [] I32 >>= storeI32 tso_p offset_StgTSO_id
   emit tso_p
 
 pushClosure :: Expression -> Expression -> EDSL ()
@@ -786,7 +786,7 @@ genAllocateFunction ::
 genAllocateFunction (BuiltinsOptions {}) n = runEDSL n $ do
   setReturnTypes [I32]
   [_, m] <- params [I32, I32]
-  r <- callImport' "__asterius_allocate" [m] I32
+  r <- call' "__asterius_allocate" [m] I32
   emit r
 
 {-
@@ -795,14 +795,14 @@ allocateFunction BuiltinsOptions {} =
     setReturnTypes [I64]
     [_, n] <- params [I64, I64]
     (truncUFloat64ToInt64 <$>
-     callImport' "__asterius_allocate" [convertUInt64ToFloat64 n] F64) >>=
+     call' "__asterius_allocate" [convertUInt64ToFloat64 n] F64) >>=
       emit
   -}
 allocatePinnedFunction :: BuiltinsOptions -> AsteriusModule
 allocatePinnedFunction _ = runEDSL "allocatePinned" $ do
   setReturnTypes [I32]
   [_, n] <- params [I32, I32]
-  r <- callImport' "__asterius_allocatePinned" [n] I32
+  r <- call' "__asterius_allocatePinned" [n] I32
   emit r
 
 newCAFFunction :: BuiltinsOptions -> AsteriusModule
@@ -851,7 +851,7 @@ getStablePtrWrapperFunction _ = runEDSL "getStablePtr" $ do
   setReturnTypes [I32]
   obj32 <- param I32
   sp_i32 <-
-    callImport'
+    call'
       "__asterius_newStablePtr"
       [obj32]
       I32
@@ -862,7 +862,7 @@ deRefStablePtrWrapperFunction _ = runEDSL "deRefStablePtr" $ do
   setReturnTypes [I32]
   sp32 <- param I32
   obj_i32 <-
-    callImport'
+    call'
       "__asterius_deRefStablePtr"
       [sp32]
       I32
@@ -871,14 +871,14 @@ deRefStablePtrWrapperFunction _ = runEDSL "deRefStablePtr" $ do
 freeStablePtrWrapperFunction :: BuiltinsOptions -> AsteriusModule
 freeStablePtrWrapperFunction _ = runEDSL "hs_free_stable_ptr" $ do
   sp32 <- param I32
-  callImport "__asterius_freeStablePtr" [sp32]
+  call "__asterius_freeStablePtr" [sp32]
 
 makeStableNameWrapperFunction :: BuiltinsOptions -> AsteriusModule
 makeStableNameWrapperFunction _ = runEDSL "makeStableName" $ do
   setReturnTypes [I32]
   sp32 <- param I32
   obj_i32 <-
-    callImport'
+    call'
       "__asterius_makeStableName"
       [sp32]
       I32
@@ -995,7 +995,7 @@ strlenFunction :: BuiltinsOptions -> AsteriusModule
 strlenFunction _ = runEDSL "strlen" $ do
   setReturnTypes [I32]
   [str] <- params [I32]
-  len <- callImport' "__asterius_strlen" [str] I32
+  len <- call' "__asterius_strlen" [str] I32
   emit len
 
 memchrFunction :: BuiltinsOptions -> AsteriusModule
@@ -1003,7 +1003,7 @@ memchrFunction _ = runEDSL "memchr" $ do
   setReturnTypes [I32]
   [ptr, val, num] <- params [I32, I32, I32]
   p <-
-    callImport'
+    call'
       "__asterius_memchr"
       [ptr, val, num]
       I32
@@ -1041,14 +1041,14 @@ recordClosureMutatedFunction _ = runEDSL "recordClosureMutated" $ do
 tryWakeupThreadFunction :: BuiltinsOptions -> AsteriusModule
 tryWakeupThreadFunction _ = runEDSL "tryWakeupThread" $ do
   [_cap, tso] <- params [I32, I32]
-  callImport "__asterius_enqueueTSO" [tso]
+  call "__asterius_enqueueTSO" [tso]
 
 raiseExceptionHelperFunction :: BuiltinsOptions -> AsteriusModule
 raiseExceptionHelperFunction _ = runEDSL "raiseExceptionHelper" $ do
   setReturnTypes [I32]
   args <- params [I32, I32, I32]
   frame_type <-
-    callImport'
+    call'
         "__asterius_raiseExceptionHelper"
         args
         I32
@@ -1062,7 +1062,7 @@ unicodeCBits :: [(EntitySymbol, (FunctionImport, Function))]
 unicodeCBits =
   map
     ( \(func_sym, param_vts, ret_vts) ->
-        ( mkEntitySymbol func_sym,
+        ( func_sym,
           generateRTSWrapper "Unicode" func_sym param_vts ret_vts
         )
     )
@@ -1088,13 +1088,13 @@ scheduleThreadFunction :: BuiltinsOptions -> AsteriusModule
 scheduleThreadFunction _ = runEDSL "scheduleThread" $ do
   setReturnTypes []
   [_cap, tso] <- params [I32, I32]
-  callImport "__asterius_enqueueTSO" [tso]
+  call "__asterius_enqueueTSO" [tso]
 
 scheduleThreadOnFunction :: BuiltinsOptions -> AsteriusModule
 scheduleThreadOnFunction _ = runEDSL "scheduleThreadOn" $ do
   setReturnTypes []
   [_cap, _cpu, tso] <- params [I32, I32, I32]
-  callImport "__asterius_enqueueTSO" [tso]
+  call "__asterius_enqueueTSO" [tso]
 
 resumeThreadFunction :: BuiltinsOptions -> AsteriusModule
 resumeThreadFunction _ = runEDSL "resumeThread" $ do
@@ -1104,7 +1104,7 @@ resumeThreadFunction _ = runEDSL "resumeThread" $ do
 
 performMajorGCFunction :: BuiltinsOptions -> AsteriusModule
 performMajorGCFunction _ =
-  runEDSL "performMajorGC" $ callImport "__asterius_performGC" []
+  runEDSL "performMajorGC" $ call "__asterius_performGC" []
 
 performGCFunction :: BuiltinsOptions -> AsteriusModule
 performGCFunction _ = runEDSL "performGC" $ call "performMajorGC" []
@@ -1137,7 +1137,7 @@ readFunction _ =
     setReturnTypes [I32]
     [fd, buf, count] <- params [I32, I32, I32]
     r <-
-      callImport'
+      call'
           "__asterius_read"
           [fd, buf, count]
           I32
@@ -1149,7 +1149,7 @@ writeFunction _ =
     setReturnTypes [I32]
     [fd, buf, count] <- params [I32, I32, I32]
     r <-
-      callImport'
+      call'
           "__asterius_write"
           [fd, buf, count]
           I32

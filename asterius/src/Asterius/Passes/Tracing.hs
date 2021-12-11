@@ -23,17 +23,17 @@ traceFunction sym Function {..} =
         Block
           { name = "",
             bodys =
-              [ CallImport
-                  { target' = "barf_push",
+              [ Call
+                  { target = "barf_push",
                     operands = [ConstI32 $ fromIntegral $ ord c],
-                    callImportReturnTypes = []
+                    callReturnTypes = []
                   }
                 | c <- CBS.unpack (entityName sym)
               ]
-                <> [ CallImport
-                       { target' = "barf_signal",
+                <> [ Call
+                       { target = "barf_signal",
                          operands = [ConstI32 0],
-                         callImportReturnTypes = []
+                         callReturnTypes = []
                        },
                      body
                    ],

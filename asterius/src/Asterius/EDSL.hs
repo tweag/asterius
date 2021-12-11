@@ -47,8 +47,6 @@ module Asterius.EDSL
     unTagClosure,
     call,
     call',
-    callImport,
-    callImport',
     callIndirect,
     Label,
     loop',
@@ -306,32 +304,6 @@ call' f xs vt = do
         operands = xs,
         callReturnTypes = [vt]
       }
-  pure $ getLVal lr
-
--- | Call a function with no return value
-callImport ::
-  -- | Function name
-  BS.ByteString ->
-  -- | Parameter list
-  [Expression] ->
-  EDSL ()
-callImport f xs =
-  emit CallImport {target' = f, operands = xs, callImportReturnTypes = []}
-
--- | Call a function with a return value
-callImport' ::
-  -- | Function name
-  BS.ByteString ->
-  -- | Arguments
-  [Expression] ->
-  -- | Return type of function
-  ValueType ->
-  EDSL Expression
-callImport' f xs vt = do
-  lr <- mutLocal vt
-  putLVal
-    lr
-    CallImport {target' = f, operands = xs, callImportReturnTypes = [vt]}
   pure $ getLVal lr
 
 callIndirect :: Expression -> EDSL ()

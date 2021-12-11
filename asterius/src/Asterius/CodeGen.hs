@@ -1096,8 +1096,8 @@ marshalCmmPrimCall (GHC.MO_U_Mul2 GHC.W64) [hi, lo] [x, y] = do
   let hiout = UnresolvedSetLocal
         { unresolvedLocalReg = hir,
           value = smash32IntTo64
-            CallImport
-              { target' = "__asterius_mul2",
+            Call
+              { target = "__asterius_mul2",
                 operands =
                   [ mask32 xr 1,
                     mask32 xr 0,
@@ -1105,10 +1105,10 @@ marshalCmmPrimCall (GHC.MO_U_Mul2 GHC.W64) [hi, lo] [x, y] = do
                     mask32 yr 0,
                     ConstI32 3
                   ],
-                callImportReturnTypes = [I32]
+                callReturnTypes = [I32]
               }
-            CallImport
-              { target' = "__asterius_mul2",
+            Call
+              { target = "__asterius_mul2",
                 operands =
                   [ mask32 xr 1,
                     mask32 xr 0,
@@ -1116,14 +1116,14 @@ marshalCmmPrimCall (GHC.MO_U_Mul2 GHC.W64) [hi, lo] [x, y] = do
                     mask32 yr 0,
                     ConstI32 2
                   ],
-                callImportReturnTypes = [I32]
+                callReturnTypes = [I32]
               }
         }
   let loout = UnresolvedSetLocal
         { unresolvedLocalReg = lor,
           value = smash32IntTo64
-            CallImport
-              { target' = "__asterius_mul2",
+            Call
+              { target = "__asterius_mul2",
                 operands =
                   [ mask32 xr 1,
                     mask32 xr 0,
@@ -1131,10 +1131,10 @@ marshalCmmPrimCall (GHC.MO_U_Mul2 GHC.W64) [hi, lo] [x, y] = do
                     mask32 yr 0,
                     ConstI32 1
                   ],
-                callImportReturnTypes = [I32]
+                callReturnTypes = [I32]
               }
-            CallImport
-              { target' = "__asterius_mul2",
+            Call
+              { target = "__asterius_mul2",
                 operands =
                   [ mask32 xr 1,
                     mask32 xr 0,
@@ -1142,7 +1142,7 @@ marshalCmmPrimCall (GHC.MO_U_Mul2 GHC.W64) [hi, lo] [x, y] = do
                     mask32 yr 0,
                     ConstI32 0
                   ],
-                callImportReturnTypes = [I32]
+                callReturnTypes = [I32]
               }
         }
   pure [hiout, loout]
@@ -1170,8 +1170,8 @@ marshalCmmPrimCall (GHC.MO_U_QuotRem2 GHC.W64) [q, r] [lhsHi, lhsLo, rhs] = do
   let quotout = UnresolvedSetLocal
         { unresolvedLocalReg = quotr,
           value = smash32IntTo64
-            CallImport
-              { target' = "__asterius_quotrem2_quotient",
+            Call
+              { target = "__asterius_quotrem2_quotient",
                 operands =
                   [ mask32 lhsHir 1,
                     mask32 lhsHir 0,
@@ -1181,10 +1181,10 @@ marshalCmmPrimCall (GHC.MO_U_QuotRem2 GHC.W64) [q, r] [lhsHi, lhsLo, rhs] = do
                     mask32 rhsr 0,
                     ConstI32 1
                   ],
-                callImportReturnTypes = [I32]
+                callReturnTypes = [I32]
               }
-            CallImport
-              { target' = "__asterius_quotrem2_quotient",
+            Call
+              { target = "__asterius_quotrem2_quotient",
                 operands =
                   [ mask32 lhsHir 1,
                     mask32 lhsHir 0,
@@ -1194,14 +1194,14 @@ marshalCmmPrimCall (GHC.MO_U_QuotRem2 GHC.W64) [q, r] [lhsHi, lhsLo, rhs] = do
                     mask32 rhsr 0,
                     ConstI32 0
                   ],
-                callImportReturnTypes = [I32]
+                callReturnTypes = [I32]
               }
         }
   let remout = UnresolvedSetLocal
         { unresolvedLocalReg = remr,
           value = smash32IntTo64
-            CallImport
-              { target' = "__asterius_quotrem2_remainder",
+            Call
+              { target = "__asterius_quotrem2_remainder",
                 operands =
                   [ mask32 lhsHir 1,
                     mask32 lhsHir 0,
@@ -1211,10 +1211,10 @@ marshalCmmPrimCall (GHC.MO_U_QuotRem2 GHC.W64) [q, r] [lhsHi, lhsLo, rhs] = do
                     mask32 rhsr 0,
                     ConstI32 1
                   ],
-                callImportReturnTypes = [I32]
+                callReturnTypes = [I32]
               }
-            CallImport
-              { target' = "__asterius_quotrem2_remainder",
+            Call
+              { target = "__asterius_quotrem2_remainder",
                 operands =
                   [ mask32 lhsHir 1,
                     mask32 lhsHir 0,
@@ -1224,7 +1224,7 @@ marshalCmmPrimCall (GHC.MO_U_QuotRem2 GHC.W64) [q, r] [lhsHi, lhsLo, rhs] = do
                     mask32 rhsr 0,
                     ConstI32 0
                   ],
-                callImportReturnTypes = [I32]
+                callReturnTypes = [I32]
               }
         }
   pure [quotout, remout]
