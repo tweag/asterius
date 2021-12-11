@@ -14,24 +14,24 @@ memcmp lhs rhs n =
 
 memcpy :: Expression -> Expression -> Expression -> Expression
 memcpy dst src n =
-  Call
+  Drop $ Call
     { target = "memcpy",
       operands = [dst, src, n],
-      callReturnTypes = []
+      callReturnTypes = [I32]
     }
 
 memmove :: Expression -> Expression -> Expression -> Expression
 memmove dst src n =
-  Call
+  Drop $ Call
     { target = "memmove",
       operands = [dst, src, n],
-      callReturnTypes = []
+      callReturnTypes = [I32]
     }
 
 memset :: Expression -> Expression -> Expression -> Expression
 memset dst c n =
-  Call
+  Drop $ Call
     { target = "memset",
       operands = [dst, c, n],
-      callReturnTypes = []
+      callReturnTypes = [I32]
     }
