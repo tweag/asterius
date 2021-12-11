@@ -251,6 +251,8 @@ data MarshalEnv = MarshalEnv
     envSymbolMap :: SM.SymbolMap Word32,
     -- | Symbols of functions and function imports
     envSymbolSet :: Set.Set EntitySymbol,
+    -- | LibC symbols, external -> internal
+    envLibCSymbolMap :: SM.SymbolMap EntitySymbol,
     -- | The current module reference.
     envModuleRef :: Binaryen.Module
   }
@@ -316,7 +318,19 @@ marshalExpression e =
       Binaryen.switch m nsp (fromIntegral nl) dn c (coerce nullPtr)
   Call {..} -> do
     syms <- reader envSymbolSet
-    if | Set.member target syms -> do
+    libc_syms <- reader envLibCSymbolMap
+    if | SM.member target libc_syms && Set.member target syms -> do
+          fail $ "[ERROR] conflicting symbol: " <> show target
+       | Just v <- SM.lookup target libc_syms -> do
+          os <- mapM marshalExpression operands
+          rts <- marshalReturnTypes callReturnTypes
+          m <- askModuleRef
+          a <- askArena
+          lift $ do
+            (ops, osl) <- marshalV a os
+            tp <- marshalBS a (entityName v)
+            Binaryen.call m tp ops (fromIntegral osl) rts
+       | Set.member target syms -> do
           os <-
             mapM
               marshalExpression
@@ -586,7 +600,8 @@ marshalModule verbose_err sym_map last_data_offset hs_mod@Module {..} = do
               { envArena = a,
               envIsVerboseErrOn = verbose_err,
               envSymbolMap = sym_map,
-              envSymbolSet = Set.fromList [mkEntitySymbol internalName | FunctionImport {..} <- functionImports ] <> Set.fromList [mkEntitySymbol k | k <- M.keys functionMap' ] <> Set.fromList [mkEntitySymbol k | k <- libc_syms],
+              envSymbolSet = Set.fromList [mkEntitySymbol internalName | FunctionImport {..} <- functionImports ] <> Set.fromList [mkEntitySymbol k | k <- M.keys functionMap' ],
+              envLibCSymbolMap = libc_syms,
               envModuleRef = m
             }
         fts = generateWasmFunctionTypeSet hs_mod
@@ -608,6 +623,7 @@ marshalModule verbose_err sym_map last_data_offset hs_mod@Module {..} = do
       case memoryImport of
         Just mem_import -> marshalMemoryImport m mem_import
         _ -> pure ()
+  Binaryen.validate m
   pure m
 
 relooperAddBlock ::
@@ -697,17 +713,18 @@ binaryenFunctionType m in_name = do
   pure FunctionType {paramTypes = args_tys, returnTypes = res_tys}
 
 binaryenModuleExportNames ::
-  Binaryen.Module -> IO [BS.ByteString]
+  Binaryen.Module -> IO (SM.SymbolMap EntitySymbol)
 binaryenModuleExportNames m = do
   n <- Binaryen.getNumExports m
-  fmap catMaybes $
+  fmap (SM.fromList . catMaybes) $
     for [0 .. n - 1] $ \i -> do
       e <- Binaryen.getExportByIndex m (fromIntegral i)
       k <- Binaryen.Export.getKind e
       if k == Binaryen.externalFunction
         then do
           in_name <- BS.packCString =<< Binaryen.Export.getValue e
-          pure $ Just in_name
+          ext_name <- BS.packCString =<< Binaryen.Export.getName e
+          pure $ Just (mkEntitySymbol ext_name, mkEntitySymbol in_name)
         else pure Nothing
 
 foreign import ccall unsafe "BinaryenGetMemoryInitial" c_BinaryenGetMemoryInitial :: Binaryen.Module -> IO Binaryen.Index
