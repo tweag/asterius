@@ -375,13 +375,7 @@ data Expression
   | Call
       { target :: EntitySymbol,
         operands :: [Expression],
-        callReturnTypes :: [ValueType],
-        callHint :: Maybe ([FFIHint], [FFIHint])
-      }
-  | CallImport
-      { target' :: BS.ByteString,
-        operands :: [Expression],
-        callImportReturnTypes :: [ValueType]
+        callReturnTypes :: [ValueType]
       }
   | CallIndirect
       { indirectTarget :: Expression,

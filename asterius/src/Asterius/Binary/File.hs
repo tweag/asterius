@@ -16,7 +16,7 @@ import System.FilePath
 
 putFile :: GHC.Binary a => FilePath -> a -> IO ()
 putFile p a = do
-  bh <- GHC.openBinMem 2147483648
+  bh <- GHC.openBinMem 4294967296
   GHC.putWithUserData (const (pure ())) bh a
   createDirectoryIfMissing True $ takeDirectory p
   GHC.writeBinMem bh p

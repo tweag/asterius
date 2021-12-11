@@ -20,17 +20,17 @@ barf msg vts =
   Block
     { name = "",
       bodys =
-        [ CallImport
-            { target' = "barf_push",
+        [ Call
+            { target = "barf_push",
               operands = [ConstI32 $ fromIntegral $ ord c],
-              callImportReturnTypes = []
+              callReturnTypes = []
             }
           | c <- CBS.unpack msg
         ]
-          <> [ CallImport
-                 { target' = "barf_signal",
+          <> [ Call
+                 { target = "barf_signal",
                    operands = [ConstI32 1],
-                   callImportReturnTypes = []
+                   callReturnTypes = []
                  },
                Unreachable
              ],

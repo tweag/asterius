@@ -110,7 +110,7 @@ mkPrimitiveMemsetUInt ::
   AsteriusModule
 mkPrimitiveMemsetUInt size typerep = runEDSL hsname $ do
   [p, off, n, x] <- params [I64, I64, I64, I64]
-  callImport "__asterius_Memory_memset" $
+  call "__asterius_Memory_memset" $
     map
       convertUInt64ToFloat64
       [p `addInt64` off, x, n, constI64 size]
@@ -147,7 +147,7 @@ primitiveMemsetPtr = mkPrimitiveMemsetUInt 8 "Ptr"
 primitiveMemsetFloat :: AsteriusModule
 primitiveMemsetFloat = runEDSL "hsprimitive_memset_Float" $ do
   [p, off, n, x] <- params [I64, I64, I64, F32]
-  callImport "__asterius_Memory_memsetFloat32" $
+  call "__asterius_Memory_memsetFloat32" $
     [ convertUInt64ToFloat64 $ p `addInt64` off,
       x,
       convertUInt64ToFloat64 n
@@ -157,7 +157,7 @@ primitiveMemsetFloat = runEDSL "hsprimitive_memset_Float" $ do
 primitiveMemsetDouble :: AsteriusModule
 primitiveMemsetDouble = runEDSL "hsprimitive_memset_Double" $ do
   [p, off, n, x] <- params [I64, I64, I64, F64]
-  callImport "__asterius_Memory_memsetFloat64" $
+  call "__asterius_Memory_memsetFloat64" $
     [ convertUInt64ToFloat64 $ p `addInt64` off,
       x,
       convertUInt64ToFloat64 n
