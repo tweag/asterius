@@ -8,7 +8,7 @@
 , hsPkgs ? import ./nix/project.nix { inherit pkgs ghc; }
 }:
 (hsPkgs.shellFor rec {
-  packages = ps: with ps; [ asterius ghc-toolkit ];
+  packages = ps: with ps; [ asterius ];
 
   withHoogle = true;
 
@@ -50,7 +50,7 @@
 
     pushd $(git rev-parse --show-toplevel)
 
-    for pkg in asterius ghc-toolkit; do
+    for pkg in asterius; do
       hpack $pkg
     done
 

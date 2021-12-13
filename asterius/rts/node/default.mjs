@@ -140,58 +140,6 @@ class Posix {
       return -1;
     }
   }
-  closedir(dirPtr) {
-    try {
-      this.dirs.get(dirPtr).closeSync();
-      this.dirs.delete(dirPtr);
-      return 0;
-    } catch (err) {
-      this.set_errno(-err.errno);
-      return -1;
-    }
-  }
-  getenv(keyPtr, resPtr) {
-    const res = process.env[this.memory.strLoad(keyPtr)];
-    if (res) {
-      const l = resPtr & 0xffffffff;
-      const { read, written } = new TextEncoder().encodeInto(
-        res,
-        this.memory.i8View.subarray(l, l + 32767)
-      );
-      if (read !== res.length)
-        throw new WebAssembly.RuntimeError(
-          `${res} exceeded environment variable limit`
-        );
-      this.memory.i8View[l + written] = 0;
-      return resPtr;
-    } else {
-      return 0;
-    }
-  }
-  access(f, m) {
-    try {
-      fs.accessSync(this.memory.strLoad(f), m);
-      return 0;
-    } catch (err) {
-      this.set_errno(-err.errno);
-      return -1;
-    }
-  }
-  getcwd(buf, size) {
-    const cwd = process.cwd();
-    const l = buf & 0xffffffff;
-    const { read, written } = new TextEncoder().encodeInto(
-      cwd,
-      this.memory.i8View.subarray(l, l - 1 + size)
-    );
-    this.memory.i8View[l + written] = 0;
-    if (read === cwd.length) {
-      return buf;
-    } else {
-      this.set_errno(34);
-      return 0;
-    }
-  }
 }
 
 export default {

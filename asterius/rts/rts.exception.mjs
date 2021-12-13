@@ -33,6 +33,7 @@ export class ExceptionHelper {
     isI32(tso);
     isI32(exception);
     const raise_closure = this.heapAlloc.allocate(
+      0xdeadbeef,
       Math.ceil(rtsConstants.sizeof_StgThunk / 4) + 1
     );
     this.memory.i32Store(

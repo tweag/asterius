@@ -9,7 +9,6 @@ module Asterius.Builtins
     rtsFunctionImports,
     rtsFunctionExports,
     emitErrorMessage,
-    generateWrapperFunction,
   )
 where
 
@@ -28,7 +27,6 @@ import Asterius.Builtins.StgPrimFloat
 import Asterius.Builtins.Time
 import Asterius.EDSL
 import Asterius.Internals
-import Asterius.Internals.MagicNumber
 import Asterius.Types
 import qualified Asterius.Types.SymbolMap as SM
 import qualified Data.ByteString as BS
@@ -105,51 +103,33 @@ rtsAsteriusModule opts =
             })
           ],
       functionMap =
-        SM.fromList $
-          map
-            (\(func_sym, (_, func)) -> (func_sym, func))
-            ( floatCBits
-                <> unicodeCBits
-            )
+        mempty
     }
     <> hsInitFunction opts
     <> createThreadFunction opts
     <> getThreadIdFunction opts
-    <> genAllocateFunction opts "allocate"
-    <> genAllocateFunction opts "allocateMightFail"
-    <> allocatePinnedFunction opts
     <> newCAFFunction opts
     <> stgReturnFunction opts
-    <> strlenFunction opts
-    <> memchrFunction opts
     <> threadPausedFunction opts
     <> dirtyMutVarFunction opts
     <> dirtyMVarFunction opts
     <> dirtyStackFunction opts
     <> recordClosureMutatedFunction opts
     <> tryWakeupThreadFunction opts
-    <> raiseExceptionHelperFunction opts
     <> suspendThreadFunction opts
     <> scheduleThreadFunction opts
     <> scheduleThreadOnFunction opts
     <> resumeThreadFunction opts
-    <> performMajorGCFunction opts
-    <> performGCFunction opts
     <> localeEncodingFunction opts
     <> isattyFunction opts
     <> fdReadyFunction opts
     <> rtsSupportsBoundThreadsFunction opts
-    <> readFunction opts
-    <> writeFunction opts
     -- Add in the module that contain functions which need to be
     -- exposed to the outside world. So add in the module, and
     -- the module wrapped by using `generateWrapperModule`.
     <> generateRtsExternalInterfaceModule opts
-    <> generateWrapperModule (generateRtsExternalInterfaceModule opts)
     <> blackholeCBits
-    <> generateWrapperModule blackholeCBits
     <> smCBits
-    <> generateWrapperModule smCBits
     <> sparksCBits
     <> cmathCBits
     <> envCBits
@@ -167,12 +147,7 @@ generateRtsExternalInterfaceModule opts =
     <> createIOThreadFunction opts
     <> createStrictIOThreadFunction opts
     <> scheduleTSOFunction opts
-    <> rtsGetSchedStatusFunction opts
     <> rtsCheckSchedStatusFunction opts
-    <> getStablePtrWrapperFunction opts
-    <> deRefStablePtrWrapperFunction opts
-    <> freeStablePtrWrapperFunction opts
-    <> makeStableNameWrapperFunction opts
     <> rtsMkBoolFunction opts
     <> rtsMkDoubleFunction opts
     <> rtsMkCharFunction opts
@@ -194,7 +169,7 @@ generateRtsExternalInterfaceModule opts =
 rtsFunctionImports :: Bool -> [FunctionImport]
 rtsFunctionImports debug =
   [ FunctionImport
-           { internalName = "__asterius_newStablePtr",
+           { internalName = "getStablePtr",
              externalModuleName = "StablePtr",
              externalBaseName = "newStablePtr",
              functionType = FunctionType
@@ -203,7 +178,7 @@ rtsFunctionImports debug =
                }
            },
          FunctionImport
-           { internalName = "__asterius_deRefStablePtr",
+           { internalName = "deRefStablePtr",
              externalModuleName = "StablePtr",
              externalBaseName = "deRefStablePtr",
              functionType = FunctionType
@@ -212,13 +187,13 @@ rtsFunctionImports debug =
                }
            },
          FunctionImport
-           { internalName = "__asterius_freeStablePtr",
+           { internalName = "hs_free_stable_ptr",
              externalModuleName = "StablePtr",
              externalBaseName = "freeStablePtr",
              functionType = FunctionType {paramTypes = [I32], returnTypes = []}
            },
          FunctionImport
-           { internalName = "__asterius_makeStableName",
+           { internalName = "makeStableName",
              externalModuleName = "StableName",
              externalBaseName = "makeStableName",
              functionType = FunctionType
@@ -260,7 +235,7 @@ rtsFunctionImports debug =
              functionType = FunctionType {paramTypes = [], returnTypes = [I32]}
            },
          FunctionImport
-           { internalName = "__asterius_getTSOrstat",
+           { internalName = "rts_getSchedStatus",
              externalModuleName = "Scheduler",
              externalBaseName = "getTSOrstat",
              functionType = FunctionType
@@ -278,29 +253,29 @@ rtsFunctionImports debug =
                }
            },
          FunctionImport
-           { internalName = "__asterius_allocate",
+           { internalName = "allocate",
              externalModuleName = "HeapAlloc",
              externalBaseName = "allocate",
              functionType = FunctionType
-               { paramTypes = [I32],
+               { paramTypes = [I32, I32],
                  returnTypes = [I32]
                }
            },
          FunctionImport
-           { internalName = "__asterius_allocatePinned",
+           { internalName = "allocatePinned",
              externalModuleName = "HeapAlloc",
              externalBaseName = "allocatePinned",
              functionType = FunctionType
-               { paramTypes = [I32],
+               { paramTypes = [I32, I32],
                  returnTypes = [I32]
                }
            },
          FunctionImport
-           { internalName = "__asterius_strlen",
-             externalModuleName = "Memory",
-             externalBaseName = "strlen",
+           { internalName = "allocateMightFail",
+             externalModuleName = "HeapAlloc",
+             externalBaseName = "allocateMightFail",
              functionType = FunctionType
-               { paramTypes = [I32],
+               { paramTypes = [I32, I32],
                  returnTypes = [I32]
                }
            },
@@ -314,22 +289,19 @@ rtsFunctionImports debug =
                }
            },
          FunctionImport
-           { internalName = "__asterius_memchr",
-             externalModuleName = "Memory",
-             externalBaseName = "memchr",
-             functionType = FunctionType
-               { paramTypes = [I32, I32, I32],
-                 returnTypes = [I32]
-               }
+           { internalName = "performGC",
+             externalModuleName = "GC",
+             externalBaseName = "performGC",
+             functionType = FunctionType {paramTypes = [], returnTypes = []}
            },
-         FunctionImport
-           { internalName = "__asterius_performGC",
+          FunctionImport
+           { internalName = "performMajorGC",
              externalModuleName = "GC",
              externalBaseName = "performGC",
              functionType = FunctionType {paramTypes = [], returnTypes = []}
            },
          FunctionImport
-           { internalName = "__asterius_raiseExceptionHelper",
+           { internalName = "raiseExceptionHelper",
              externalModuleName = "ExceptionHelper",
              externalBaseName = "raiseExceptionHelper",
              functionType = FunctionType
@@ -371,7 +343,7 @@ rtsFunctionImports debug =
                }
            },
          FunctionImport
-           { internalName = "__asterius_read",
+           { internalName = "__asterghczuwrapperZC22ZCbaseZCSystemziPosixziInternalsZCreadius_read",
              externalModuleName = "fs",
              externalBaseName = "read",
              functionType = FunctionType
@@ -380,7 +352,7 @@ rtsFunctionImports debug =
                }
            },
          FunctionImport
-           { internalName = "__asterius_write",
+           { internalName = "ghczuwrapperZC20ZCbaseZCSystemziPosixziInternalsZCwrite",
              externalModuleName = "fs",
              externalBaseName = "write",
              functionType = FunctionType
@@ -435,10 +407,8 @@ rtsFunctionImports debug =
                   ]
            else []
        )
-    <> map
-      (fst . snd)
-      ( floatCBits <> unicodeCBits
-      )
+    <> floatCBits
+    <> unicodeCBits
     <> schedulerImports
     <> exportsImports
     <> envImports
@@ -447,9 +417,9 @@ rtsFunctionImports debug =
     <> primitiveImports
     <> barfImports
 
-rtsFunctionExports :: Bool -> [FunctionExport]
-rtsFunctionExports debug =
-  [ FunctionExport {internalName = f <> "_wrapper", externalName = f}
+rtsFunctionExports :: [FunctionExport]
+rtsFunctionExports =
+  [ FunctionExport {internalName = f, externalName = f}
     | f <-
         [ "loadI64",
           "rts_mkBool",
@@ -496,13 +466,16 @@ rtsFunctionExports debug =
 emitErrorMessage :: [ValueType] -> BS.ByteString -> Expression
 emitErrorMessage vts ev = Barf {barfMessage = ev, barfReturnTypes = vts}
 
-floatCBits :: [(EntitySymbol, (FunctionImport, Function))]
+floatCBits :: [FunctionImport]
 floatCBits =
   map
     ( \(func_sym, param_vts, ret_vts) ->
-        ( func_sym,
-          generateRTSWrapper "floatCBits" func_sym param_vts ret_vts
-        )
+        FunctionImport {
+          internalName = func_sym,
+          externalModuleName = "floatCBits",
+          externalBaseName = func_sym,
+          functionType = FunctionType { paramTypes = param_vts, returnTypes = ret_vts }
+        }
     )
     [ ("isFloatNegativeZero", [F32], [I32]),
       ("isDoubleNegativeZero", [F64], [I32]),
@@ -519,88 +492,6 @@ floatCBits =
       ("rintFloat", [F32], [F32]),
       ("__decodeDouble_2Int", [I32, I32, I32, I32, F64], [])
     ]
-
-generateRTSWrapper ::
-  BS.ByteString ->
-  EntitySymbol ->
-  [ValueType] ->
-  [ValueType] ->
-  (FunctionImport, Function)
-generateRTSWrapper mod_sym func_sym param_vts ret_vts =
-  ( FunctionImport
-      { internalName = "__asterius_" <> entityName func_sym,
-        externalModuleName = mod_sym,
-        externalBaseName = entityName func_sym,
-        functionType = FunctionType
-          { paramTypes = map fst xs,
-            returnTypes = fst ret
-          }
-      },
-    Function
-      { functionType = FunctionType
-          { paramTypes = param_vts,
-            returnTypes = ret_vts
-          },
-        varTypes = [],
-        body = snd
-          ret
-          Call
-            { target = "__asterius_" <> func_sym,
-              operands = map snd xs,
-              callReturnTypes = fst ret
-            }
-      }
-  )
-  where
-    xs =
-      zipWith
-        ( \i vt -> (vt, GetLocal {index = i, valueType = vt})
-        )
-        [0 ..]
-        param_vts
-    ret = (ret_vts, id)
-
-generateWrapperFunction :: EntitySymbol -> Function -> Function
-generateWrapperFunction func_sym Function {functionType = FunctionType {..}} =
-  Function
-    { functionType = FunctionType
-        { paramTypes =
-            [ wrapper_param_type
-              | (_, wrapper_param_type, _) <-
-                  wrapper_param_types
-            ],
-          returnTypes = wrapper_return_types
-        },
-      varTypes = [],
-      body = to_wrapper_return_types $ Call
-        { target = func_sym,
-          operands =
-            [ from_wrapper_param_type GetLocal
-                { index = i,
-                  valueType = wrapper_param_type
-                }
-              | (i, wrapper_param_type, from_wrapper_param_type) <-
-                  wrapper_param_types
-            ],
-          callReturnTypes = returnTypes
-        }
-    }
-  where
-    wrapper_param_types =
-      [ (i, param_type, id)
-        | (i, param_type) <- zip [0 ..] paramTypes
-      ]
-    (wrapper_return_types, to_wrapper_return_types) = (returnTypes, id)
-
--- Renames each function in the module to <name>_wrapper, and
--- edits their implementation using 'generateWrapperFunction'
-generateWrapperModule :: AsteriusModule -> AsteriusModule
-generateWrapperModule m =
-  m
-    { functionMap = SM.fromList $ map wrap $ SM.toList $ functionMap m
-    }
-  where
-    wrap (n, f) = (n <> "_wrapper", generateWrapperFunction n f)
 
 initCapability :: EDSL ()
 initCapability = do
@@ -644,12 +535,6 @@ rtsApplyFunction _ = runEDSL "rts_apply" $ do
   storeI32 ap offset_StgThunk_payload f
   storeI32 ap (offset_StgThunk_payload + 4) arg
   emit ap
-
-rtsGetSchedStatusFunction :: BuiltinsOptions -> AsteriusModule
-rtsGetSchedStatusFunction _ = runEDSL "rts_getSchedStatus" $ do
-  setReturnTypes [I32]
-  tid <- param I32
-  call' "__asterius_getTSOrstat" [tid] I32 >>= emit
 
 rtsCheckSchedStatusFunction :: BuiltinsOptions -> AsteriusModule
 rtsCheckSchedStatusFunction _ = runEDSL "rts_checkSchedStatus" $ do
@@ -777,34 +662,6 @@ createStrictIOThreadFunction _ =
       symbol "stg_enter_info"
     ]
 
-genAllocateFunction ::
-  BuiltinsOptions ->
-  -- Name of the allocation function
-  EntitySymbol ->
-  -- Module representing the function
-  AsteriusModule
-genAllocateFunction (BuiltinsOptions {}) n = runEDSL n $ do
-  setReturnTypes [I32]
-  [_, m] <- params [I32, I32]
-  r <- call' "__asterius_allocate" [m] I32
-  emit r
-
-{-
-allocateFunction BuiltinsOptions {} =
-  runEDSL "allocate" $ do
-    setReturnTypes [I64]
-    [_, n] <- params [I64, I64]
-    (truncUFloat64ToInt64 <$>
-     call' "__asterius_allocate" [convertUInt64ToFloat64 n] F64) >>=
-      emit
-  -}
-allocatePinnedFunction :: BuiltinsOptions -> AsteriusModule
-allocatePinnedFunction _ = runEDSL "allocatePinned" $ do
-  setReturnTypes [I32]
-  [_, n] <- params [I32, I32]
-  r <- call' "__asterius_allocatePinned" [n] I32
-  emit r
-
 newCAFFunction :: BuiltinsOptions -> AsteriusModule
 newCAFFunction _ = runEDSL "newCAF" $ do
   setReturnTypes [I32]
@@ -845,44 +702,6 @@ stgReturnFunction :: BuiltinsOptions -> AsteriusModule
 stgReturnFunction _ =
   runEDSL "StgReturn" $ storeI32 (symbol "__asterius_pc") 0 (constI32 0) -- store NULL in the __asterius_pc register. This will break stgRun
       -- trampolining loop.
-
-getStablePtrWrapperFunction :: BuiltinsOptions -> AsteriusModule
-getStablePtrWrapperFunction _ = runEDSL "getStablePtr" $ do
-  setReturnTypes [I32]
-  obj32 <- param I32
-  sp_i32 <-
-    call'
-      "__asterius_newStablePtr"
-      [obj32]
-      I32
-  emit sp_i32
-
-deRefStablePtrWrapperFunction :: BuiltinsOptions -> AsteriusModule
-deRefStablePtrWrapperFunction _ = runEDSL "deRefStablePtr" $ do
-  setReturnTypes [I32]
-  sp32 <- param I32
-  obj_i32 <-
-    call'
-      "__asterius_deRefStablePtr"
-      [sp32]
-      I32
-  emit obj_i32
-
-freeStablePtrWrapperFunction :: BuiltinsOptions -> AsteriusModule
-freeStablePtrWrapperFunction _ = runEDSL "hs_free_stable_ptr" $ do
-  sp32 <- param I32
-  call "__asterius_freeStablePtr" [sp32]
-
-makeStableNameWrapperFunction :: BuiltinsOptions -> AsteriusModule
-makeStableNameWrapperFunction _ = runEDSL "makeStableName" $ do
-  setReturnTypes [I32]
-  sp32 <- param I32
-  obj_i32 <-
-    call'
-      "__asterius_makeStableName"
-      [sp32]
-      I32
-  emit obj_i32
 
 rtsMkHelper ::
   BuiltinsOptions ->
@@ -991,24 +810,6 @@ loadI64Function _ = runEDSL "loadI64" $ do
   p <- param I32
   emit $ loadI64 p 0
 
-strlenFunction :: BuiltinsOptions -> AsteriusModule
-strlenFunction _ = runEDSL "strlen" $ do
-  setReturnTypes [I32]
-  [str] <- params [I32]
-  len <- call' "__asterius_strlen" [str] I32
-  emit len
-
-memchrFunction :: BuiltinsOptions -> AsteriusModule
-memchrFunction _ = runEDSL "memchr" $ do
-  setReturnTypes [I32]
-  [ptr, val, num] <- params [I32, I32, I32]
-  p <-
-    call'
-      "__asterius_memchr"
-      [ptr, val, num]
-      I32
-  emit p
-
 threadPausedFunction :: BuiltinsOptions -> AsteriusModule
 threadPausedFunction _ = runEDSL "threadPaused" $ do
   _ <- params [I32, I32]
@@ -1043,28 +844,20 @@ tryWakeupThreadFunction _ = runEDSL "tryWakeupThread" $ do
   [_cap, tso] <- params [I32, I32]
   call "__asterius_enqueueTSO" [tso]
 
-raiseExceptionHelperFunction :: BuiltinsOptions -> AsteriusModule
-raiseExceptionHelperFunction _ = runEDSL "raiseExceptionHelper" $ do
-  setReturnTypes [I32]
-  args <- params [I32, I32, I32]
-  frame_type <-
-    call'
-        "__asterius_raiseExceptionHelper"
-        args
-        I32
-  emit frame_type
-
 -- Note that generateRTSWrapper will treat all our numbers as signed, not
 -- unsigned.   This is OK for ASCII code, since the ints we have will not be
 -- larger than 2^15.  However, for larger numbers, it would "overflow", and
 -- would treat large unsigned  numbers as negative signed numbers.
-unicodeCBits :: [(EntitySymbol, (FunctionImport, Function))]
+unicodeCBits :: [FunctionImport]
 unicodeCBits =
   map
     ( \(func_sym, param_vts, ret_vts) ->
-        ( func_sym,
-          generateRTSWrapper "Unicode" func_sym param_vts ret_vts
-        )
+        FunctionImport {
+          internalName = func_sym,
+          externalModuleName = "Unicode",
+          externalBaseName = func_sym,
+          functionType = FunctionType { paramTypes = param_vts, returnTypes = ret_vts }
+        }
     )
     [ ("u_gencat", [I32], [I32]),
       ("u_iswalpha", [I32], [I32]),
@@ -1102,13 +895,6 @@ resumeThreadFunction _ = runEDSL "resumeThread" $ do
   reg <- param I32
   emit reg
 
-performMajorGCFunction :: BuiltinsOptions -> AsteriusModule
-performMajorGCFunction _ =
-  runEDSL "performMajorGC" $ call "__asterius_performGC" []
-
-performGCFunction :: BuiltinsOptions -> AsteriusModule
-performGCFunction _ = runEDSL "performGC" $ call "performMajorGC" []
-
 localeEncodingFunction :: BuiltinsOptions -> AsteriusModule
 localeEncodingFunction _ = runEDSL "localeEncoding" $ do
   setReturnTypes [I32]
@@ -1130,27 +916,3 @@ rtsSupportsBoundThreadsFunction :: BuiltinsOptions -> AsteriusModule
 rtsSupportsBoundThreadsFunction _ = runEDSL "rtsSupportsBoundThreads" $ do
   setReturnTypes [I32]
   emit $ constI32 0
-
-readFunction :: BuiltinsOptions -> AsteriusModule
-readFunction _ =
-  runEDSL "ghczuwrapperZC22ZCbaseZCSystemziPosixziInternalsZCread" $ do
-    setReturnTypes [I32]
-    [fd, buf, count] <- params [I32, I32, I32]
-    r <-
-      call'
-          "__asterius_read"
-          [fd, buf, count]
-          I32
-    emit r
-
-writeFunction :: BuiltinsOptions -> AsteriusModule
-writeFunction _ =
-  runEDSL "ghczuwrapperZC20ZCbaseZCSystemziPosixziInternalsZCwrite" $ do
-    setReturnTypes [I32]
-    [fd, buf, count] <- params [I32, I32, I32]
-    r <-
-      call'
-          "__asterius_write"
-          [fd, buf, count]
-          I32
-    emit r

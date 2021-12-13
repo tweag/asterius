@@ -1,6 +1,7 @@
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE PackageImports #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE StrictData #-}
 {-# LANGUAGE TypeApplications #-}
@@ -66,7 +67,7 @@ import qualified HscTypes as GHC
 import qualified Id as GHC
 import qualified IdInfo as GHC
 import qualified IfaceEnv as GHC
-import Language.Haskell.TH
+import "template-haskell-asterius" Language.Haskell.TH
 import Language.JavaScript.Inline.Core
 import qualified Linker as GHC
 import qualified Module as GHC

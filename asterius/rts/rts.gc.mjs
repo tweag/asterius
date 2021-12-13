@@ -111,7 +111,7 @@ export class GC {
    * @param bytes The size in bytes of the closure
    */
   copyClosure(c, bytes) {
-    const dest_c = this.heapAlloc.allocate(Math.ceil(bytes / 4));
+    const dest_c = this.heapAlloc.allocate(0xdeadbeef, Math.ceil(bytes / 4));
     this.memory.memcpy(dest_c, c, bytes);
     const dest_block = this.components.exports.__ahc_Bdescr(dest_c);
     if (!this.liveBlocks.has(dest_block)) {

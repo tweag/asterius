@@ -37,18 +37,6 @@ class Posix {
   readdir() {
     throw WebAssembly.RuntimeError("Unsupported rts interface: readdir");
   }
-  closedir() {
-    throw WebAssembly.RuntimeError("Unsupported rts interface: closedir");
-  }
-  getenv() {
-    throw WebAssembly.RuntimeError("Unsupported rts interface: getenv");
-  }
-  access() {
-    throw WebAssembly.RuntimeError("Unsupported rts interface: access");
-  }
-  getcwd() {
-    throw WebAssembly.RuntimeError("Unsupported rts interface: getcwd");
-  }
 }
 
 export default {

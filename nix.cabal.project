@@ -1,6 +1,5 @@
 packages:
   asterius
-  ghc-toolkit
 
 source-repository-package
   type:     git
@@ -11,7 +10,7 @@ source-repository-package
 source-repository-package
   type:     git
   location: https://github.com/tweag/ghc-asterius.git
-  tag:      9d92010d23de47a50df2bb0b0f795fe9f9699f4d
+  tag:      686d0e7ee841d4ada6a2d1b52faf2b26a41cb927
   subdir:
     ahc-bin
     ahc-pkg
@@ -24,3 +23,5 @@ source-repository-package
 
 package binaryen
   flags: +system-binaryen
+
+index-state: 2021-11-05T00:00:00Z

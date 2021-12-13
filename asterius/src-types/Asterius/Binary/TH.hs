@@ -1,3 +1,4 @@
+{-# LANGUAGE PackageImports #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE ViewPatterns #-}
 
@@ -9,7 +10,7 @@ where
 import qualified Binary as GHC
 import Data.Foldable
 import Data.Word
-import Language.Haskell.TH
+import "template-haskell" Language.Haskell.TH
 
 genBinary :: Name -> Q [Dec]
 genBinary ty = do
