@@ -61,7 +61,6 @@ dependencies:
   - ghc-asterius
   - ghc-boot-asterius
   - ghc-prim
-  - ghc-toolkit
   - ghci-asterius
   - inline-js-core
   - mtl

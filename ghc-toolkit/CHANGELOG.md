@@ -1,1 +1,0 @@
-# CHANGELOG for `ghc-toolkit`

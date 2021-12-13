@@ -1,6 +1,5 @@
 packages:
   asterius
-  ghc-toolkit
 
 source-repository-package
   type:     git
