@@ -33,6 +33,7 @@ import qualified Stream
 import System.Environment.Blank
 import System.FilePath
 import qualified ToolSettings as GHC
+import Asterius.Internals.Staging
 
 frontendPlugin :: GHC.Ghc ()
 frontendPlugin = do
@@ -80,6 +81,7 @@ frontendPlugin = do
         hooksFromCompiler
           ( Compiler
               { withCmmIR = \dflags this_mod ir@CmmIR {..} obj_path -> do
+                  checkC dflags cmmRaw
                   ffi_mod <- getFFIModule dflags this_mod
                   m' <- runCodeGen
                     ( marshalCmmIR this_mod ir
