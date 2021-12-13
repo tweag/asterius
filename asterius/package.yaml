@@ -50,6 +50,7 @@ _exe-ghc-options: &exe-ghc-options
 dependencies:
   - base
   - binary
+  - binaryen
   - bytestring
   - Cabal
   - containers
@@ -65,20 +66,14 @@ dependencies:
   - inline-js-core
   - mtl
   - process
+  - template-haskell
+  - template-haskell-asterius
   - transformers
 
-internal-libraries:
-  asterius-types:
-    source-dirs: src-types
-    dependencies:
-      - template-haskell
-
 library:
-  source-dirs: src
-  dependencies:
-    - asterius-types
-    - binaryen
-    - template-haskell-asterius
+  source-dirs:
+    - src
+    - src-types
 
 executables:
   ahc:

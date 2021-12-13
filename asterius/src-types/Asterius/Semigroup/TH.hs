@@ -1,3 +1,4 @@
+{-# LANGUAGE PackageImports #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE ViewPatterns #-}
 
@@ -7,7 +8,7 @@ module Asterius.Semigroup.TH
 where
 
 import Data.List (foldl')
-import Language.Haskell.TH
+import "template-haskell" Language.Haskell.TH
 
 -- | Generate a 'Semigroup' instance of the form
 --

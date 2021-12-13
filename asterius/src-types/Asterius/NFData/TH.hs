@@ -1,3 +1,4 @@
+{-# LANGUAGE PackageImports #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE ViewPatterns #-}
 
@@ -8,7 +9,7 @@ where
 
 import Control.DeepSeq
 import Data.List (foldl1')
-import Language.Haskell.TH
+import "template-haskell" Language.Haskell.TH
 
 genNFData :: Name -> Q [Dec]
 genNFData ty = do
