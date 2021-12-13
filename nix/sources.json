@@ -2,8 +2,8 @@
     "ghc-asterius": {
         "branch": "asterius-8.10-dejavu",
         "repo": "https://github.com/tweag/ghc-asterius.git",
-        "rev": "12b4543e3fad11c4717fe0db2dace406956aa8ed",
-        "sha256": "0jd8m7nz14bwd556ivnnm5j3lp85jjpk8q6x3a7zkcdvcryif03p",
+        "rev": "605be3319aa289d0cbd6ed20792d0dda6610f289",
+        "sha256": "1kd25lhrk141w02f5xr8dbdmwcn5jg8r4zhc6mh6aaafb9fgwsil",
         "type": "git"
     },
     "haskell-nix": {
@@ -12,10 +12,10 @@
         "homepage": "https://input-output-hk.github.io/haskell.nix",
         "owner": "input-output-hk",
         "repo": "haskell.nix",
-        "rev": "c8d06643bfc0a0e2d9c2311a8758bf64a6943957",
-        "sha256": "0gfk9kz8wf6l3wn1piy47lcjydrk8ga8kbdn91jfs0qmnani9fr7",
+        "rev": "e95a1f0dacbc64603c31d11e36e4ba1af8f0eb43",
+        "sha256": "160cf7ha2c5wkbymy3h4skzw1l3x4i8dhj2arvq3bdz92gg1d6cb",
         "type": "tarball",
-        "url": "https://github.com/input-output-hk/haskell.nix/archive/c8d06643bfc0a0e2d9c2311a8758bf64a6943957.tar.gz",
+        "url": "https://github.com/input-output-hk/haskell.nix/archive/e95a1f0dacbc64603c31d11e36e4ba1af8f0eb43.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "hs-nix-tools": {
@@ -24,10 +24,10 @@
         "homepage": null,
         "owner": "TerrorJack",
         "repo": "hs-nix-tools",
-        "rev": "c674bc038d151bb41fe2570b1af0558014859f41",
-        "sha256": "0s2jdr921g4r6zb96ms5y83fn30hnh3pil2d5lqikcrndijkkap8",
+        "rev": "bc5ca48ba3680986ac7d6f63de0cabded9fb01ba",
+        "sha256": "1bh05msqfhl7hrr1pspgvi0gfazm8bx8cy86zp6n5wni6l1r90s7",
         "type": "tarball",
-        "url": "https://github.com/TerrorJack/hs-nix-tools/archive/c674bc038d151bb41fe2570b1af0558014859f41.tar.gz",
+        "url": "https://github.com/TerrorJack/hs-nix-tools/archive/bc5ca48ba3680986ac7d6f63de0cabded9fb01ba.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     }
 }
