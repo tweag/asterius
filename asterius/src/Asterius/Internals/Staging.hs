@@ -31,3 +31,6 @@ checkC dflags cmm_stream = withTempDir "ahc-staging" $ \d -> do
   let p = d </> "test.c"
   _ <- withFile p WriteMode $ \h -> outputC dflags h cmm_stream
   callProcess "ahc" ["-o", d </> "test.o", "-c", p]
+  _ <- readProcess "wasm2wat" ["--enable-all", d </> "test.o"] ""
+  _ <- readProcess "wasm-objdump" ["-d", d </> "test.o"] ""
+  pure ()
