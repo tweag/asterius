@@ -20,4 +20,5 @@
 - [Using experimental WebAssembly features](wasm-experimental.md)
 - [Hacking guide](hacking.md)
 - [Reading list](readings.md)
-- [Roadmap](roadmap.md)
+- [Roadmap](roadmap.md) and [January 2022 milestones](milestones-2022-01.md)
+- [Draft concurrency semantics](semantics.md)
