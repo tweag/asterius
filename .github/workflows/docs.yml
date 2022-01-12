@@ -1,0 +1,86 @@
+name: docs
+
+on:
+  - push
+  - pull_request
+
+jobs:
+
+  docs:
+    name: docs
+    runs-on: ubuntu-latest
+    steps:
+
+      - name: checkout
+        uses: actions/checkout@v2
+
+      - name: setup-nix
+        uses: cachix/install-nix-action@v16
+        with:
+          extra_nix_config: |
+            substituters = https://cache.nixos.org https://hydra.iohk.io
+            trusted-public-keys = cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY= hydra.iohk.io:f/Ea+s+dFdN+3Y/G+FDgSq+a5NEWhJGzdjvKNGv0/EQ=
+
+      - name: setup-cachix
+        uses: cachix/cachix-action@v10
+        with:
+          name: asterius
+          signingKey: '${{ secrets.CACHIX_SIGNING_KEY }}'
+
+      - name: cachix-watch-store
+        run: |
+          cachix watch-store -c9 -j2 asterius &
+
+      - name: build
+        run: |
+          cp -r $(nix-build --no-out-link docs/shell.nix) book
+          chmod -R u+w book
+
+          mkdir book/demo
+          pushd book/demo
+
+          mkdir diagrams
+          pushd diagrams
+          curl -L https://asterius.s3-us-west-2.amazonaws.com/diagrams.tar | tar x
+          popd
+
+          mkdir pandoc
+          pushd pandoc
+          curl -L https://asterius.s3-us-west-2.amazonaws.com/pandoc.tar | tar x
+          popd
+
+          mkdir ormolu
+          pushd ormolu
+          curl -L https://asterius.s3-us-west-2.amazonaws.com/ormolu.tar | tar x
+          popd
+
+          mkdir todomvc
+          pushd todomvc
+          curl -L https://asterius.s3-us-west-2.amazonaws.com/todomvc.tar | tar x
+          popd
+
+          popd
+
+      - name: deploy
+        if: ${{ github.repository == 'tweag/asterius' }}
+        env:
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+          NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
+        run: |
+          if [ $(git rev-parse --abbrev-ref HEAD) = "master" ]
+          then
+            netlify deploy --dir=book --json --message="$GITHUB_REF-$GITHUB_SHA" --prod | tee result.json
+          else
+            netlify deploy --dir=book --json --message="$GITHUB_REF-$GITHUB_SHA" | tee result.json
+          fi
+
+          echo DEPLOY_URL=$(jq -r .deploy_url result.json) >> $GITHUB_ENV
+
+      - name: report
+        if: ${{ github.repository == 'tweag/asterius' }}
+        uses: Sibz/github-status-action@v1.1.6
+        with:
+          authToken: ${{ github.token }}
+          state: success
+          context: docs deploy
+          target_url: ${{ env.DEPLOY_URL }}
