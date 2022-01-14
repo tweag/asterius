@@ -1,0 +1,13 @@
+# User Configuration
+# ------------------
+build --host_platform=@io_tweag_rules_nixpkgs//nixpkgs/platforms:host
+run --host_platform=@io_tweag_rules_nixpkgs//nixpkgs/platforms:host
+
+# We make use of ctx.actions.declare_symlink in bazel/bazel_utils/cabal_filegroup.bzl
+build --experimental_allow_unresolved_symlinks
+
+build --incompatible_enable_cc_toolchain_resolution
+
+build:ci --repository_cache=~/repo-cache/
+
+try-import %workspace%/.bazelrc.local

@@ -28,4 +28,6 @@ cabal.project.local
 
 sysroot
 
+/bazel-*
+.bazelrc.local
 *~
