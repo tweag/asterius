@@ -4,10 +4,14 @@ on:
   - push
   - pull_request
 
+env:
+  # Bump this number to invalidate the GH actions cache
+  cache-version: 0
+
 jobs:
 
   shell:
-    name: shell-${{ matrix.os }}
+    name: bazel-${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -20,6 +24,12 @@ jobs:
         uses: actions/checkout@v2
         with:
           submodules: recursive
+
+      - name: Mount Bazel cache
+        uses: actions/cache@v2
+        with:
+          path: ~/repo-cache
+          key: repo-cache-nixpkgs-${{ env.cache-version }}
 
       - name: setup-nix
         uses: cachix/install-nix-action@v16
@@ -39,6 +49,9 @@ jobs:
         run: |
           cachix watch-store -c9 -j2 asterius &
 
-      - name: shell
+      - name: Bazel build
         run: |
-          nix-shell --keep-going --run "cabal build asterius && asterius/boot.sh"
+          nix-shell bazel/nix/bazel_build_shell.nix --pure --run '
+            set -euo pipefail
+            bazel build //asterius:binaries --config=ci
+          '
