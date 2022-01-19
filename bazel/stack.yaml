@@ -1,0 +1,27 @@
+resolver: "lts-18.14" # ghc version must be kept in sync with the bazel's haskell toolchain, which is setup through nix.
+packages: 
+
+  - github: tweag/haskell-binaryen
+    commit: "7d0ea214e47946fc830d332a6e3e1b73f60f61fd"
+
+  - git: "https://github.com/tweag/inline-js.git"
+    commit: "8512b09d2c0533a41d5d2aef182b11a58c420c10"
+    subdirs:
+      - inline-js-core
+
+  - github: tweag/ghc-asterius
+    # must be the same commit as the one from the WORKSPACE file.
+    commit: "686d0e7ee841d4ada6a2d1b52faf2b26a41cb927"
+    subdirs:
+      - ahc-bin
+      - ahc-pkg
+      - ghc-asterius
+      - ghc-boot-asterius
+      - ghc-boot-th-asterius
+      - ghc-heap-asterius
+      - ghci-asterius
+      - template-haskell-asterius
+
+flags:
+  binaryen:
+    system-binaryen: true

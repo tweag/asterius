@@ -1,0 +1,134 @@
+load(
+    "@rules_haskell//haskell:cabal.bzl",
+    "haskell_cabal_binary",
+    "haskell_cabal_library",
+)
+load(
+    "@rules_haskell//haskell:defs.bzl",
+    "haskell_library",
+    "haskell_toolchain_library",
+)
+load(
+    "//:bazel/bazel_utils/cabal_filegroup.bzl",
+    "cabal_filegroup",
+)
+
+genrule(
+    name = "hpack",
+    srcs = ["package.yaml"],
+    outs = ["asterius.cabal"],
+    cmd = "$(location @hpack//:bin) asterius && cp asterius/asterius.cabal $@",
+    tools = ["@hpack//:bin"],
+)
+
+cabal_filegroup(
+    name = "cabal_src",
+    srcs = glob([
+        "src/**",
+        "src-types/**",
+        "LICENSE",
+        "ghc-bin-asterius/**",
+        "cabal/**",
+        "rts/**",
+        "app/**",
+        "test/**",
+    ]),
+    generated_cabal_file = ":asterius.cabal",
+    prefix_path = "asterius",
+)
+
+exports_files(["boot.sh"])
+
+# runtime dependencies accessed through the AHC_SRCDIR variable
+filegroup(
+    name = "ahc_srcdir_content",
+    srcs = glob([
+        "cabal/**",
+        "rts/**",
+    ]),
+    visibility = ["//visibility:public"],
+)
+
+executables = [
+    "Setup-ghc-prim",
+    "ahc",
+    "ahc-cabal",
+    "ahc-dist",
+    "ahc-ld",
+    "ahc-link",
+    "genconstants",
+    "unlit",
+]
+
+filegroup(
+    name = "binaries",
+    srcs = executables,
+)
+
+[
+    haskell_cabal_binary(
+        name = executable,
+        srcs = [":cabal_src"],
+        exe_name = executable,
+        visibility = ["//visibility:public"],
+        deps = [
+            ":asterius",
+            "@binaryen_dev//:binaryen_cc",
+            "@haskell_binaryen//:binaryen",
+            "@haskell_binaryen//:libbinaryen",
+        ],
+    )
+    for executable in executables
+]
+
+# We use a haskell_library rule for the asterius target in order to
+# work around https://github.com/tweag/rules_haskell/issues/1676.
+# A haskell_cabal_library rule would require less manual intervention if
+# we update the build as it would make use of the .cabal file.
+[
+    haskell_toolchain_library(name = lib)
+    for lib in [
+        "base",
+        "bytestring",
+        "directory",
+        "filepath",
+        "process",
+        "Cabal",
+        "containers",
+        "mtl",
+        "deepseq",
+        "exceptions",
+        "binary",
+        "template-haskell",
+    ]
+]
+
+haskell_library(
+    name = "asterius",
+    srcs = glob([
+        "src/**",
+        "src-types/**",
+    ]),
+    visibility = [
+        "//bazel/bazel_build:__pkg__",
+    ],
+    deps = [
+        "Cabal",
+        "base",
+        "binary",
+        "bytestring",
+        "containers",
+        "deepseq",
+        "directory",
+        "exceptions",
+        "filepath",
+        "mtl",
+        "process",
+        "template-haskell",
+        "@haskell_binaryen//:binaryen",
+        "@stackage//:ghc-asterius",
+        "@stackage//:ghci-asterius",
+        "@stackage//:inline-js-core",
+        "@stackage//:template-haskell-asterius",
+    ],
+)
