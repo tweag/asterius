@@ -1,4 +1,4 @@
-name: shell
+name: bazel
 
 on:
   - push
