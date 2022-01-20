@@ -1,4 +1,4 @@
-name: shell
+name: bazel
 
 on:
   - push
@@ -43,9 +43,10 @@ jobs:
         uses: cachix/cachix-action@v10
         with:
           name: asterius
-          signingKey: '${{ secrets.CACHIX_SIGNING_KEY }}'
+          signingKey: ${{ secrets.CACHIX_SIGNING_KEY }}
 
       - name: cachix-watch-store
+        if: ${{ github.repository_owner == 'tweag' }}
         run: |
           cachix watch-store -c9 -j2 asterius &
 

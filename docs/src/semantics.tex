@@ -1,0 +1,347 @@
+\documentclass{article}
+\usepackage[top=0.2in,bottom=0.3in]{geometry}
+\usepackage{amsmath}
+
+\makeatletter
+\newcommand{\mono}[1]{%  Thanks Paul A. (Windfall Software)
+  {\@tempdima = \fontdimen2\font
+   \frenchspacing
+   \texttt{\spaceskip = 1.1\@tempdima{}#1}}}
+\newcommand\xmono[2][1.1]
+  {\@tempdima = \fontdimen2\font
+   \frenchspacing
+   \texttt{\spaceskip = #1\@tempdima{}#2}}
+\makeatother
+\newcommand*\monobox[2][1.1]{\mbox{\upshape\xmono[#1]{#2}}}
+
+
+% ★
+\newcommand\slicemessage{\mbox{☆}}
+\newcommand\slicecont{\ensuremath{K_{☆}}}
+\newcommand\notrunning{\mbox{•}}
+
+\newcommand\emptylist{\ensuremath{[\,]}}
+
+\usepackage{fontspec}
+
+  \setmainfont{STIX Two}[
+                  UprightFont={* Math},
+                  ItalicFont={* Text Italic},
+                  BoldFont={* Text Bold},
+                  BoldItalicFont={* Text Bold Italic},
+                  ]
+
+\usepackage{keyval}
+
+
+\makeatletter
+
+\newcommand\defcomponent[2]{%
+  \define@key{state}{#1}{\@nameuse{setmyval@#1}{##1}}%
+  \@namedef{setmyval@#1}##1{\@namedef{myval@#1}{##1}}%
+  \@nameuse{setmyval@#1}{\ensuremath{#2}}%
+}
+
+\newcommand\component[1]{\@nameuse{myval@#1}}
+
+\makeatother
+
+\defcomponent{fuel}{F}
+\defcomponent{running}{R}
+\newcommand\norunning{\ensuremath{\mathord{\bullet}}}
+\defcomponent{queue}{Q}
+\defcomponent{heap}{H}
+\defcomponent{jsheap}{J}
+\defcomponent{mc}{M}
+\defcomponent{slicemessage}{\slicemessage}
+%\defcomponent{cont}{K}
+\defcomponent{slicecont}{\slicecont}
+\newcommand\running[1]{\ensuremath{\ast#1}}
+
+\newcommand\anystate[1][]{%
+  {\tracingall\setkeys{state}{#1}%
+   \let\c=\component
+   \ensuremath{\langle \c{fuel}, \c{running}, \c{queue}, \c{heap}; 
+               \c{mc}, \c{jsheap} \rangle}}}
+\newcommand\hstate[1][]{\anystate[running=\running{R},mc=K,#1]}
+\newcommand\jstate[1][]{\anystate[fuel=0,running=\notrunning,mc=\running{M},#1]}
+
+\newcommand\goesto[1]{\xrightarrow{#1}} % {\stackrel{#1}{\longrightarrow}}
+
+\newcommand\cons[2]{\ensuremath{#1\mathbin:#2}}
+\newcommand\parthreads[2]{\ensuremath{#1\mathbin\mid#2}}
+
+\begin{document}
+
+\title{Interaction of GHC Runtime with JavaScript Runtime}
+\author{Norman Ramsey\\Cheng Shao}
+
+\maketitle
+
+
+
+
+\section{Semantics of concurrency}\label{concurrency-sketch}
+
+To~describe how GHC's run-time system must interact with JavaScript,
+we~present a small-step operational semantics using labeled
+transitions.
+The~semantics is in the same style as the
+semantics in Simon PJ's tutorial \emph{Tackling the Awkward Squad},
+only not as thorough and careful.
+
+\subsection{Metavariables and state}
+
+The semantics describes transitions of a state machine whose
+components model the states of \emph{both} Haskell and JavaScript runtimes.
+\begin{itemize}
+\item
+  $F$ (``fuel'') is the number of ticks a Haskell thread can
+  execute before returning control to JavaScript. This component is
+  always nonnegative, and it is
+  nonzero only when Haskell code is running.
+\item
+  $R$ (``running'') is either the currently running Haskell
+  thread, or if no Haskell code is currently running, it is \notrunning\ (``nothing'')
+\item
+  $Q$ (``run queue'') is a collection of runnable Haskell threads.
+  For the moment we model it using the parallel-composition
+  operator~$\mid$ from the Awkward Squad tutorial.
+  So a queue with $n$ runnable threads might have the form $R_1 \mid
+  R_2 \mid \cdots \mid R_n$.
+  An~empty queue is written like an empty list, thus:~\emptylist.
+\item
+  $H$ (``heap'') is the Haskell heap, which may contain
+  \texttt{MVar}s and threads that are blocked on them.
+\item
+$M$ (``message'') is a JavaScript message.
+Note that in JavaScript,  \emph{message} is a term of~art.
+The message is the atomic unit of concurrency.
+JavaScript works by taking a message from its ``message queue,''
+running that message to completion (atomically),
+then repeating.
+While JavaScript is executing a message~$M$, that message will show up
+as a component of the state machine.
+\item
+$K$ (``continuation'') is a JavaScript continuation.
+This component represents the state of a JavaScript message that is
+suspended waiting for Haskell code to return a value (most commonly a
+\texttt{Promise}). 
+The~continuation is resumed when a value is supplied, so
+$K\,v$ is a message.
+\item
+$J$ is the JavaScript heap, including the message queue, which we
+don't model separately.
+To~add a message~$M$ to the message queue, we write
+$J+M$, which stands for the JavaScript heap that is like~$J$, except
+$M$~is added to the message queue.
+\item
+\slicemessage\ is the special message that, when executed, causes JavaScript
+to allocate a time slice to Haskell.
+When GHC's runtime system wants to be sure it has a future opportunity
+to run Haskell code, it~will add this message \slicemessage\ to
+JavaScript's message queue.
+\item
+\slicecont\ is a continuation that JavaScript is suspended on when
+it has granted a time slice to Haskell.
+This~continuation is unique in that it doesn't expect a meaningful
+return value. 
+It~is resumed by passing it the empty tuple, so $\slicecont()$ is a message.
+\item
+$v$ is a value (JavaScript value or Haskell WHNF).
+\item
+$e$ is an unevaluated Haskell expression, thunk, or closure (all words for the same
+thing).
+JavaScript calls into Haskell by constructing a closure, then asking
+GHC's run-time system to evaluate~it.
+\end{itemize}
+
+\noindent
+A~complete machine state includes both Haskell components and
+JavaScript components.
+The two sets of components are separated by a semicolon.
+Common forms of machine state include the following:
+\begin{itemize}
+\item
+In state \hstate[mc=\slicecont], Haskell code is running in thread $R$ with fuel~$F$.
+JavaScript is suspended on continuation~$\slicecont$ waiting for
+Haskell to give back the~CPU.
+\item
+In state \hstate[mc=K], Haskell code is running in thread $R$ with fuel~$F$.
+JavaScript called Haskell to get a \texttt{Promise}, and it is
+suspended on continuation~$K$ waiting for that \texttt{Promise} to be delivered.
+\item
+In state \jstate, JavaScript has the~CPU and is running code
+associated with message~$M$.
+Haskell is suspended and not running.
+Typically $F=0$, but the value of~$F$ is not relevant.
+\end{itemize}
+Components $R$, $Q$, $H$, and~$J$ are all meant to be stored in global
+variables in their respective run-time systems.
+
+It~would be lovely to have a good invariant describing when the
+message \slicemessage\ can appear in the JavaScript message queue, and
+how many times.
+I~think we like ``exactly when Haskell code is runnable'' and
+ ``at most once.''
+
+\subsection{Most interesting state transitions}
+
+
+The machine will enjoy a set of labeled transitions such as are
+described in Simon PJ's paper on the ``Awkward Squad.'' Call these the
+``standard transitions.'' (The awkward-squad machine state is a single
+term, formed by the parallel composition of $R$ with all the
+threads of~$Q$ and all the MVars of~$H$. The awkward squad
+doesn't care about order, but we~do.)
+
+An~important nonstandard transition is made when the Haskell engine
+runs out of fuel and returns control to JavaScript. 
+The~currently running thread is placed on the run queue.
+\[
+\hstate[fuel=0,mc=\slicecont] 
+\goesto{\text{\texttt{return} from \texttt{rts\_grant\_slice}}}
+\jstate[queue=\parthreads R Q,mc=\slicecont(),jsheap=J+\slicemessage]
+\]
+JavaScript starts running $\slicecont()$, that is, it resumes the
+message that was suspended waiting for Haskell.
+Notice that before returning, Haskell puts message \slicemessage\ on
+JavaScript's message queue---thereby ensuring that at some future
+point, it~will get more~CPU.
+That's accomplished by a \texttt{setImmediate} call into the
+JavaScript runtime, whose function will call \texttt{rts\_grant\_slice}
+in the Haskell runtime.
+
+Haskell will also return control to JavaScript if there are no Haskell
+threads available to run.
+In~this case, it~doesn't ask for future access to the~CPU.
+\[
+\hstate[running=\notrunning,queue={\emptylist},mc=\slicecont] 
+\goesto{\text{\texttt{return} from \texttt{rts\_grant\_slice}}}
+\jstate[queue={\emptylist},mc=\slicecont()]
+\]
+
+When JavaScript sees the special message~\slicemessage, it~grants CPU
+to Haskell by calling \texttt{rts\_grant\_slice($F_0$)}, where
+$F_0$~is the amount of fuel to grant.
+(In~practice, this policy will likely be set elsewhere, not passed
+from JavaScript.)
+\[
+\jstate[queue=\parthreads R Q,mc=\slicemessage]
+\goesto{\mathtt{rts\_grant\_slice}(F_0)}
+\hstate[running=R,fuel=F_0,mc=\slicecont] 
+\]
+
+When JavaScript wants to call Haskell asynchronously, it first constructs a
+closure~$e$, then calls \texttt{eval\_async($e$)}, which forks a new
+Haskell thread.
+\[
+\begin{array}{l@{}l}
+\multicolumn2{l}{%
+  \jstate[mc=K(e)]
+  \goesto{\mathtt{eval\_async}(e)\text{ and \texttt{return} $p$}}
+  \jstate[mc=K(p),queue=\parthreads R Q,jsheap=J+\slicemessage]
+}
+\\[5pt]
+\qquad \text{where}~
+&
+p = \text{a fresh promise}\\
+&
+R = \text{\texttt{deliver} $p$ (\texttt{try} $e$)}\\
+&
+\text{\texttt{deliver p (Left exn)}} = \text{\texttt{p.fails exn}}\\
+&
+\text{\texttt{deliver p (Right v)~}} = \text{\texttt{p.succeeds v}}
+\\
+%
+%\begin{minipage}{0.5\linewidth}
+\end{array}
+\]
+This transition specifies the following sequence of actions:
+\begin{enumerate}
+\item
+Allocate a fresh promise~$p$.
+\item
+Fork a new thread~$R$, which will evaluate~$e$.
+(When the evaluation of~$e$ completes, $R$~will deliver the result to promise~$p$.)
+\item
+Ask JavaScript to grant future CPU (so that $R$ can be run).
+\item
+Return $p$ to JavaScript \emph{immediately}.
+\end{enumerate}
+
+
+When Haskell wants to call JavaScript asynchronously, it~expects a
+\texttt{Promise} in return, and it suspends the current thread waiting
+on the \texttt{Promise}.  
+The run-time system already handles this case as part of its support
+for \texttt{MVar}s and exceptions; no special state transition is required.
+To~demonstrate,
+let's assume we define an exception constructor something like this:
+\begin{verbatim}
+data JSFault = JSFault JSValue
+instance Exception JSFault where ...
+\end{verbatim}
+The Haskell equivalent of a call \monobox{f e} to a foreign JavaScript
+function with argument~\texttt{e} can look something like this:
+\begin{verbatim}
+  do let v = haskellToJS e  -- evaluates e, converts result to JavaScript
+     p <- g v               -- call to JavaScript returns a `Promise`
+     m <- newEmptyMVar
+     myself <- threadId
+     p.then(putMVar m, throwTo myself . JSFault) -- attach continuations to p
+     takeMVar m             -- block waiting for async call to complete
+\end{verbatim}
+To~make this code work, the two continuations that contain references
+to~\texttt{m} and \texttt{myself} will have to be wrapped in
+JavaScript lambdas, something like this:
+\begin{verbatim}
+  (v => rts_eval_async(⟦putVar m⟧))
+\end{verbatim}
+where \texttt{⟦putVar m⟧} denotes the run-time representation of the
+Haskell closure in JavaScript. 
+
+Notes: Calls \monobox{g v} and \monobox{p.then(...)} are both
+\emph{synchronous}.
+
+
+
+\subsection{Other state transitions}
+
+Computation is modeled by evolving the running thread from
+$R$~to~$R'$.
+Computation may also change the Haskell heap and the queue of runnable
+threads, as described in the Awkward Squad paper.
+Computation uses fuel, which is always
+nonnegative.
+\[
+\hstate[fuel=F+1]
+\goesto{\text{computation}}
+\hstate[running=\running{R'},queue=Q',heap=H']
+\]
+
+The Haskell scheduler can decide to grant the CPU to a different
+Haskell thread.
+\[
+\hstate[fuel=F,queue=\parthreads{R'} Q]
+\goesto{\text{context switch}}
+\hstate[running=\running{R'},queue=\parthreads{Q}{R}]
+\]
+
+\subsection{Scaling up to POSIX}
+
+What if a user types Control-C?
+
+Unix:
+\begin{itemize}
+\item
+Computation doesn't use fuel.
+\item
+Add component to state machine: \emph{why} does $F=0$?
+Maybe because: a~user hit Control-C.
+\end{itemize}
+
+
+
+\end{document}
+
