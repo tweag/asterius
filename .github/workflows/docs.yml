@@ -25,9 +25,10 @@ jobs:
         uses: cachix/cachix-action@v10
         with:
           name: asterius
-          signingKey: '${{ secrets.CACHIX_SIGNING_KEY }}'
+          signingKey: ${{ secrets.CACHIX_SIGNING_KEY }}
 
       - name: cachix-watch-store
+        if: ${{ secrets.CACHIX_SIGNING_KEY }}
         run: |
           cachix watch-store -c9 -j2 asterius &
 
@@ -62,7 +63,7 @@ jobs:
           popd
 
       - name: deploy
-        if: ${{ github.repository == 'tweag/asterius' }}
+        if: ${{ secrets.NETLIFY_AUTH_TOKEN }}
         env:
           NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
           NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
@@ -77,7 +78,7 @@ jobs:
           echo DEPLOY_URL=$(jq -r .deploy_url result.json) >> $GITHUB_ENV
 
       - name: report
-        if: ${{ github.repository == 'tweag/asterius' }}
+        if: ${{ secrets.NETLIFY_AUTH_TOKEN }}
         uses: Sibz/github-status-action@v1.1.6
         with:
           authToken: ${{ github.token }}

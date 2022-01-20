@@ -33,9 +33,10 @@ jobs:
         uses: cachix/cachix-action@v10
         with:
           name: asterius
-          signingKey: '${{ secrets.CACHIX_SIGNING_KEY }}'
+          signingKey: ${{ secrets.CACHIX_SIGNING_KEY }}
 
       - name: cachix-watch-store
+        if: ${{ secrets.CACHIX_SIGNING_KEY }}
         run: |
           cachix watch-store -c9 -j2 asterius &
 
