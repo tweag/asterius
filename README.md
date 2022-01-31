@@ -41,6 +41,8 @@ terrorjack@hostname:/project$ podman run -it --rm -v $(pwd):/workspace -w /works
 root@hostname:/workspace#
 ```
 
+Note that SELinux might be preventing your source files to be visible in the container. If that is the case you can add `--security-opt label=disable` to the podman command.
+
 There are a lot of link-time options available to `ahc-link`, e.g. targeting
 the browser platform instead of `node`, adding extra GHC options or setting
 runtime parameters. Check the [documentation](https://asterius.netlify.app/) for
