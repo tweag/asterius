@@ -1,0 +1,147 @@
+<mediawiki xmlns="http://www.mediawiki.org/xml/export-0.3/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mediawiki.org/xml/export-0.3/ http://www.mediawiki.org/xml/export-0.3.xsd" version="0.3" xml:lang="en">
+  <siteinfo>
+    <sitename>Wikipedia</sitename>
+    <base>http://en.wikipedia.org/wiki/Main_Page</base>
+    <generator>MediaWiki 1.6alpha</generator>
+    <case>first-letter</case>
+      <namespaces>
+      <namespace key="-2">Media</namespace>
+      <namespace key="-1">Special</namespace>
+      <namespace key="0" />
+      <namespace key="1">Talk</namespace>
+      <namespace key="2">User</namespace>
+      <namespace key="3">User talk</namespace>
+      <namespace key="4">Wikipedia</namespace>
+      <namespace key="5">Wikipedia talk</namespace>
+      <namespace key="6">Image</namespace>
+      <namespace key="7">Image talk</namespace>
+      <namespace key="8">MediaWiki</namespace>
+      <namespace key="9">MediaWiki talk</namespace>
+      <namespace key="10">Template</namespace>
+      <namespace key="11">Template talk</namespace>
+      <namespace key="12">Help</namespace>
+      <namespace key="13">Help talk</namespace>
+      <namespace key="14">Category</namespace>
+      <namespace key="15">Category talk</namespace>
+      <namespace key="100">Portal</namespace>
+      <namespace key="101">Portal talk</namespace>
+    </namespaces>
+  </siteinfo>
+  <page>
+    <title>AaA</title>
+    <id>1</id>
+    <revision>
+      <id>32899315</id>
+      <timestamp>2005-12-27T18:46:47Z</timestamp>
+      <contributor>
+        <username>Jsmethers</username>
+        <id>614213</id>
+      </contributor>
+      <text xml:space="preserve">#REDIRECT [[AAA]]</text>
+    </revision>
+  </page>
+  <page>
+    <title>AlgeriA</title>
+    <id>5</id>
+    <revision>
+      <id>18063769</id>
+      <timestamp>2005-07-03T11:13:13Z</timestamp>
+      <contributor>
+        <username>Docu</username>
+        <id>8029</id>
+      </contributor>
+      <minor />
+      <comment>adding cur_id=5: {{R from CamelCase}}</comment>
+      <text xml:space="preserve">#REDIRECT [[Algeria]]{{R from CamelCase}}</text>
+    </revision>
+  </page>
+  <page>
+    <title>AmericanSamoa</title>
+    <id>6</id>
+    <revision>
+      <id>18063795</id>
+      <timestamp>2005-07-03T11:14:17Z</timestamp>
+      <contributor>
+        <username>Docu</username>
+        <id>8029</id>
+      </contributor>
+      <minor />
+      <comment>adding to cur_id=6  {{R from CamelCase}}</comment>
+      <text xml:space="preserve">#REDIRECT [[American Samoa]]{{R from CamelCase}}</text>
+    </revision>
+  </page>
+  <page>
+    <title>AppliedEthics</title>
+    <id>8</id>
+    <revision>
+      <id>15898943</id>
+      <timestamp>2002-02-25T15:43:11Z</timestamp>
+      <contributor>
+        <ip>Conversion script</ip>
+      </contributor>
+      <minor />
+      <comment>Automated conversion</comment>
+      <text xml:space="preserve">#REDIRECT [[Applied ethics]]
+</text>
+    </revision>
+  </page>
+  <page>
+    <title>AccessibleComputing</title>
+    <id>10</id>
+    <revision>
+      <id>15898945</id>
+      <timestamp>2003-04-25T22:18:38Z</timestamp>
+      <contributor>
+        <username>Ams80</username>
+        <id>7543</id>
+      </contributor>
+      <minor />
+      <comment>Fixing redirect</comment>
+      <text xml:space="preserve">#REDIRECT [[Accessible_computing]]</text>
+    </revision>
+  </page>
+  <page>
+    <title>AdA</title>
+    <id>11</id>
+    <revision>
+      <id>15898946</id>
+      <timestamp>2002-09-22T16:02:58Z</timestamp>
+      <contributor>
+        <username>Andre Engels</username>
+        <id>300</id>
+      </contributor>
+      <minor />
+      <text xml:space="preserve">#REDIRECT [[Ada programming language]]</text>
+    </revision>
+  </page>
+  <page>
+    <title>Anarchism</title>
+    <id>12</id>
+    <revision>
+      <id>42136831</id>
+      <timestamp>2006-03-04T01:41:25Z</timestamp>
+      <contributor>
+        <username>CJames745</username>
+        <id>832382</id>
+      </contributor>
+      <minor />
+      <comment>/* Anarchist Communism */  too many brackets</comment>
+      <text xml:space="preserve">{{Anarchism}}
+'''Anarchism''' originated as a term of abuse first used against early [[working class]] [[radical]]s including the [[Diggers]] of the [[English Revolution]] and the [[sans-culotte|''sans-culottes'']] of the [[French Revolution]].[http://uk.encarta.msn.com/encyclopedia_761568770/Anarchism.html] Whilst the term is still used in a pejorative way to describe ''&quot;any act that used violent means to destroy the organization of society&quot;''&lt;ref&gt;[http://www.cas.sc.edu/socy/faculty/deflem/zhistorintpolency.html History of International Police Cooperation], from the final protocols of the &quot;International Conference of Rome for the Social Defense Against Anarchists&quot;, 1898&lt;/ref&gt;, it has also been taken up as a positive label by self-defined anarchists.
+
+The word '''anarchism''' is [[etymology|derived from]] the [[Greek language|Greek]] ''[[Wiktionary:&amp;#945;&amp;#957;&amp;#945;&amp;#961;&amp;#967;&amp;#943;&amp;#945;|&amp;#945;&amp;#957;&amp;#945;&amp;#961;&amp;#967;&amp;#943;&amp;#945;]]'' (&quot;without [[archon]]s (ruler, chief, king)&quot;). Anarchism as a [[political philosophy]], is the belief that ''rulers'' are unnecessary and should be abolished, although there are differing interpretations of what this means. Anarchism also refers to related [[social movement]]s) that advocate the elimination of authoritarian institutions, particularly the [[state]].&lt;ref&gt;[http://en.wikiquote.org/wiki/Definitions_of_anarchism Definitions of anarchism] on Wikiquote, accessed 2006&lt;/ref&gt; The word &quot;[[anarchy]],&quot; as most anarchists use it, does not imply [[chaos]], [[nihilism]], or [[anomie]], but rather a harmonious [[anti-authoritarian]] society. In place of what are regarded as authoritarian political structures and coercive economic institutions, anarchists advocate social relations based upon [[voluntary association]] of autonomous individuals, [[mutual aid]], and [[self-governance]]. 
+    
+While anarchism is most easily defined by what it is against, anarchists also offer positive visions of what they believe to be a truly free society. However, ideas about how an anarchist society might work vary considerably, especially with respect to economics; there is also disagreement about how a free society might be brought about. 
+
+== Origins and predecessors ==
+
+[[Peter Kropotkin|Kropotkin]], and others, argue that before recorded [[history]], human society was organized on anarchist principles.&lt;ref&gt;[[Peter Kropotkin|Kropotkin]], Peter. ''&quot;[[Mutual Aid: A Factor of Evolution]]&quot;'', 1902.&lt;/ref&gt; Most anthropologists follow Kropotkin and Engels in believing that hunter-gatherer bands were egalitarian and lacked division of labour, accumulated wealth, or decreed law, and had equal access to resources.&lt;ref&gt;[[Friedrich Engels|Engels]], Freidrich. ''&quot;[http://www.marxists.org/archive/marx/works/1884/origin-family/index.htm Origins of the Family, Private Property, and the State]&quot;'', 1884.&lt;/ref&gt;
+[[Image:WilliamGodwin.jpg|thumb|right|150px|William Godwin]]
+
+Anarchists including the [[The Anarchy Organisation]] and [[Murray Rothbard|Rothbard]] find anarchist attitudes in [[Taoism]] from [[History of China|Ancient China]].&lt;ref&gt;The Anarchy Organization (Toronto). ''Taoism and Anarchy.'' [[April 14]] [[2002]] [http://www.toxicpop.co.uk/library/taoism.htm Toxicpop mirror] [http://www.geocities.com/SoHo/5705/taoan.html Vanity site mirror]&lt;/ref&gt;&lt;ref&gt;[[Murray Rothbard|Rothbard]], Murray. ''&quot;[http://www.lewrockwell.com/rothbard/ancient-chinese.html The Ancient Chinese Libertarian Tradition]&quot;'', an extract from ''&quot;[http://www.mises.org/journals/jls/9_2/9_2_3.pdf Concepts of the Role of Intellectuals in Social Change Toward Laissez Faire]&quot;'', The Journal of Libertarian Studies, 9 (2) Fall 1990.&lt;/ref&gt; [[Peter Kropotkin|Kropotkin]] found similar ideas in [[stoicism|stoic]] [[Zeno of Citium]]. According to Kropotkin, Zeno &quot;repudiated the omnipotence of the state, its intervention and regimentation, and proclaimed the sovereignty of the moral law of the individual&quot;. &lt;ref&gt;[http://www.blackcrayon.com/page.jsp/library/britt1910.html Anarchism], written by Peter Kropotkin, from Encyclopaedia Britannica, 1910]&lt;/ref&gt;
+
+The [[Anabaptist]]s of 16th century Europe are sometimes considered to be religious forerunners of modern anarchism. [[Bertrand Russell]], in his ''History of Western Philosophy'', writes that the Anabaptists &quot;repudiated all law, since they held that the good man will be guided at every moment by [[the Holy Spirit]]...[f]rom this premise they arrive at [[communism]]....&quot;&lt;ref&gt;[[Bertrand Russell|Russell]], Bertrand. ''&quot;Ancient philosophy&quot;'' in ''A History of Western Philosophy, and its connection with political and social circumstances from the earliest times to the present day'', 1945.&lt;/ref&gt; [[Diggers (True Levellers)|The Diggers]] or &quot;True Levellers&quot; were an early communistic movement during the time of the [[English Civil War]], and are considered by some as forerunners of modern anarchism.&lt;ref&gt;[http://www.zpub.com/notes/aan-hist.html An Anarchist Timeline], from Encyclopaedia Britannica, 1994.&lt;/ref&gt;
+
+In the [[modern era]], the first to use the term to mean something other than chaos was [[Louis-Armand de Lom d'Arce de Lahontan, Baron de Lahontan|Louis-Armand, Baron de Lahontan]] in his ''Nouveaux voyages dans l'Amérique septentrionale'', (1703), where he described the [[Native Americans in the United States|indigenous American]] society, which had no state, laws, prisons, priests, or private property, as being in anarchy&lt;ref&gt;[http://etext.lib.virginia.edu/cgi-local/DHI/dhi.cgi?id=dv1-12 Dictionary of the History of Ideas - ANARCHISM]&lt;/ref&gt;. [[Russell Means]], a [[libertarian]] and leader in the [[American Indian Movement]], has repeatedly stated that he is &quot;an anarchist, and so are all [his] ancestors.&quot;
+
+In 1793, in the thick of the [[French Revolution]], [[William Godwin]] published ''An Enquiry Concerning Political Justice'' [http://web.bilkent.edu.tr/Online/www.english.upenn.edu/jlynch/Frank/Godwin/pjtp.html]. Although Godwin did not use the word ''anarchism'', many later anarchists have regarded this book as the first major anarchist text, and Godwin as the &quot;founder of philosophical anarchism.&quot; But at this point no anarchist movement yet existed, and the term ''anarchiste'' was known mainly as an insult hurled by the [[bourgeois]] [[Girondins]] at more radical elements in the [[French revolution]].

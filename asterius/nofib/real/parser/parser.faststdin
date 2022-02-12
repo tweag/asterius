@@ -1,0 +1,40 @@
+
+--==========================================================--
+--=== The parser.                                        ===--
+--===                                          Parser.hs ===--
+--==========================================================--
+
+module Parser where
+
+{- FIX THESE UP -}
+--utLookupDef env k def
+--   = head ( [ vv | (kk,vv) <- env, kk == k] ++ [def] )
+panic = error
+{- END FIXUPS -}
+
+--paLiteral :: Parser Literal
+paLiteral
+   = pgAlts
+     [
+        pgApply (LiteralInt.leStringToInt) (pgItem Lintlit),
+        pgApply (LiteralChar.head)         (pgItem Lcharlit),
+        pgApply LiteralString              (pgItem Lstringlit)
+     ]
+
+paExpr
+   = pgAlts
+     [
+        paCaseExpr,
+        paLetExpr,
+        paLamExpr,
+        paIfExpr,
+        paUnaryMinusExpr,
+        hsDoExpr []
+     ]
+
+paUnaryMinusExpr
+   = pgThen2
+        (\minus (_, aexpr, _) ->
+             ExprApp (ExprApp (ExprVar "-") (ExprLiteral (LiteralInt 0))) aexpr)
+        paMinus
+        paAExpr

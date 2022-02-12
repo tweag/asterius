@@ -1,0 +1,223 @@
+
+{----------------------------------------------------------------}
+{--- A terrible conglomerate of definitions from the various  ---}
+{--- .cor files.                                              ---}
+{----------------------------------------------------------------}
+
+list a ::= Nil | Cons a (list a);
+
+pair a b ::= Pair a b;
+
+tp3 a b c ::= Tp3 a b c;
+
+tp4 a b c d ::= Tp4 a b c d;
+
+la a ::= Na | Ca a (lb a) ;
+
+lb b ::= Nb | Cb b (la b) ;
+
+complex a b ::= Cpx a b;
+
+boxed a ::= Box a;
+
+numD b u ::= NumDict b b u;
+
+triple a b c ::= MkTriple a b c;
+
+
+tree a ::= Leaf | Branch (tree a) a (tree a) ;
+
+
+day ::= Monday     |
+        Tuesday    |
+        Wednesday  |
+        Thursday   |
+        Friday     |
+        Saturday   |
+        Sunday ;
+
+domain ::= Unit  |
+           Lift (domain);
+
+assoc a b ::= NilAssoc |
+              Assoc a b (assoc a b) ;
+
+;;
+
+{--------------------------------------------------------}
+{--- Preliminaries                                    ---}
+{--------------------------------------------------------}
+
+{--------------------------------------------------------}
+error
+= error;
+
+
+{--------------------------------------------------------}
+dot f g x
+= f (g x);
+
+
+{--------------------------------------------------------}
+flip f x y
+= f y x;
+
+
+{--------------------------------------------------------}
+max x y
+= case x > y of True -> x; False -> y end;
+
+
+{--------------------------------------------------------}
+min x y
+= case x < y of True -> x; False -> y end;
+
+
+{--------------------------------------------------------}
+{--- PreludeList                                      ---}
+{--------------------------------------------------------}
+
+{--------------------------------------------------------}
+head l
+= case l of
+    Cons x xs -> x;
+    Nil -> error
+  end;
+
+
+{--------------------------------------------------------}
+last l
+= case l of
+    Nil -> error;
+    Cons x xs -> case xs of
+                    Nil -> x;
+                    Cons y ys -> last xs
+                 end
+  end;
+
+
+{--------------------------------------------------------}
+tail l
+= case l of
+    Cons x xs -> xs;
+    Nil -> error
+  end;
+
+
+{--------------------------------------------------------}
+init l
+= case l of
+    Nil -> error;
+    Cons x xs -> case xs of
+                    Nil -> Nil;
+                    Cons y ys -> Cons x (init xs)
+                 end
+  end;
+
+
+{--------------------------------------------------------}
+null l
+= case l of
+    Nil -> True;
+    Cons x xs -> False
+  end;
+
+
+{--------------------------------------------------------}
+append l1 l2
+= foldr Cons l2 l1;
+
+
+{--------------------------------------------------------}
+diff
+= letrec
+    del = \xl y -> case xl of
+                     Nil -> Nil;
+                     Cons x xs -> case x == y of
+                                    True -> xs;
+                                    False -> Cons x (del xs y)
+                                  end
+                   end
+  in
+     foldl del;
+
+
+{--------------------------------------------------------}
+length
+= foldl (\n dontCare -> n+1) 0;
+
+
+{--------------------------------------------------------}
+nth l n
+= case l of
+    Nil -> error;
+    Cons x xs -> case n == 0 of
+                   True -> x;
+                   False -> nth xs (n-1)
+                 end
+  end;
+
+
+{--------------------------------------------------------}
+map f l
+= case l of
+    Nil -> Nil;
+    Cons x xs -> Cons (f x) (map f xs)
+  end;
+
+
+{--------------------------------------------------------}
+filter p
+= foldr (\x xs -> case p x of True -> Cons x xs; False -> xs end) Nil;
+
+
+
+{--------------------------------------------------------}
+foldl f z l
+= case l of
+    Nil -> z;
+    Cons x xs -> foldl f (f z x) xs
+  end;
+
+
+{--------------------------------------------------------}
+foldl1 f xl
+= case xl of
+    Nil -> error;
+    Cons x xs -> foldl f x xs
+  end;
+
+
+{--------------------------------------------------------}
+scanl f q xl
+= Cons q (case xl of
+            Nil -> Nil;
+            Cons x xs -> scanl f (f q x) xs end);
+
+
+{--------------------------------------------------------}
+scanl1 f xl
+= case xl of
+    Nil -> error;
+    Cons x xs -> scanl f x xs
+  end;
+
+
+{--------------------------------------------------------}
+foldr f z l
+= case l of
+    Nil -> z;
+    Cons x xs -> f x (foldr f z xs)
+  end;
+
+
+{--------------------------------------------------------}
+foldr1 f xl
+= case xl of
+    Nil -> error;
+    Cons x xs -> case xs of
+                   Nil -> x;
+                   Cons y ys -> f x (foldr1 f xs)
+                 end
+  end;
+
