@@ -18,7 +18,7 @@ as function arguments and return values in either JSFFI imports or exports:
 * The `Any` type.
 
 The `JSVal` type is exported by
-[`Asterius.Types`](https://github.com/tweag/asterius/blob/master/ghc-toolkit/boot-libs/base/Asterius/Types.hs).
+[`Asterius.Types`](https://github.com/tweag/ghc-asterius/blob/asterius-8.10/libraries/base/Asterius/Types.hs).
 It represents an opaque JavaScript value in the Haskell world; one can use JSFFI
 imports to obtain `JSVal` values, pass them across Haskell/JavaScript, store
 them in Haskell data structures like ordinary Haskell values. `JSVal`s are
